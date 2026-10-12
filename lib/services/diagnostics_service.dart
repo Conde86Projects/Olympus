@@ -33,6 +33,7 @@ class DiagnosticsReport {
     required this.safeModeLabel,
     required this.lastErrorAt,
     required this.lastErrorMessage,
+    required this.lastErrorKind,
     required this.lastChangeName,
   });
 
@@ -51,6 +52,7 @@ class DiagnosticsReport {
   final String safeModeLabel;
   final String? lastErrorAt;
   final String? lastErrorMessage;
+  final PlaybackErrorKind? lastErrorKind;
   final String? lastChangeName;
 
   int get addonsTotal => addonsActive + addonsInactive + addonsError;
@@ -138,6 +140,7 @@ class DiagnosticsService {
       },
       lastErrorAt: lastError?['at'] as String?,
       lastErrorMessage: lastError?['message'] as String?,
+      lastErrorKind: _parseKind(lastError?['kind']),
       lastChangeName: lastChangeName,
     );
   }
@@ -183,6 +186,8 @@ class DiagnosticsService {
           '${report.addonsError} em erro)',
       'Repositórios: ${report.reposCount} cadastrados',
       'Último erro: ${report.lastErrorAt ?? 'nenhum registrado'}',
+      if (report.lastErrorKind != null)
+        'Tipo do último erro: ${playbackErrorKindLabel(report.lastErrorKind!)}',
       'Última alteração de add-on: ${report.lastChangeName ?? 'nenhuma'}',
     ].join('\n');
   }
@@ -201,6 +206,16 @@ class DiagnosticsService {
     return 'Para reinstalar $os: feche o app, use "Limpar dados do app" '
         'acima (ou apague a pasta de dados do aplicativo) e abra '
         'novamente. Seus vídeos não são afetados.';
+  }
+
+  /// Tipo guardado no documento; null em registros antigos ou
+  /// corrompidos (a linha some em vez de mentir).
+  static PlaybackErrorKind? _parseKind(Object? raw) {
+    if (raw is! String) return null;
+    for (final kind in PlaybackErrorKind.values) {
+      if (kind.name == raw) return kind;
+    }
+    return null;
   }
 
   static String _playerLabel(PlaybackStatus status) => switch (status) {

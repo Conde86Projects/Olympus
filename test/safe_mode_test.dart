@@ -116,6 +116,18 @@ void main() {
       expect(last['at'], isNotNull);
     });
 
+    test('recordError classifica e persiste o tipo', () async {
+      final store = InMemoryLocalStore();
+      final guard = bootOn(store);
+      await guard.beginBoot();
+      await guard.recordError(StateError('Connection timed out'));
+      expect(guard.lastError?['kind'], 'timeout');
+
+      final next = bootOn(store);
+      await next.beginBoot();
+      expect(next.lastError?['kind'], 'timeout');
+    });
+
     test('clearEphemeral limpa o ultimo erro', () async {
       final store = InMemoryLocalStore();
       final guard = bootOn(store);

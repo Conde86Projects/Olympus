@@ -6,6 +6,7 @@ import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/models/history_entry.dart';
 import 'package:player/models/media_item.dart';
+import 'package:player/models/playback_state.dart';
 import 'package:player/services/demo_addons.dart';
 import 'package:player/services/diagnostics_service.dart';
 import 'package:player/services/history_service.dart';
@@ -194,6 +195,16 @@ void main() {
       expect(text.contains('falha em http'), isFalse);
     });
 
+    test('exportacao identifica o tipo do erro', () async {
+      final harness = _Harness();
+      await harness.guard.recordError('cannot decode: codec missing');
+      final report = await harness.diagnostics.collect();
+      expect(report.lastErrorKind, PlaybackErrorKind.decoder);
+      final text = harness.diagnostics.buildReport(report);
+      expect(text, contains('Tipo do último erro: decodificador'));
+      expect(text.contains('codec missing'), isFalse);
+    });
+
     test('instrucoes nomeiam a plataforma atual', () async {
       final harness = _Harness();
       final text = harness.diagnostics.reinstallInstructions();
@@ -215,7 +226,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Estado'), findsOneWidget);
-      expect(find.text('0.1.0'), findsOneWidget);
+      expect(find.text('0.1.0-rc.1'), findsOneWidget);
       expect(find.text('ocioso'), findsOneWidget);
       expect(find.text('2 vídeos, 1 favoritos'), findsOneWidget);
       expect(find.text('1 entradas'), findsOneWidget);
@@ -320,6 +331,16 @@ void main() {
       expect(copied!.contains('repos.exemplo.com'), isFalse);
       expect(copied!.contains('Secreto'), isFalse);
       expect(copied!.contains('falha em http'), isFalse);
+    });
+
+    testWidgets('tela mostra o tipo do erro', (tester) async {
+      final harness = _WidgetHarness();
+      await harness.guard.recordError('timed out after 30s');
+      await harness.pump(tester);
+      await harness.openDiagnostics(tester);
+
+      expect(find.text('Tipo do erro'), findsOneWidget);
+      expect(find.text('tempo esgotado'), findsOneWidget);
     });
 
     testWidgets('modo manual alterna pelo interruptor', (tester) async {

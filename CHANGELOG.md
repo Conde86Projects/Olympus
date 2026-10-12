@@ -4,6 +4,16 @@ Histórico de versões do player, escrito para humanos (o que mudou e
 se importa). Detalhes de implementação ficam nos documentos em
 `docs/`.
 
+## [Não lançado]
+
+### Adicionado
+
+- Diagnóstico identifica o tipo do último erro (rede, fonte,
+  decodificador, tempo esgotado, desconhecido) na tela e no
+  relatório exportado — sem vazar mensagem, caminho, URL ou
+  credencial.
+- Versão do app no diagnóstico acompanha o pubspec (0.1.0-rc.1).
+
 ## [0.1.0-rc.1] - 2026-10-12
 
 Primeiro release candidate: player local completo, desktop, TV e

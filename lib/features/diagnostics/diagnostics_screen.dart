@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:player/app/app.dart';
+import 'package:player/models/playback_state.dart';
 import 'package:player/services/diagnostics_service.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/focusable_button.dart';
@@ -131,6 +132,11 @@ class _StateCard extends StatelessWidget {
               title: 'Último erro',
               value: report.lastErrorAt ?? 'nenhum registrado',
             ),
+            if (report.lastErrorKind != null)
+              _Row(
+                title: 'Tipo do erro',
+                value: playbackErrorKindLabel(report.lastErrorKind!),
+              ),
             if (report.lastErrorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),

@@ -67,6 +67,16 @@ PlaybackErrorKind classifyPlaybackError(String? message) {
   return PlaybackErrorKind.unknown;
 }
 
+/// Rotulo curto e neutro do tipo (diagnostico e exportacao): sem
+/// caminhos, URLs ou detalhes da mensagem original.
+String playbackErrorKindLabel(PlaybackErrorKind kind) => switch (kind) {
+      PlaybackErrorKind.network => 'rede',
+      PlaybackErrorKind.source => 'fonte',
+      PlaybackErrorKind.decoder => 'decodificador',
+      PlaybackErrorKind.timeout => 'tempo esgotado',
+      PlaybackErrorKind.unknown => 'desconhecido',
+    };
+
 /// Estado de reproducao (spec 5.2).
 enum PlaybackStatus {
   idle,

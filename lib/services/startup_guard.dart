@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:player/core/storage/local_store.dart';
+import 'package:player/models/playback_state.dart';
 import 'package:player/services/local_addon_service.dart';
 
 /// Motivo do modo seguro: falhas repetidas ou escolha manual.
@@ -84,6 +85,7 @@ class StartupGuard extends ChangeNotifier {
     _lastError = {
       'at': DateTime.now().toIso8601String(),
       'message': message.length > 200 ? message.substring(0, 200) : message,
+      'kind': classifyPlaybackError(message).name,
       if (trace.isNotEmpty)
         'stack': trace.length > 300 ? trace.substring(0, 300) : trace,
     };
