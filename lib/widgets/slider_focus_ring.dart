@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:player/app/theme.dart';
+import 'package:player/app/tv_layout.dart';
 
 /// Anel de foco para sliders (F6, Fase 4b, spec 18).
 ///
@@ -49,6 +50,10 @@ class _SliderFocusRingState extends State<SliderFocusRing> {
 
   @override
   Widget build(BuildContext context) {
+    // Espessura do token na TV (spec 27.7); 3 no desktop, sem mudanca.
+    final ringWidth = TvLayout.isTv(context)
+        ? TvLayout.tokensOf(context).focusRingWidth
+        : 3.0;
     return Container(
       // Padding fixo (com e sem anel) para o layout não pular.
       padding: const EdgeInsets.all(4),
@@ -57,8 +62,8 @@ class _SliderFocusRingState extends State<SliderFocusRing> {
       // FocusNode do slider a cada mudanca de foco.
       decoration: BoxDecoration(
         border: _focused
-            ? Border.all(color: PlayerTheme.accent, width: 3)
-            : Border.all(color: Colors.transparent, width: 3),
+            ? Border.all(color: PlayerTheme.accent, width: ringWidth)
+            : Border.all(color: Colors.transparent, width: ringWidth),
         borderRadius: BorderRadius.circular(10),
       ),
       child: widget.child,

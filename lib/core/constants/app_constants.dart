@@ -12,9 +12,6 @@ abstract final class AppConstants {
   /// Area minima de toque no desktop.
   static const minTouchTarget = 44.0;
 
-  /// Area minima no modo TV (spec 3.4: maior na TV, 10-foot).
-  static const tvMinTouchTarget = 64.0;
-
   /// Margem lateral minima anti-overscan no modo TV.
   static const tvMinMargin = 32.0;
 

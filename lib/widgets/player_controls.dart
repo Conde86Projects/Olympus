@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+
 import 'package:player/app/theme.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/extensions/duration_extensions.dart';
@@ -15,7 +16,8 @@ import 'package:player/widgets/slider_focus_ring.dart';
 /// fileira volume/transporte/configuracoes, num painel fosco com
 /// margens — nunca grudado na borda. Apresentacao pura: toda acao
 /// passa pelo [MediaPlayerService]. A tela cheia mora no canto
-/// superior esquerdo (fora do card).
+/// superior esquerdo (fora do card). Composicao do desktop (spec 27.2):
+/// na TV, a tela usa o [TvPlayerControls], com tokens proprios.
 class PlayerControls extends StatelessWidget {
   const PlayerControls({
     super.key,
@@ -56,7 +58,12 @@ class PlayerControls extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            padding: const EdgeInsets.fromLTRB(
+              16,
+              12,
+              16,
+              12,
+            ),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.68),
               borderRadius: BorderRadius.circular(16),

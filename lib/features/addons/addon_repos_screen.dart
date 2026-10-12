@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/tv_layout.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/core/errors/app_error.dart';
 import 'package:player/features/addons/addon_install_screen.dart';
@@ -352,9 +353,9 @@ class _RepoTile extends StatelessWidget {
             children: [
               Icon(
                 repo.trusted ? Icons.verified_outlined : Icons.help_outline,
-                size: 28,
+                size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconPrimary : 28,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: TvLayout.spacing(context, 12)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

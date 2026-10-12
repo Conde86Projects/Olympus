@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/app/theme.dart';
+import 'package:player/app/tv_layout.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/errors/app_error.dart';
 import 'package:player/core/utils/language_names.dart';
@@ -23,6 +24,7 @@ import 'package:player/widgets/empty_state.dart';
 import 'package:player/widgets/focusable_button.dart';
 import 'package:player/widgets/player_controls.dart';
 import 'package:player/widgets/player_settings_panel.dart';
+import 'package:player/widgets/tv_player_controls.dart';
 
 /// Tela do player (spec 11, 12): video ao centro, controles flutuantes com
 /// auto-ocultar, atalhos de teclado e hierarquia do botao voltar (spec 18).
@@ -328,6 +330,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final next = _nextItem;
+    // Margem segura anti-overscan na TV (spec 27.5); 16 no desktop.
+    final edge =
+        TvLayout.isTv(context) ? TvLayout.safeMarginOf(context) : 16.0;
     // Toda saida pela navegacao (X dos cantos, gesto, voltar do
     // sistema/TV, Q) passa por aqui: salva a sessao antes de fechar
     // (spec 11, 19). O Esc passa pelo _onBack e cai aqui no fim.
@@ -411,8 +416,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       // os controles e no cinema. Na tela cheia aparecem
                       // no poke: a saida pelo botao mora aqui.
                       Positioned(
-                        left: 16,
-                        right: 16,
+                        left: edge,
+                        right: edge,
                         top: 0,
                         child: SafeArea(
                           bottom: false,
@@ -478,9 +483,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       // oculto, o foco sobrevive, setas buscam e o OK
                       // continua alternando play/pause.
                       Positioned(
-                        left: 16,
-                        right: 16,
-                        bottom: 16,
+                        left: edge,
+                        right: edge,
+                        bottom: edge,
                         child: SafeArea(
                           top: false,
                           child: Visibility(
@@ -498,7 +503,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 child: ConstrainedBox(
                                   constraints: const BoxConstraints(
                                       maxWidth: 880),
-                                  child: PlayerControls(
+                                  child: _tvMode
+                                      ? TvPlayerControls(
+                                          player: widget.dependencies
+                                              .playerService,
+                                          session: _session,
+                                          videoTitle: _currentItem.title,
+                                          settingsKey: _settingsKey,
+                                          sourceQualities:
+                                              decodeSourceQualities(
+                                                  _baseItem.metadata[
+                                                      'qualities']),
+                                          sourceQualityListenable:
+                                              _sourceQuality,
+                                          onOpenPanel: (view, anchor) =>
+                                              _openSettings(anchor,
+                                                  view: view),
+                                        )
+                                      : PlayerControls(
                                     player:
                                         widget.dependencies.playerService,
                                     session: _session,

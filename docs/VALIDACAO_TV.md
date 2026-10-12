@@ -452,3 +452,82 @@ Suíte 254/254 + analyze limpo. Correções em
   90x DEL funcionou; CENTER nao ativa card da Biblioteca (tap sim).
 - Validacao TV fisica 100% concluida: F11, TV-RESUME, error-exit, leanback,
   link autorizado. Itens de pixel seguem diferidos p/ TV Vulkan/GLES3.
+
+### Card Showtime + cantos -- TCL 55" BeyondTV fisica (399/399) -- 12/10/2026
+
+- **INSTALACAO/LANCAMENTO OK.** `install -r app-debug.apk` (Success), abertura
+  via `monkey ... LEANBACK_LAUNCHER` (PID 1528). `aapt dump badging`:
+  `banner='.../tv_banner.png'`, `leanback-launchable-activity` MainActivity,
+  `uses-feature-not-required: android.software.leanback`. Banner
+  `drawable-xhdpi/tv_banner.png` com 320x180 exatos.
+- **HOME OK.** Tema escuro, "Continuar assistindo" com posicoes ("parou em"),
+  barras de progresso, miniatura local, placeholder e botoes. Primeira
+  captura saiu branca (transiente de splash na hora do screencap; app em
+  primeiro plano, sem erros Flutter) -- recaptura perfeita. Nao e bug.
+- **CARD FLUTUANTE OK.** Tempo/titulo/duracao, slider total, volume+
+  transporte+engrenagem, cantos (tela cheia esq; cinema/compacto/favorito/X
+  dir), layout 16:9. Retomada 1:08/1:30 no D-pad (CENTER).
+- **D-PAD OK.** RIGHT move o foco com destaque visivel; BACK salva (1:08) e
+  volta a inicial; seek +10 exato com controles ocultos (0:07->0:16 apos
+  replay); fim de video com overlay (rever/favoritar/proximo/fechar);
+  botoes do overlay ativam pelo CENTER (favoritou de verdade).
+- **Cantos sobre overlay OK.** Botoes visiveis acima do overlay de fim
+  (regra da AppBar antiga preservada).
+- **Observacao (pre-existente, sem fix):** apos o BACK, o foco caiu no card
+  x36xhzz em vez do card de origem (tv long, que borbulhou p/ o topo).
+  Causa: `autofocus: index == 0` sem restauracao a origem. Nao e regressao
+  do card; corrigir exige logica nova (decisao do usuario).
+- ClassNotFound no logcat (`OnBackAnimationCallback`, `OnBackInvokedCallback`,
+  `ContrastChangeListener`, `SidecarCallback`) sao guards benignos de API nova
+  no Android 9 (INFO, sem impacto).
+
+### Escala 10-foot -- TCL 55" (408/408) -- 12/10/2026
+
+- **CAUSA.** TV 1920x1080 a 320 dpi = viewport logico de 960x540 (celular
+  esticado em 55"); o modo TV so aumentava o texto (1.15-1.3x). Icones,
+  botoes, cards e linhas seguiam em escala de celular.
+- **FIX.** `AppScale` (classe de exibicao: compacto/padrao/expandido/10-foot;
+  modo TV sempre 10-foot) + `PlayerTheme.dark(tvMode:)` com icones 40,
+  appbar 88, sliders mais grossos e linhas mais altas; cards (mini 160x90,
+  paddings/gaps 2x), card do player (paddings, volume 128, tempo 96),
+  alvos de toque 72 e icones semanticos escalados; texto 1.35-1.55x.
+  Desktop/celular: fator 1.0, sem mudanca.
+- **PROVA.** Inicial, biblioteca, player e configuracoes recapturados na TV
+  fisica: linhas altas, icones e textos legiveis a distancia. 9 testes
+  novos (`test/display_scale_test.dart`); 399 anteriores verdes.
+- **V2.** Primeira passada (icones 32, texto 1.15-1.3x) ficou timida na
+  sala; fatores elevados apos prova visual (usuario: "maior que antes,
+  nada adaptativo"). Capturas brancas transitorias no relance voltaram
+  ao normal com uma tecla (frame inicial, sem excecao no logcat).
+
+### Spec 27: interface adaptativa -- TCL 55" (416/416) -- 12/10/2026
+
+- **DIAGNOSTICO (27.1/27.10.1).** `wm size` = 1920x1080 fisico a 320 dpi
+  => 960x540 logico, proporcao 1.78 (classe normal). Ampliar o desktop
+  estourou a composicao: a TV ganhou composicao propria (27.2), nao
+  escala unica.
+- **DETECCAO (27.3/27.10.2).** `list features` informa
+  `android.software.leanback` + `leanback_only`; prefs persistidas com
+  `tvMode:true` + `tvModeAuto:true` (auto aplicou sozinho). Manual
+  continua disponivel para aparelho sem Leanback.
+- **FIX (27.4-27.7/27.10.3-6).** `TvLayout` (largura <800/800-1279/>=1280,
+  ultrawide so desktop, margem segura 5% entre 16 e 48) +
+  `TvLayoutTokens` por classe (icone primario/secundario, titulo/corpo/
+  legenda, altura, anel, raio, miniatura, trilho, faixa de texto) +
+  `TvPlayerControls` (72% ate 760, centralizada; acoes principais;
+  chips Audio/Legendas/Qualidade em 2 linhas que abrem os subpaineis).
+  Cantos e barra dentro da safe area; sem posicao fixa critica.
+- **FOCO (27.8/27.10.7-8).** Mesmos escopos/tooltips: D-pad desce do
+  play ao chip, OK abre o subpainel ancorado, voltar fecha so o painel
+  (provado em captura com video rodando). Anel no token (3/3/4).
+- **PROVA (27.9/27.10.9-10).** 1080p nativo: inicio, biblioteca, player,
+  subpainel, voltar e configuracoes. 720p simulado (`wm size 1280x720`,
+  compacto): biblioteca, erro e player (mudo sem trilho, chips em uma
+  linha). 4K simulado (`wm size 3840x2160`, grande): conclusao,
+  biblioteca e player (barra no teto de 760). `wm size reset` apos.
+  Video mantem proporcao; Windows pixel a pixel (17 testes travam o
+  desktop + 399 anteriores verdes).
+- **NOTAS.** Link de teste instavel durante a sessao (falhou e voltou;
+  culpa da fonte, overlay correto). Chips em linha igual com ellipsis
+  de seguranca: titulo sempre visivel, valor cheio a um OK. Capturas
+  brancas transitorias no relance persistem (uma tecla resolve).

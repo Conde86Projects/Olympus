@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:player/app/tv_layout.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/core/extensions/duration_extensions.dart';
 import 'package:player/models/media_item.dart';
@@ -44,10 +45,9 @@ class MediaCard extends StatelessWidget {
   static Widget defaultThumbnailImage(String path) => Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stack) => const Icon(
-            Icons.play_arrow,
+        errorBuilder: (context, error, stack) => Icon(            Icons.play_arrow,
             color: PlayerTheme.secondaryText,
-            size: 28),
+            size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconPrimary : 28),
       );
 
   /// Pôster remoto padrão: carrega com o placeholder visível e cai
@@ -58,12 +58,11 @@ class MediaCard extends StatelessWidget {
         fit: BoxFit.cover,
         loadingBuilder: (context, child, progress) => progress == null
             ? child
-            : const Icon(Icons.play_arrow,
-                color: PlayerTheme.secondaryText, size: 28),
-        errorBuilder: (context, error, stack) => const Icon(
-            Icons.play_arrow,
+            : Icon(Icons.play_arrow,
+                color: PlayerTheme.secondaryText, size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconPrimary : 28),
+        errorBuilder: (context, error, stack) => Icon(            Icons.play_arrow,
             color: PlayerTheme.secondaryText,
-            size: 28),
+            size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconPrimary : 28),
       );
 
   @override
@@ -74,7 +73,7 @@ class MediaCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(TvLayout.spacing(context, 12)),
         child: Row(
           children: [
             Expanded(
@@ -91,7 +90,7 @@ class MediaCard extends StatelessWidget {
                       builder: thumbnailBuilder,
                       networkBuilder: networkThumbnailBuilder,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: TvLayout.spacing(context, 12)),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,18 +102,19 @@ class MediaCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: TvLayout.spacing(context, 4)),
                           Text(
                             _detailsLine(),
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           if (progress != null && progress > 0) ...[
-                            const SizedBox(height: 8),
+                            SizedBox(height: TvLayout.spacing(context, 8)),
                             ClipRRect(
                               borderRadius: BorderRadius.circular(2),
                               child: LinearProgressIndicator(
                                 value: progress,
-                                minHeight: 4,
+                                minHeight:
+                                    TvLayout.isTv(context) ? 6 : 4,
                                 backgroundColor:
                                     Colors.white.withValues(alpha: 0.12),
                                 valueColor: const AlwaysStoppedAnimation(
@@ -126,10 +126,11 @@ class MediaCard extends StatelessWidget {
                       ),
                     ),
                     if (item.isFavorite)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
                         child: Icon(Icons.favorite,
-                            size: 18, color: PlayerTheme.accent),
+                            size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 18,
+                            color: PlayerTheme.accent),
                       ),
                   ],
                 ),
@@ -179,16 +180,16 @@ class _Thumbnail extends StatelessWidget {
           MediaCard.defaultNetworkThumbnailImage(poster);
     }
     return Container(
-      width: 96,
-      height: 56,
+      width: TvLayout.isTv(context) ? TvLayout.tokensOf(context).thumbWidth : 96,
+      height: TvLayout.isTv(context) ? TvLayout.tokensOf(context).thumbHeight : 56,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(8),
       ),
       clipBehavior: Clip.antiAlias,
       child: image ??
-          const Icon(Icons.play_arrow,
-              color: PlayerTheme.secondaryText, size: 28),
+          Icon(Icons.play_arrow,
+              color: PlayerTheme.secondaryText, size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconPrimary : 28),
     );
   }
 }

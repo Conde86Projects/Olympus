@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:player/app/router.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/app/theme.dart';
+import 'package:player/app/tv_layout.dart';
 import 'package:player/app/tv_mode.dart';
 import 'package:player/models/preferences.dart';
 import 'package:player/services/addon_service.dart';
@@ -49,23 +50,28 @@ class PlayerApp extends StatelessWidget {
           child: MaterialApp(
             title: 'Player',
             debugShowCheckedModeBanner: false,
-            // Na TV o texto cresce um pouco (10-foot), sem passar
-            // por cima da escala de acessibilidade do SO.
+            // Na TV, a classe de largura (spec 27.4) escolhe a faixa
+            // do texto e as metricas; fora da TV, nada muda.
             builder: (context, child) {
               if (!prefs.tvMode) return child!;
+              final widthClass = TvLayout.widthClassOf(context);
+              final tokens = TvLayoutTokens.forClass(widthClass);
               final base = MediaQuery.textScalerOf(context);
               return MediaQuery(
                 data: MediaQuery.of(context).copyWith(
                   textScaler: base.clamp(
-                    minScaleFactor: 1.15,
-                    maxScaleFactor: 1.3,
+                    minScaleFactor: tokens.minTextScale,
+                    maxScaleFactor: tokens.maxTextScale,
                   ),
                 ),
-                child: child!,
+                child: _TvClassTheme(
+                    widthClass: widthClass, child: child!),
               );
             },
-            theme: PlayerTheme.dark(animate: prefs.animations),
-          darkTheme: PlayerTheme.dark(animate: prefs.animations),
+            theme: PlayerTheme.dark(
+                animate: prefs.animations, tvMode: prefs.tvMode),
+          darkTheme: PlayerTheme.dark(
+              animate: prefs.animations, tvMode: prefs.tvMode),
           themeMode: prefs.theme == AppThemeMode.system
               ? ThemeMode.system
               : ThemeMode.dark,
@@ -117,4 +123,64 @@ class AppDependencies {
   final AddonService addonService;
   final StartupGuard startupGuard;
   final DiagnosticsService diagnosticsService;
+}
+
+/// Aplica as metricas da classe de largura sobre o tema (spec 27.4).
+/// Widget separado de proposito: o contexto do builder do MaterialApp
+/// nao alcanca o tema aplicado, entao o override envolve o filho.
+class _TvClassTheme extends StatelessWidget {
+  const _TvClassTheme({required this.widthClass, required this.child});
+
+  final TvWidthClass widthClass;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final icon = switch (widthClass) {
+      TvWidthClass.compact => 28.0,
+      TvWidthClass.normal => 32.0,
+      TvWidthClass.big => 36.0,
+    };
+    final appBar = switch (widthClass) {
+      TvWidthClass.compact => 64.0,
+      TvWidthClass.normal => 72.0,
+      TvWidthClass.big => 80.0,
+    };
+    final track = switch (widthClass) {
+      TvWidthClass.compact => 5.0,
+      TvWidthClass.normal => 6.0,
+      TvWidthClass.big => 7.0,
+    };
+    final thumb = switch (widthClass) {
+      TvWidthClass.compact => 12.0,
+      TvWidthClass.normal => 14.0,
+      TvWidthClass.big => 16.0,
+    };
+    final listH = switch (widthClass) {
+      TvWidthClass.compact => 20.0,
+      TvWidthClass.normal => 24.0,
+      TvWidthClass.big => 28.0,
+    };
+    final listV = switch (widthClass) {
+      TvWidthClass.compact => 8.0,
+      TvWidthClass.normal => 10.0,
+      TvWidthClass.big => 12.0,
+    };
+    return Theme(
+      data: theme.copyWith(
+        iconTheme: theme.iconTheme.copyWith(size: icon),
+        appBarTheme: theme.appBarTheme.copyWith(toolbarHeight: appBar),
+        sliderTheme: theme.sliderTheme.copyWith(
+          trackHeight: track,
+          thumbShape: RoundSliderThumbShape(enabledThumbRadius: thumb),
+        ),
+        listTileTheme: theme.listTileTheme.copyWith(
+          contentPadding: EdgeInsets.symmetric(horizontal: listH),
+          minVerticalPadding: listV,
+        ),
+      ),
+      child: child,
+    );
+  }
 }

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:player/app/tv_layout.dart';
 import 'package:flutter/services.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/core/constants/app_constants.dart';
@@ -721,8 +722,9 @@ class _NavRow extends StatelessWidget {
               ),
             ),
           const SizedBox(width: 4),
-          const Icon(Icons.chevron_right,
-              size: 20, color: PlayerTheme.secondaryText),
+          Icon(Icons.chevron_right,
+              size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 20,
+              color: PlayerTheme.secondaryText),
         ],
       ),
       onTap: onTap,
@@ -749,7 +751,8 @@ class _RotateRow extends StatelessWidget {
         children: [
           IconButton(
             tooltip: 'Girar anti-horário',
-            icon: const Icon(Icons.rotate_left, size: 20),
+            icon: Icon(Icons.rotate_left,
+                size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 20),
             color: PlayerTheme.secondaryText,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
@@ -757,7 +760,8 @@ class _RotateRow extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Girar horário',
-            icon: const Icon(Icons.rotate_right, size: 20),
+            icon: Icon(Icons.rotate_right,
+                size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 20),
             color: PlayerTheme.secondaryText,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints.tightFor(width: 36, height: 36),
@@ -800,7 +804,8 @@ class _SubHeader extends StatelessWidget {
       children: [
         TextButton.icon(
           onPressed: onBack,
-          icon: const Icon(Icons.chevron_left, size: 20),
+          icon: Icon(Icons.chevron_left,
+              size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 20),
           label: const Text('Voltar'),
         ),
         Expanded(

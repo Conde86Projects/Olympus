@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/tv_layout.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/errors/app_error.dart';
@@ -327,7 +328,8 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
             child: Row(
               children: [
                 Icon(Icons.help_outline,
-                    size: 20, color: theme.colorScheme.error),
+                    size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 20,
+                    color: theme.colorScheme.error),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -407,7 +409,8 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
         const SizedBox(height: 12),
         Row(
           children: [
-            const Icon(Icons.info_outline, size: 20),
+            Icon(Icons.info_outline,
+                size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 20),
             const SizedBox(width: 8),
             Expanded(
               child: Text(

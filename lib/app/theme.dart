@@ -35,7 +35,9 @@ abstract final class PlayerTheme {
     );
   }
 
-  static ThemeData dark({bool animate = true}) {
+  /// `tvMode` aplica a base 10-foot da classe normal (icones, appbar,
+  /// linhas maiores); sem ele, o desenho atual, sem mudanca.
+  static ThemeData dark({bool animate = true, bool tvMode = false}) {
     const scheme = ColorScheme.dark(
       primary: accent,
       surface: background,
@@ -51,16 +53,30 @@ abstract final class PlayerTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: background,
       focusColor: accent.withValues(alpha: 0.25),
+      iconTheme: IconThemeData(size: tvMode ? 32 : 24),
       textTheme: const TextTheme(
         titleLarge: TextStyle(color: primaryText),
         titleMedium: TextStyle(color: primaryText),
         bodyLarge: TextStyle(color: primaryText),
         bodyMedium: TextStyle(color: secondaryText),
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         foregroundColor: primaryText,
         elevation: 0,
+        toolbarHeight: tvMode ? 72 : null,
+      ),
+      sliderTheme: SliderThemeData(
+        trackHeight: tvMode ? 6 : 4,
+        thumbShape: RoundSliderThumbShape(
+          enabledThumbRadius: tvMode ? 14 : 10,
+        ),
+      ),
+      listTileTheme: ListTileThemeData(
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: tvMode ? 24 : 16,
+        ),
+        minVerticalPadding: tvMode ? 10 : 4,
       ),
       pageTransitionsTheme: PageTransitionsTheme(
         builders: <TargetPlatform, PageTransitionsBuilder>{

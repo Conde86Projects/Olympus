@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/tv_layout.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/core/errors/app_error.dart';
 import 'package:player/features/addons/addon_display.dart';
@@ -77,7 +78,7 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
               Row(
                 children: [
                   Icon(addonStateIcon(info.state),
-                      size: 18,
+                      size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 18,
                       color: info.state == AddonState.error
                           ? Theme.of(context).colorScheme.error
                           : null),
@@ -418,7 +419,8 @@ class _ApprovalCard extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.help_outline,
-                  size: 20, color: theme.colorScheme.error),
+                  size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 20,
+                  color: theme.colorScheme.error),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:player/app/theme.dart';
-import 'package:player/app/tv_mode.dart';
+import 'package:player/app/tv_layout.dart';
 
 /// Botao com foco sempre visivel (spec 18: navegacao por controle remoto).
 /// Area minima de 44 px (spec 3.4) e rotulo para leitores de tela.
@@ -24,7 +24,7 @@ class FocusableButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final target = TvMode.minTarget(context);
+    final target = TvLayout.minTarget(context);
     return ConstrainedBox(
       constraints: BoxConstraints(
         minHeight: target,
@@ -81,7 +81,7 @@ class RoundPlayerButton extends StatelessWidget {
   Widget build(BuildContext context) {
     // O tooltip do proprio IconButton basta; um Tooltip externo duplicaria
     // a mensagem para leitores de tela.
-    final target = TvMode.minTarget(context);
+    final target = TvLayout.minTarget(context);
     return SizedBox(
       width: target,
       height: target,

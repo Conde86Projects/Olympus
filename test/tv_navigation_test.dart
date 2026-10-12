@@ -739,8 +739,8 @@ void main() {
             .height;
       }
 
-      expect(await buttonHeight(false), lessThan(64));
-      expect(await buttonHeight(true), greaterThanOrEqualTo(64));
+      expect(await buttonHeight(false), lessThan(56));
+      expect(await buttonHeight(true), greaterThanOrEqualTo(56));
     });
 
     testWidgets('texto cresce no modo TV', (tester) async {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/tv_layout.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/features/addons/addon_display.dart';
 import 'package:player/models/addon_info.dart';
@@ -131,8 +132,9 @@ class _AddonTile extends StatelessWidget {
           child: Row(
             children: [
               Icon(addonStateIcon(info.state),
-                  size: 28, color: stateColor),
-              const SizedBox(width: 12),
+                  size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconPrimary : 28,
+                  color: stateColor),
+              SizedBox(width: TvLayout.spacing(context, 12)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

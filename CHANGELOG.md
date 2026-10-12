@@ -13,6 +13,11 @@ se importa). Detalhes de implementação ficam nos documentos em
   relatório exportado — sem vazar mensagem, caminho, URL ou
   credencial.
 - Versão do app no diagnóstico acompanha o pubspec (0.1.0-rc.1).
+- Interface adaptativa para TV (spec 27): composição própria do
+  player (largura limitada, chips de áudio/legendas/qualidade com
+  rótulo), tokens por classe de largura (720p/1080p/4K), margem
+  segura anti-overscan e breakpoints validáveis em hardware real.
+  Windows inalterado.
 
 ## [0.1.0-rc.1] - 2026-10-12
 

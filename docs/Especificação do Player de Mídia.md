@@ -755,23 +755,19 @@ flowchart TD
 
 ## 12. Controles do player
 
-### 12.1 Card de controles (Showtime)
+### 12.1 Barra de controles
 
-Os controles flutuam sobre o vídeo num card fosco (preto
-translúcido com desfoque, cantos arredondados, margens nas bordas
-— nunca grudado), com o título do vídeo na primeira linha:
+A barra deve conter, no mínimo:
 
-- linha 1: tempo atual, título centralizado, duração total;
-- linha 2: barra de progresso em largura total;
-- linha 3: volume à esquerda, retroceder 10 segundos /
-  reproduzir-pausar / avançar 10 segundos no centro,
-  configurações à direita.
-
-Os cantos superiores levam: tela cheia à esquerda; modo cinema,
-modo compacto, favorito e fechar (X) à direita. Os cantos somem
-com os controles e no cinema, e ficam visíveis sobre overlays
-para a saída. Em janela estreita, o trilho de volume some (o mudo
-continua).
+- tempo atual;
+- barra de progresso;
+- duração total;
+- volume;
+- retroceder 10 segundos;
+- reproduzir/pausar;
+- avançar 10 segundos;
+- configurações;
+- tela cheia.
 
 ### 12.2 Comportamento
 
@@ -1608,6 +1604,145 @@ O ponto da personalização deve ser aplicado com cuidado: o usuário poderá es
 6. O sistema deverá diferenciar falha do player, falha da fonte, falha de rede e falha de configuração.
 7. A seleção de idioma deverá considerar interface, metadados, áudio e legenda separadamente.
 8. O modo local deverá continuar funcionando mesmo quando todos os add-ons estiverem desativados.
+
+---
+
+## 27. Diretriz de interface adaptativa para TV
+
+### 27.1 Diagnóstico
+
+Na primeira validação em uma TV TCL de 55 polegadas, o player ficou visualmente estourado em comparação com o Windows. O layout de desktop não deve ser simplesmente ampliado para a TV. A televisão possui outra distância de visualização, outro método de entrada, outra densidade percebida e áreas seguras diferentes.
+
+O padrão de barras coloridas visto na validação parece ser o vídeo de teste. O problema principal observado é a composição e a escala dos controles sobre o vídeo.
+
+### 27.2 Regra principal
+
+> Desktop e TV compartilham modelos, serviços e regras de negócio, mas podem usar composições visuais diferentes.
+
+```text
+Desktop → mouse/teclado, controles compactos, janela e ultrawide
+TV      → D-pad, foco visível, safe area, layout 16:9 e controles equilibrados
+```
+
+### 27.3 Detecção do contexto
+
+A decisão de layout deve considerar:
+
+- Android TV/Leanback quando disponível;
+- presença de mouse;
+- tipo de dispositivo;
+- tamanho lógico disponível;
+- proporção da janela;
+- suporte a controle remoto;
+- opção manual de modo TV para aparelhos que não informarem Leanback corretamente.
+
+Não usar somente a diagonal física da TV. Uma TV e um TV Box podem informar tamanhos lógicos diferentes.
+
+### 27.4 Sistema adaptativo
+
+Usar `LayoutBuilder`, `MediaQuery` e constraints do espaço disponível. Não usar posições fixas para controles críticos.
+
+Breakpoints iniciais:
+
+```text
+Compacto:   largura lógica abaixo de 800
+Normal:     800 até 1279
+TV grande:  1280 ou mais
+Ultrawide:  proporção acima de 1.90, somente desktop
+```
+
+Os valores devem ser validados com hardware real e não tratados como regra absoluta.
+
+### 27.5 Safe area e overscan
+
+Na TV, nenhum elemento importante deve ficar encostado na borda. Aplicar inicialmente uma margem segura de 4% a 6% da menor dimensão útil e validar na TCL.
+
+Proteger:
+
+- título;
+- ícones de canto;
+- menus;
+- barra de progresso;
+- controles;
+- mensagens de erro;
+- anel de foco.
+
+O vídeo deve preservar a proporção e ocupar o espaço restante sem deformação.
+
+### 27.6 Player específico para TV
+
+No modo TV, a barra de controles deve ter largura limitada e centralizada, sem ocupar quase toda a tela. Deve mostrar inicialmente somente as ações principais; áudio, legenda, qualidade e repetição devem abrir em subpainéis.
+
+```text
+Player TV
+├── título
+├── progresso
+├── voltar 10
+├── reproduzir/pausar
+├── avançar 10
+├── áudio
+├── legendas
+├── qualidade
+└── opções
+```
+
+Os controles não devem desaparecer enquanto o usuário estiver navegando com o controle remoto. O painel deve manter foco visível e fechar com voltar ou Escape.
+
+### 27.7 Escala, ícones e tipografia
+
+Não aplicar uma escala única para todos os elementos. Criar tokens separados para TV:
+
+```text
+tvIconPrimary
+tvIconSecondary
+tvTextTitle
+tvTextBody
+tvTextCaption
+tvControlHeight
+tvFocusRingWidth
+tvPanelRadius
+tvSafeMargin
+```
+
+Ícones principais devem ser maiores que no desktop, mas ícones secundários não devem crescer na mesma proporção. Usar uma família de ícones consistente, fonte legível à distância e rótulo textual quando o símbolo puder causar dúvida.
+
+### 27.8 Navegação por controle remoto
+
+- toda ação deve possuir foco;
+- o foco deve ser visível sobre cenas claras e escuras;
+- setas devem mover foco de forma previsível;
+- OK/Enter executa a ação focada;
+- voltar fecha subpainel antes de sair do player;
+- o seek possui navegação própria por setas;
+- nenhum foco pode ficar atrás de um painel;
+- não depender de hover ou cursor.
+
+### 27.9 Critérios de aceitação
+
+- A interface da TV não é o layout desktop ampliado.
+- O player permanece dentro da safe area da TCL de 55 polegadas.
+- O vídeo mantém proporção sem deformação.
+- Os controles não ocupam área excessiva.
+- Todos os controles principais são alcançáveis pelo D-pad.
+- O foco permanece visível.
+- Voltar fecha menus antes de sair do player.
+- Seek e qualidade funcionam sem mouse.
+- O layout é utilizável em 720p, 1080p e 4K.
+- Nenhum texto ou ícone fica cortado nas bordas.
+- O layout do Windows permanece inalterado.
+
+### 27.10 Plano de correção
+
+1. Registrar resolução lógica, tamanho útil e proporção informados pela TCL.
+2. Confirmar detecção Android TV/Leanback.
+3. Criar `TvLayoutTokens` separado dos tokens desktop.
+4. Criar composição `TvPlayerControls` própria.
+5. Aplicar safe area e limites de largura/altura.
+6. Substituir posições fixas por constraints.
+7. Ajustar foco e anel de seleção.
+8. Testar D-pad, OK, voltar e seek.
+9. Validar em 720p, 1080p e 4K.
+10. Repetir o teste na TCL de 55 polegadas.
 
 ---
 

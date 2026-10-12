@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/tv_layout.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
@@ -246,7 +247,8 @@ class _SafeModeBannerState extends State<_SafeModeBanner> {
           Row(
             children: [
               Icon(Icons.warning_amber,
-                  size: 20, color: theme.colorScheme.error),
+                  size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 20,
+                  color: theme.colorScheme.error),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(reason, style: theme.textTheme.bodyMedium),
