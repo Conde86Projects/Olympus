@@ -17,10 +17,12 @@ Tag anterior `v0.1.0-rc.2` intacta em `3d1ad3f`.
 - Arquivo: `build/app/outputs/flutter-apk/player-olympus-0.1.0-rc.3-debug.apk`
   (cópia identificada de `app-debug.apk`, mesmos bytes).
 - SHA-256:
-  `52F82AE94622C6E93491986FDFE150E6532138CA8412C475FFE2A977FBE86D8A`
-- Tamanho: 238892173 bytes. `versionName=0.1.0-rc.2` confirmado no
-  aparelho após `adb install -r` (pubspec inalterado neste ciclo;
-  o conteúdo validado é o do commit `91fc7e8`).
+  `8894FC25FB90F144AF8CA402B4B12D9B4A4D3005B97525F75BCF4E88AB7D1D68`
+- Tamanho: 210603413 bytes. `versionName=0.1.0-rc.3` confirmado no
+  aparelho após `adb install -r` (pubspec `0.1.0-rc.3+3`, commit
+  corretivo posterior à tag; lógica HLS idêntica à validada).
+- O APK anterior (SHA `52F82AE9…FBE86D8A`, `versionName=0.1.0-rc.2`)
+  não é o artefato final da RC3.
 
 ## Concluídos nesta RC (validados na TCL em 13/10/2026)
 
