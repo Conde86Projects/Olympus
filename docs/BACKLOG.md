@@ -232,3 +232,12 @@ Honestas e registradas, sem bloquear a revisão:
   aquecimento posterior da detecção — sem atrasar a abertura, sem
   reiniciar reprodução e sem alterar histórico/ID. Não bloqueia a
   retomada já aprovada.
+- [Falha registrada na RC2, sem bloqueio do que passou] Seek
+  pós-troca de variante no mpv frio (12/10/2026, TCL): o seek de
+  preservação de posição após reabrir em outra variante falha no
+  motor (`error running command _command(seek, …)`) e a reprodução
+  recomeça perto de 0 (193 s → ~10 s observados); vale para troca
+  manual e para o downgrade do observador. Mesmo mecanismo do
+  resume frio, mas no caminho `_switchHlsQuality`/reabertura —
+  exige gate de seek antes de reabrir em variante (proposta, sem
+  código aplicado).
