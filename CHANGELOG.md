@@ -6,6 +6,19 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
+### Corrigido
+
+- Preservação de posição na troca de qualidade HLS (TV): a
+  reabertura em outra variante reutiliza o gate de prontidão da
+  retomada (primeiro avanço real, fora de buffering), valida o
+  pouso e tenta no máximo uma correção validada; se o pouso
+  continuar incorreto, retorna de forma controlada à qualidade
+  anterior, e se o retorno também falhar, pausa e protege o
+  histórico sem salvar o ponto errado. Validado na TCL (troca
+  para 720p, retorno à Automática, retomada fria e fallback
+  master) com suíte 512/512 e `dart analyze` limpo. Prepara a
+  próxima RC; a tag `v0.1.0-rc.2` permanece imutável.
+
 ## [0.1.0-rc.2] - 2026-10-13
 
 Segundo release candidate: qualidade dinâmica e retomada HLS na

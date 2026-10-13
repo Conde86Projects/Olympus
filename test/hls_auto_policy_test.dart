@@ -161,6 +161,9 @@ Future<void> _observeWindow(
   clock.advance(wall);
   await player.seek(position);
   await tester.pump(const Duration(seconds: 1)); // decisão
+  // Dreno do gate de prontidão (~8 s) + verificação (2 s) quando
+  // a decisão reabre numa variante preservando a posição.
+  await tester.pump(const Duration(seconds: 12));
   await tester.pumpAndSettle();
 }
 

@@ -241,3 +241,18 @@ Honestas e registradas, sem bloquear a revisão:
   resume frio, mas no caminho `_switchHlsQuality`/reabertura —
   exige gate de seek antes de reabrir em variante (proposta, sem
   código aplicado).
+- [Resolvido e validado na TCL em 13/10/2026] Preservação de
+  posição na troca de qualidade: `_reopenHlsTarget` reutiliza o
+  gate de prontidão (primeiro avanço real, fora de buffering),
+  valida o pouso em 2 s e tenta no máximo uma correção validada
+  (tolerância 4 s); se o pouso continuar incorreto, retorna de
+  forma controlada à qualidade anterior, e se o retorno também
+  falhar, pausa e protege o histórico (`_hlsPositionProtect`).
+  Evidência TCL: troca manual para 720p pousou em 125,2 s,
+  retorno à Automática pousou em 323,4 s (efetiva 288p), retomada
+  fria em 8:04 exata com fallback master — nenhum `rollback` nem
+  `fallback` no log, histórico íntegro (8:04). Downgrade não
+  disparou (reprodução saudável em 288p); o mecanismo é o mesmo
+  das trocas validadas e está coberto por 8 testes novos
+  (`test/hls_switch_position_test.dart`). Suíte 512/512 e
+  `dart analyze` limpo.

@@ -392,6 +392,8 @@ void main() {
 
       await _openQualityViaPanel(tester);
       await tester.tap(find.text('1080p'));
+      // Gate de prontidão (~8 s) + verificação (2 s) da troca.
+      await tester.pump(const Duration(seconds: 12));
       await tester.pumpAndSettle();
 
       // Reabriu na variante, mesmo id, biblioteca segue no master.
@@ -530,6 +532,8 @@ void main() {
       final before = harness.player.opened.length;
       await dpadTo('720p');
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      // Gate de prontidão (~8 s) + verificação (2 s) da troca.
+      await tester.pump(const Duration(seconds: 12));
       await tester.pumpAndSettle();
       expect(harness.player.opened.length, greaterThan(before),
           reason: 'variante selecionada só com D-pad + OK');

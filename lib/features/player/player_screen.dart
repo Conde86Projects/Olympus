@@ -92,10 +92,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   DateTime? _obsAt;
   Duration? _obsPos;
 
-  /// Retomada HLS com pouso não verificado: pausa de segurança e
-  /// preserva o histórico do ponto errado. Vale até nova abertura
-  /// ou nova localização de arquivo.
-  bool _hlsResumeProtect = false;
+  /// Posição HLS não verificada (retomada ou troca de qualidade
+  /// com pouso fora da tolerância): pausa de segurança e preserva
+  /// o histórico do ponto errado. Vale até nova abertura ou nova
+  /// localização de arquivo.
+  bool _hlsPositionProtect = false;
 
   /// Leituras da sonda de retomada HLS (só leitura, sem seeks).
   Timer? _resumeProbeTimer;
@@ -236,7 +237,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _appliedSubtitles = false;
     _hlsAutoDowngraded = false;
     _hlsObserveTimer?.cancel();
-    _hlsResumeProtect = false;
+    _hlsPositionProtect = false;
     var openItem = _currentItem;
     // Teto HLS por classe (SoC fraco): compacto/normal abrem a
     // variante <=720p; grande (4K) segue no master. Falha, timeout
@@ -423,18 +424,30 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   /// Reabre numa URL HLS concreta preservando item (mesmo id),
-  /// historico e posicao aproximada, e registra a efetiva.
+  /// historico e posicao aproximada, e registra a efetiva. A
+  /// posição é restaurada pelo gate de prontidão (primeiro avanço
+  /// real, fora de buffering) com no máximo uma correção validada;
+  /// se o pouso continuar incorreto, retorna de forma controlada
+  /// à qualidade anterior sem salvar o ponto errado.
   Future<void> _reopenHlsTarget(String target, String selectionId) async {
     final player = widget.dependencies.playerService;
     final position = player.session.position;
     final wasPlaying =
         player.session.status == PlaybackStatus.playing ||
             player.session.status == PlaybackStatus.buffering;
+    final prevItem = _currentItem;
+    final prevSelection = _hlsQuality.value;
+    // A troca invalida qualquer verificação de retomada pendente:
+    // ela miraria o alvo antigo na variante nova.
+    _resumeTimer?.cancel();
+    _resumeTimer = null;
+    final probe = selectionId == HlsVariants.autoQualityId &&
+            prevSelection == HlsVariants.autoQualityId
+        ? 'downgrade'
+        : 'switch';
     final next = _baseItem.copyWith(source: target);
     try {
       await player.open(next);
-      if (position > Duration.zero) await player.seek(position);
-      if (wasPlaying) await player.play();
     } catch (_) {
       // Motor direto pode lancar; o supervisor converte em sessao
       // de erro. A selecao vale mesmo assim: o overlay oferece a
@@ -447,6 +460,137 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _hlsEffective.value = _effectiveLabelFor(target);
     });
     _poke();
+    final restored = await _seekHlsPosition(
+      player,
+      position,
+      probe: probe,
+      allowCorrection: true,
+    );
+    if (!mounted) return;
+    if (wasPlaying) {
+      try {
+        await player.play();
+      } catch (_) {
+        // Play best-effort: a posição restaurada vale de todo jeito.
+      }
+    }
+    if (restored) return;
+    // Retorno controlado à qualidade anterior: reabre e restaura
+    // o ponto sem correção (uma tentativa); se também falhar,
+    // pausa e protege o histórico.
+    _probeHlsResume(player, '$probe-rollback', 'to=$prevSelection');
+    try {
+      await player.open(prevItem);
+    } catch (_) {
+      // Mesma tolerância da abertura direta acima.
+    }
+    if (!mounted) return;
+    setState(() {
+      _hlsQuality.value = prevSelection;
+      _currentItem = prevItem;
+      _hlsEffective.value = _effectiveLabelFor(prevItem.source);
+    });
+    _poke();
+    final back = await _seekHlsPosition(
+      player,
+      position,
+      probe: '$probe-rollback',
+      allowCorrection: false,
+    );
+    if (!mounted) return;
+    if (wasPlaying) {
+      try {
+        await player.play();
+      } catch (_) {
+        // Play best-effort, como acima.
+      }
+    }
+    if (back) return;
+    try {
+      await player.pause();
+    } catch (_) {
+      // Pausa best-effort: a proteção abaixo vale de todo jeito.
+    }
+    if (!mounted) return;
+    _hlsPositionProtect = true;
+    _probeHlsResume(player, '$probe-fallback',
+        'reason=rollback-unverified '
+        'targetMs=${position.inMilliseconds} '
+        'prev=$prevSelection');
+  }
+
+  /// Restaura [position] pelo gate de prontidão: aguarda o primeiro
+  /// avanço real fora de buffering, executa o seek, valida o pouso
+  /// após estabilização e, quando [allowCorrection] vale e o desvio
+  /// excede a tolerância, tenta no máximo uma correção validada.
+  /// Retorna verdadeiro só com o pouso dentro da tolerância.
+  Future<bool> _seekHlsPosition(
+    MediaPlayerService player,
+    Duration position, {
+    required String probe,
+    required bool allowCorrection,
+  }) async {
+    if (position <= Duration.zero) {
+      _probeHlsResume(player, '$probe-position', 'skipped=zero');
+      return true;
+    }
+    final ready = await _waitForHlsReady(player);
+    if (!mounted) return false;
+    final atReady = player.session;
+    _probeHlsResume(player, '$probe-readiness',
+        'ready=$ready status=${atReady.status.name} '
+        'posMs=${atReady.position.inMilliseconds} '
+        'loading=${_isLoadingStatus(atReady.status)}');
+    final beforeMs = atReady.position.inMilliseconds;
+    final seekAt = DateTime.now();
+    try {
+      await player.seek(position);
+    } catch (_) {
+      // Seek best-effort: a validação abaixo decide.
+    }
+    if (!mounted) return false;
+    final afterSeek = player.session;
+    _probeHlsResume(player, '$probe-seek',
+        'at=${seekAt.toIso8601String()} beforeMs=$beforeMs '
+        'posAfterMs=${afterSeek.position.inMilliseconds} '
+        'status=${afterSeek.status.name} '
+        'loading=${_isLoadingStatus(afterSeek.status)}');
+    await Future.delayed(HlsVariants.hlsVerifyDelay);
+    if (!mounted) return false;
+    final actual = player.session;
+    _probeHlsResume(player, '$probe-verify',
+        'posMs=${actual.position.inMilliseconds} '
+        'status=${actual.status.name} '
+        'loading=${_isLoadingStatus(actual.status)}');
+    if (actual.status == PlaybackStatus.error ||
+        actual.status == PlaybackStatus.completed) {
+      _probeHlsResume(player, '$probe-correction', 'skipped=status');
+      return false;
+    }
+    if (!HlsVariants.resumeNeedsCorrection(actual.position, position)) {
+      return true;
+    }
+    if (!allowCorrection) {
+      _probeHlsResume(player, '$probe-correction', 'skipped=rollback');
+      return false;
+    }
+    try {
+      await player.seek(position);
+    } catch (_) {
+      // Correção best-effort: a validação abaixo decide.
+    }
+    if (!mounted) return false;
+    final corrected = player.session;
+    _probeHlsResume(player, '$probe-correction',
+        'posMs=${corrected.position.inMilliseconds} '
+        'status=${corrected.status.name}');
+    await Future.delayed(HlsVariants.hlsCorrectionSettle);
+    if (!mounted) return false;
+    final landed = player.session;
+    final within = !HlsVariants.resumeNeedsCorrection(landed.position, position);
+    _probeHlsResume(player, '$probe-settle',
+        'posMs=${landed.position.inMilliseconds} within=$within');
+    return within;
   }
 
   /// Inicia o observador de capacidade: so TV, so Automatica, so
@@ -654,7 +798,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         // Pausa best-effort: a proteção abaixo vale de todo jeito.
       }
       if (!mounted) return;
-      _hlsResumeProtect = true;
+      _hlsPositionProtect = true;
       _probeHlsResume(player, 'fallback',
           'reason=landing-unverified '
           'targetMs=${target.inMilliseconds} '
@@ -1470,7 +1614,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _hlsEffective.value = null;
       _hlsAutoDowngraded = false;
       _hlsObserveTimer?.cancel();
-      _hlsResumeProtect = false;
+      _hlsPositionProtect = false;
     });
     await _open();
   }
@@ -1511,10 +1655,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// preserva o ponto salvo (abertura falhada na TV). Estreia sem
   /// progresso registra normal (visita aparece no historico).
   Future<void> _saveSession() async {
-    // Retomada HLS com pouso não verificado: nunca marca concluído
-    // nem sobrescreve o histórico com o ponto errado — só pausa e
-    // mantém o ponto salvo anterior.
-    if (_hlsResumeProtect) {
+    // Posição HLS não verificada (retomada ou troca): nunca marca
+    // concluído nem sobrescreve o histórico com o ponto errado —
+    // só pausa e mantém o ponto salvo anterior.
+    if (_hlsPositionProtect) {
       final kept =
           widget.dependencies.historyService.latestFor(_currentItem.id);
       _probeHlsResume(widget.dependencies.playerService, 'history-protect',
