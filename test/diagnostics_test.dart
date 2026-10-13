@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/tv_layout.dart';
+import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/models/history_entry.dart';
@@ -247,7 +248,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Estado'), findsOneWidget);
-      expect(find.text('0.1.0-rc.1'), findsOneWidget);
+      expect(find.text(AppConstants.appVersion), findsOneWidget);
       expect(find.text('ocioso'), findsOneWidget);
       expect(find.text('2 vídeos, 1 favoritos'), findsOneWidget);
       expect(find.text('1 entradas'), findsOneWidget);
