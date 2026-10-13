@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/app/tv_mode.dart';
-import 'package:player/models/addon_catalog_item.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_player_service.dart';
@@ -91,8 +90,7 @@ void main() {
       );
     });
 
-    testWidgets('ultrawide so no desktop (proporcao > 1.90)',
-        (tester) async {
+    testWidgets('ultrawide so no desktop (proporcao > 1.90)', (tester) async {
       expect(
         await pumpValue(tester, TvLayout.isUltrawide,
             surface: const Size(1920, 800)),
@@ -134,8 +132,7 @@ void main() {
 
     testWidgets('e TV so com o modo ligado', (tester) async {
       expect(
-        await pumpValue(tester, TvLayout.isTv,
-            surface: const Size(960, 540)),
+        await pumpValue(tester, TvLayout.isTv, surface: const Size(960, 540)),
         isFalse,
       );
       expect(
@@ -152,20 +149,16 @@ void main() {
       final normal = TvLayoutTokens.forClass(TvWidthClass.normal);
       final big = TvLayoutTokens.forClass(TvWidthClass.big);
       // Primario cresce; secundario nao acompanha na mesma proporcao.
-      expect(
-          [compact.iconPrimary, normal.iconPrimary, big.iconPrimary],
-          [28, 32, 36]);
-      expect(
-          [compact.iconSecondary, normal.iconSecondary, big.iconSecondary],
+      expect([compact.iconPrimary, normal.iconPrimary, big.iconPrimary],
           [20, 24, 28]);
+      expect([compact.iconSecondary, normal.iconSecondary, big.iconSecondary],
+          [16, 18, 20]);
+      expect([compact.controlHeight, normal.controlHeight, big.controlHeight],
+          [44, 44, 52]);
       expect(
-          [compact.controlHeight, normal.controlHeight, big.controlHeight],
-          [52, 56, 64]);
-      expect([compact.textTitle, normal.textTitle, big.textTitle],
-          [20, 22, 24]);
-      expect([compact.textBody, normal.textBody, big.textBody],
-          [15, 17, 19]);
-      expect(normal.minTextScale, 1.15);
+          [compact.textTitle, normal.textTitle, big.textTitle], [20, 22, 24]);
+      expect([compact.textBody, normal.textBody, big.textBody], [15, 17, 19]);
+      expect(normal.minTextScale, 1.0);
       expect(normal.maxTextScale, 1.3);
     });
 
@@ -178,25 +171,24 @@ void main() {
       expect(
         await pumpValue(tester, TvLayout.minTarget,
             surface: const Size(640, 360), tvMode: true),
-        52,
+        44,
       );
       expect(
         await pumpValue(tester, TvLayout.minTarget,
             surface: const Size(960, 540), tvMode: true),
-        56,
+        44,
       );
       expect(
         await pumpValue(tester, TvLayout.minTarget,
             surface: const Size(1920, 1080), tvMode: true),
-        64,
+        52,
       );
     });
 
-    testWidgets('espaco: fator da classe na TV, 1.0 fora',
-        (tester) async {
-      Future<double> gap(Size surface, bool tv) => pumpValue(
-          tester, (c) => TvLayout.spacing(c, 12),
-          surface: surface, tvMode: tv);
+    testWidgets('espaco: fator da classe na TV, 1.0 fora', (tester) async {
+      Future<double> gap(Size surface, bool tv) =>
+          pumpValue(tester, (c) => TvLayout.spacing(c, 12),
+              surface: surface, tvMode: tv);
       expect(await gap(const Size(960, 540), false), 12);
       expect(await gap(const Size(640, 360), true), 15);
       expect(await gap(const Size(960, 540), true), 18);
@@ -216,9 +208,7 @@ void main() {
         10,
       );
       expect(
-        theme.listTileTheme.contentPadding!
-            .resolve(TextDirection.ltr)
-            .left,
+        theme.listTileTheme.contentPadding!.resolve(TextDirection.ltr).left,
         16,
       );
       expect(theme.listTileTheme.minVerticalPadding, 4);
@@ -226,7 +216,7 @@ void main() {
 
     test('tvMode e a base da classe normal', () {
       final theme = PlayerTheme.dark(tvMode: true);
-      expect(theme.iconTheme.size, 32);
+      expect(theme.iconTheme.size, 24);
       expect(theme.appBarTheme.toolbarHeight, 72);
       expect(theme.sliderTheme.trackHeight, 6);
       expect(
@@ -235,9 +225,7 @@ void main() {
         14,
       );
       expect(
-        theme.listTileTheme.contentPadding!
-            .resolve(TextDirection.ltr)
-            .left,
+        theme.listTileTheme.contentPadding!.resolve(TextDirection.ltr).left,
         24,
       );
       expect(theme.listTileTheme.minVerticalPadding, 10);
@@ -249,8 +237,6 @@ void main() {
       WidgetTester tester, {
       Size surface = const Size(960, 540),
       PlaybackSession session = const PlaybackSession(),
-      List<SourceQuality> qualities = const [],
-      ValueNotifier<String?>? selectedQuality,
       void Function(PlayerPanelView, BuildContext)? onOpenPanel,
     }) async {
       // Tamanho real da view: o LayoutBuilder da barra usa as
@@ -268,8 +254,6 @@ void main() {
                 player: const NoOpMediaPlayerService(),
                 session: session,
                 videoTitle: 'Noite',
-                sourceQualities: qualities,
-                sourceQualityListenable: selectedQuality,
                 onOpenPanel: onOpenPanel ?? (_, __) {},
               ),
             ),
@@ -279,65 +263,202 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('acoes principais + chips com rotulo textual',
-        (tester) async {
-      await pumpTv(tester);
+    testWidgets('perfil compacto: 7 elementos, sem chips', (tester) async {
+      await pumpTv(
+        tester,
+        session: const PlaybackSession(
+          duration: Duration(minutes: 10, seconds: 34),
+        ),
+      );
       expect(find.byTooltip('Reproduzir'), findsOneWidget);
       expect(find.byTooltip('Retroceder 10 segundos'), findsOneWidget);
       expect(find.byTooltip('Avançar 10 segundos'), findsOneWidget);
+      expect(find.byTooltip('Silenciar'), findsOneWidget);
       expect(find.byTooltip('Configurações'), findsOneWidget);
       expect(find.text('Noite'), findsOneWidget);
-      expect(find.text('Áudio'), findsOneWidget);
-      expect(find.text('Padrão'), findsOneWidget);
-      expect(find.text('Legendas'), findsOneWidget);
-      expect(find.text('Desativadas'), findsOneWidget);
-      expect(find.text('Qualidade'), findsOneWidget);
-      expect(find.text('Automática'), findsOneWidget);
+      expect(find.text('10:34'), findsOneWidget);
+      expect(find.text('Áudio'), findsNothing);
+      expect(find.text('Legendas'), findsNothing);
+      expect(find.text('Qualidade'), findsNothing);
+      expect(find.byType(OutlinedButton), findsNothing);
     });
 
-    testWidgets('largura limitada: 72% ate 760', (tester) async {
+    testWidgets('titulo em uma linha com reticencias', (tester) async {
+      await pumpTv(tester);
+      final title = tester.widget<Text>(find.text('Noite'));
+      expect(title.maxLines, 1);
+      expect(title.overflow, TextOverflow.ellipsis);
+    });
+
+    testWidgets('largura limitada: 50% ate 460', (tester) async {
       Finder maxWidth(double want) => find.byWidgetPredicate(
             (widget) =>
                 widget is ConstrainedBox &&
                 (widget.constraints.maxWidth - want).abs() < 0.5,
           );
       await pumpTv(tester, surface: const Size(960, 540));
-      expect(maxWidth(960 * 0.72), findsOneWidget);
+      expect(maxWidth(460), findsOneWidget);
       await pumpTv(tester, surface: const Size(1920, 1080));
-      expect(maxWidth(760), findsOneWidget);
+      expect(maxWidth(460), findsOneWidget);
       await pumpTv(tester, surface: const Size(640, 360));
-      expect(maxWidth(640 * 0.72), findsOneWidget);
+      expect(maxWidth(640 * 0.50), findsOneWidget);
     });
 
-    testWidgets('chip abre o subpainel correspondente', (tester) async {
-      PlayerPanelView? opened;
-      await pumpTv(tester, onOpenPanel: (view, _) => opened = view);
-      await tester.tap(find.text('Padrão'));
-      expect(opened, PlayerPanelView.audio);
-      await tester.tap(find.text('Desativadas'));
-      expect(opened, PlayerPanelView.subtitles);
-      await tester.tap(find.text('Automática'));
-      expect(opened, PlayerPanelView.quality);
-    });
-
-    testWidgets('rotulo da qualidade acompanha a troca ao vivo',
-        (tester) async {
-      final selected = ValueNotifier<String?>(null);
-      addTearDown(selected.dispose);
+    testWidgets('TCL 960x540: painel 430-480 x 105-125', (tester) async {
       await pumpTv(
         tester,
-        qualities: const [
-          SourceQuality(
-              id: 'q1',
-              label: '720p',
-              sourceUrl: 'https://example.com/q1.m3u8'),
-        ],
-        selectedQuality: selected,
+        session: const PlaybackSession(
+          duration: Duration(minutes: 10, seconds: 34),
+        ),
       );
-      expect(find.text('Automática'), findsOneWidget);
-      selected.value = 'q1';
-      await tester.pump();
-      expect(find.text('720p'), findsOneWidget);
+      final panel = tester.getSize(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is ConstrainedBox &&
+              (widget.constraints.maxWidth - 460).abs() < 0.5,
+        ),
+      );
+      expect(panel.width, inInclusiveRange(430, 480));
+      expect(panel.height, inInclusiveRange(105, 125));
+    });
+
+    testWidgets('sem trilho de volume: so o progresso', (tester) async {
+      await pumpTv(tester);
+      expect(find.byType(Slider), findsOneWidget);
+      expect(find.byTooltip('Silenciar'), findsOneWidget);
+    });
+
+    testWidgets('botoes de 36, glifos de 20', (tester) async {
+      await pumpTv(tester);
+      expect(
+        find.byWidgetPredicate((widget) =>
+            widget is SizedBox && widget.width == 36 && widget.height == 36),
+        findsNWidgets(5),
+      );
+      final bar = find.byType(TvPlayerControls);
+      expect(
+        find.descendant(
+            of: bar,
+            matching: find.byWidgetPredicate(
+                (widget) => widget is IconTheme && widget.data.size == 20)),
+        findsWidgets,
+      );
+      expect(
+        find.descendant(
+            of: bar,
+            matching: find.byWidgetPredicate(
+                (widget) => widget is IconTheme && widget.data.size == 24)),
+        findsNothing,
+      );
+    });
+
+    testWidgets('progresso extra-fino: trilho 3, dedao 8', (tester) async {
+      await pumpTv(tester);
+      final theme = SliderTheme.of(
+        tester.element(find.byType(Slider)),
+      );
+      expect(theme.trackHeight, 3);
+      expect(
+        (theme.thumbShape as RoundSliderThumbShape).enabledThumbRadius,
+        8,
+      );
+      expect(
+        (theme.overlayShape as RoundSliderOverlayShape).overlayRadius,
+        10,
+      );
+    });
+
+    testWidgets('engrenagem abre o painel de Opcoes', (tester) async {
+      PlayerPanelView? opened;
+      await pumpTv(tester, onOpenPanel: (view, _) => opened = view);
+      await tester.tap(find.byTooltip('Configurações'));
+      expect(opened, PlayerPanelView.main);
+    });
+
+    testWidgets('layout registra as metricas reais', (tester) async {
+      TvPanelMetrics.reset();
+      addTearDown(TvPanelMetrics.reset);
+      await pumpTv(tester, surface: const Size(960, 540));
+      final metrics = TvPanelMetrics.current.value!;
+      expect(metrics.constraints.maxWidth, 960);
+      expect(metrics.appliedMaxWidth, closeTo(460, 0.5));
+    });
+  });
+
+  group('PlayerSettingsPanel na TV (spec 27.6)', () {
+    Future<void> pumpPanel(
+      WidgetTester tester, {
+      Size surface = const Size(960, 540),
+      bool tvMode = true,
+      double? maxHeight,
+      PlaybackSession session = const PlaybackSession(),
+    }) async {
+      tester.view.physicalSize = surface;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TvMode(
+            enabled: tvMode,
+            child: Scaffold(
+              body: Center(
+                child: PlayerSettingsPanel(
+                  player: const NoOpMediaPlayerService(),
+                  session: session,
+                  maxHeight: maxHeight,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    PlaybackSession fullSession() => const PlaybackSession(
+          videoTracks: [
+            MediaTrack(id: 'v1', label: 'HD'),
+            MediaTrack(id: 'v2', label: 'Full HD'),
+          ],
+        );
+
+    testWidgets('linhas de 34, painel cabe no teto da TCL',
+        (tester) async {
+      await pumpPanel(tester, session: fullSession(), maxHeight: 384);
+      for (final label in [
+        'Idioma',
+        'Legendas',
+        'Repetir',
+        'Qualidade',
+        'Girar',
+        'Informações do vídeo',
+      ]) {
+        final tile = find.ancestor(
+          of: find.text(label),
+          matching: find.byType(ListTile),
+        );
+        expect(tester.getSize(tile).height, 34);
+      }
+      // Seis linhas + velocidade + fechar: 319, com folga no teto 384.
+      expect(tester.getSize(find.byType(PlayerSettingsPanel)).height,
+          lessThanOrEqualTo(330));
+    });
+
+    testWidgets('teto baixo rola em vez de estourar', (tester) async {
+      await pumpPanel(tester, session: fullSession(), maxHeight: 200);
+      expect(find.byType(SingleChildScrollView), findsOneWidget);
+      expect(tester.getSize(find.byType(PlayerSettingsPanel)).height, 200);
+    });
+
+    testWidgets('desktop: sem teto, linhas de 52', (tester) async {
+      await pumpPanel(tester, tvMode: false, session: fullSession());
+      expect(find.byType(SingleChildScrollView), findsNothing);
+      final tile = find.ancestor(
+        of: find.text('Idioma'),
+        matching: find.byType(ListTile),
+      );
+      expect(tester.getSize(tile).height, 52);
     });
   });
 
@@ -350,8 +471,11 @@ void main() {
           addedAt: DateTime(2026, 1, 1),
         );
 
-    testWidgets('cartao: placeholder 28 fora, primario na TV',
-        (tester) async {
+    testWidgets('cartao: placeholder 28 fora, primario na TV', (tester) async {
+      Finder thumbBox() => find.ancestor(
+            of: find.byIcon(Icons.play_arrow),
+            matching: find.byType(Container),
+          );
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(body: MediaCard(item: plainItem())),
@@ -362,6 +486,7 @@ void main() {
         tester.widget<Icon>(find.byIcon(Icons.play_arrow)).size,
         28,
       );
+      expect(tester.getSize(thumbBox()), const Size(96, 56));
 
       await tester.pumpWidget(
         MaterialApp(
@@ -377,8 +502,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester.widget<Icon>(find.byIcon(Icons.play_arrow)).size,
-        32,
+        24,
       );
+      expect(tester.getSize(thumbBox()), const Size(96, 56));
     });
 
     testWidgets('PlayerControls e desktop: trilhos 72/56 fixos',

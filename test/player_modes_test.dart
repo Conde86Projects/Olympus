@@ -190,6 +190,39 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byTooltip('Fechar'), findsNothing);
     });
+
+    testWidgets('concluído no desktop: sólido, dimensões intactas',
+        (tester) async {
+      final harness = _Harness();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      await _openPlayer(tester, harness, _item());
+
+      harness.player.simulateStatus(PlaybackStatus.completed);
+      await tester.pumpAndSettle();
+
+      final card = tester.widget<Container>(find.byWidgetPredicate(
+        (widget) =>
+            widget is Container &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration as BoxDecoration).color ==
+                PlayerSettingsPanel.panelColor,
+      ));
+      expect((card.decoration as BoxDecoration).color!.a, 1.0);
+      expect(card.padding,
+          const EdgeInsets.symmetric(horizontal: 20, vertical: 16));
+      final title =
+          tester.widget<Text>(find.text('Reprodução concluída'));
+      expect(title.style!.fontSize, isNull);
+      final wrap = tester.widget<Wrap>(find
+          .ancestor(
+            of: find.text('Reproduzir novamente'),
+            matching: find.byType(Wrap),
+          )
+          .first);
+      expect(wrap.spacing, 12);
+      expect(wrap.runSpacing, 12);
+    });
   });
 
   group('card flutuante (Showtime)', () {

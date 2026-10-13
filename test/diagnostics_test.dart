@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/tv_layout.dart';
 import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/models/history_entry.dart';
@@ -15,6 +16,7 @@ import 'package:player/services/local_addon_service.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
+import 'package:player/services/tv_info_service.dart';
 import 'package:player/services/window_service.dart';
 
 class _FailingStore implements LocalStore {
@@ -212,6 +214,11 @@ void main() {
     });
   });
 
+  test('leanback sem canal nativo responde false', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    expect(await const TvInfoService().isTv, isFalse);
+  });
+
   group('tela Diagnóstico e recuperação', () {
     testWidgets('abre pelas configurações e mostra o estado',
         (tester) async {
@@ -233,6 +240,27 @@ void main() {
       expect(find.text('1 instalados (0 ativos, 1 inativos, 0 em erro)'),
           findsOneWidget);
       expect(find.text('1 cadastrados'), findsOneWidget);
+    });
+
+    testWidgets('secao Exibicao mostra as metricas reais',
+        (tester) async {
+      TvPanelMetrics.reset();
+      final harness = _WidgetHarness();
+      await harness.seed();
+      await harness.pump(tester);
+      await harness.openDiagnostics(tester);
+
+      await tester.ensureVisible(find.text('Exibição'));
+      // Janela 800x600 com densidade 3.0 (harness, via window service).
+      expect(find.text('800 × 600'), findsOneWidget);
+      expect(find.text('3.0'), findsOneWidget);
+      expect(find.text('2400 × 1800'), findsOneWidget);
+      expect(find.text('paisagem'), findsOneWidget);
+      expect(find.text('windows'), findsNWidgets(2));
+      expect(find.text('normal'), findsOneWidget);
+      expect(find.text('Leanback'), findsOneWidget);
+      expect(find.text('Painel TV'), findsOneWidget);
+      expect(find.text('não exibido ainda'), findsOneWidget);
     });
 
     testWidgets('restaurar padrões preserva dados', (tester) async {

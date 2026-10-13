@@ -68,55 +68,57 @@ class TvLayoutTokens {
   /// Trilho de volume da barra da TV.
   final double volumeTrackWidth;
 
-  /// Faixa do escalonador de texto nesta classe.
+  /// Faixa do escalonador de texto nesta classe. Minimo 1.0 em todas:
+  /// a TV nao forca ampliacao (verificado na TCL 50"); a escala do
+  /// sistema segue respeitada ate o maximo (acessibilidade).
   final double minTextScale;
   final double maxTextScale;
 
   static const compact = TvLayoutTokens(
-    iconPrimary: 28,
-    iconSecondary: 20,
+    iconPrimary: 20,
+    iconSecondary: 16,
     textTitle: 20,
     textBody: 15,
     textCaption: 12,
-    controlHeight: 52,
+    controlHeight: 44,
     focusRingWidth: 3,
     panelRadius: 14,
-    thumbWidth: 112,
-    thumbHeight: 64,
+    thumbWidth: 96,
+    thumbHeight: 56,
     volumeTrackWidth: 96,
-    minTextScale: 1.1,
+    minTextScale: 1.0,
     maxTextScale: 1.2,
   );
 
   static const normal = TvLayoutTokens(
-    iconPrimary: 32,
-    iconSecondary: 24,
+    iconPrimary: 24,
+    iconSecondary: 18,
     textTitle: 22,
     textBody: 17,
-    textCaption: 14,
-    controlHeight: 56,
+    textCaption: 12,
+    controlHeight: 44,
     focusRingWidth: 3,
     panelRadius: 16,
-    thumbWidth: 128,
-    thumbHeight: 72,
+    thumbWidth: 96,
+    thumbHeight: 56,
     volumeTrackWidth: 128,
-    minTextScale: 1.15,
+    minTextScale: 1.0,
     maxTextScale: 1.3,
   );
 
   static const big = TvLayoutTokens(
-    iconPrimary: 36,
-    iconSecondary: 28,
+    iconPrimary: 28,
+    iconSecondary: 20,
     textTitle: 24,
     textBody: 19,
-    textCaption: 15,
-    controlHeight: 64,
+    textCaption: 13,
+    controlHeight: 52,
     focusRingWidth: 4,
     panelRadius: 20,
-    thumbWidth: 144,
-    thumbHeight: 80,
+    thumbWidth: 112,
+    thumbHeight: 64,
     volumeTrackWidth: 160,
-    minTextScale: 1.25,
+    minTextScale: 1.0,
     maxTextScale: 1.4,
   );
 
@@ -176,4 +178,50 @@ abstract final class TvLayout {
       TvWidthClass.big => base * 1.75,
     };
   }
+}
+
+/// Metricas reais da ultima barra TV desenhada (diagnostico).
+/// O [TvPlayerControls] registra a cada layout; a tela de
+/// diagnostico le sem reconstruir o player.
+class TvPanelMetricsData {
+  const TvPanelMetricsData({
+    required this.constraints,
+    required this.appliedMaxWidth,
+  });
+
+  /// Restricoes que o LayoutBuilder recebeu.
+  final BoxConstraints constraints;
+
+  /// Largura maxima calculada pelo perfil compacto.
+  final double appliedMaxWidth;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TvPanelMetricsData &&
+      other.constraints == constraints &&
+      other.appliedMaxWidth == appliedMaxWidth;
+
+  @override
+  int get hashCode => Object.hash(constraints, appliedMaxWidth);
+}
+
+/// Registrador das metricas da barra TV.
+abstract final class TvPanelMetrics {
+  /// Ultimas metricas (null antes da primeira exibicao).
+  static final ValueNotifier<TvPanelMetricsData?> current =
+      ValueNotifier<TvPanelMetricsData?>(null);
+
+  /// Guarda as metricas; so notifica quando mudam (o layout da
+  /// barra nao reconstrui o diagnostico a toa).
+  static void record(BoxConstraints constraints, double appliedMaxWidth) {
+    final data = TvPanelMetricsData(
+      constraints: constraints,
+      appliedMaxWidth: appliedMaxWidth,
+    );
+    if (current.value != data) current.value = data;
+  }
+
+  /// Limpa o registro (testes).
+  @visibleForTesting
+  static void reset() => current.value = null;
 }

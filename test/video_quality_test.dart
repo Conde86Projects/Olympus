@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:player/app/theme.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/widgets/player_settings_panel.dart';
@@ -106,6 +107,31 @@ void main() {
       expect(player.session.selectedVideoId, 'v1');
       // Volta à lista principal sem fechar o painel.
       expect(find.text('Idioma'), findsOneWidget);
+    });
+  });
+
+  group('legibilidade dos rótulos', () {
+    // O _pumpPanel usa o tema claro padrão do MaterialApp (hostil):
+    // os rótulos do painel têm cor explícita e nunca herdam do tema,
+    // senão um tema claro acima os apagaria no fundo escuro.
+    testWidgets('rótulos claros mesmo sob tema claro', (tester) async {
+      await _pumpPanel(
+        tester,
+        session: const PlaybackSession(videoTracks: _tracks),
+      );
+      for (final label in [
+        'Idioma',
+        'Legendas',
+        'Repetir',
+        'Qualidade',
+        'Girar',
+        'Velocidade de reprodução',
+        'Informações do vídeo',
+      ]) {
+        final text = tester.widget<Text>(find.text(label));
+        expect(text.style?.color, PlayerTheme.primaryText,
+            reason: label);
+      }
     });
   });
 }

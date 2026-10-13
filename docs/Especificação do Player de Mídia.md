@@ -1611,7 +1611,7 @@ O ponto da personalização deve ser aplicado com cuidado: o usuário poderá es
 
 ### 27.1 Diagnóstico
 
-Na primeira validação em uma TV TCL de 55 polegadas, o player ficou visualmente estourado em comparação com o Windows. O layout de desktop não deve ser simplesmente ampliado para a TV. A televisão possui outra distância de visualização, outro método de entrada, outra densidade percebida e áreas seguras diferentes.
+Na primeira validação em uma TV TCL de 50 polegadas, modelo `v8-r851t02-lf1v660`, o player ficou visualmente estourado em comparação com o Windows. O layout de desktop não deve ser simplesmente ampliado para a TV. A televisão possui outra distância de visualização, outro método de entrada, outra densidade percebida e áreas seguras diferentes.
 
 O padrão de barras coloridas visto na validação parece ser o vídeo de teste. O problema principal observado é a composição e a escala dos controles sobre o vídeo.
 
@@ -1673,6 +1673,31 @@ O vídeo deve preservar a proporção e ocupar o espaço restante sem deformaç�
 
 No modo TV, a barra de controles deve ter largura limitada e centralizada, sem ocupar quase toda a tela. Deve mostrar inicialmente somente as ações principais; áudio, legenda, qualidade e repetição devem abrir em subpainéis.
 
+#### Perfil TV compacto obrigatório
+
+O primeiro layout validado na TCL mostrou que uma barra com chips de Áudio, Legendas e Qualidade sempre visíveis ainda fica grande e pesada, mesmo com largura limitada. A TV deverá iniciar em um perfil compacto:
+
+- painel inferior mais baixo;
+- somente progresso, volume, voltar 10, reproduzir/pausar, avançar 10 e opções;
+- áudio, legendas e qualidade dentro de Opções ou em painel acionado pelo foco;
+- título em uma única linha, com reticências quando necessário;
+- controles ocultos após inatividade;
+- limite relativo e absoluto menor para a largura do painel;
+- não aumentar ícones e textos apenas porque a TV possui resolução maior;
+- densidade equilibrada para distância de visualização.
+
+Composição padrão desejada:
+
+```text
+┌─────────────────────────────────────────┐
+│ título                         10:34     │
+│ progresso ━━━━━━━━━━━━━━━━━━━━━●        │
+│ volume  ↶10  reproduzir  10↷  opções    │
+└─────────────────────────────────────────┘
+```
+
+O painel detalhado deverá abrir somente quando o usuário escolher **Opções**, **Áudio**, **Legendas** ou **Qualidade**. A informação completa continuará acessível, mas não ficará ocupando a tela durante a reprodução normal.
+
 ```text
 Player TV
 ├── título
@@ -1720,7 +1745,8 @@ tvSafeMargin
 ### 27.9 Critérios de aceitação
 
 - A interface da TV não é o layout desktop ampliado.
-- O player permanece dentro da safe area da TCL de 55 polegadas.
+- O perfil padrão da TV é compacto e não exibe três chips de configuração permanentemente.
+- O player permanece dentro da safe area da TCL de 50 polegadas, modelo `v8-r851t02-lf1v660`.
 - O vídeo mantém proporção sem deformação.
 - Os controles não ocupam área excessiva.
 - Todos os controles principais são alcançáveis pelo D-pad.
@@ -1742,7 +1768,7 @@ tvSafeMargin
 7. Ajustar foco e anel de seleção.
 8. Testar D-pad, OK, voltar e seek.
 9. Validar em 720p, 1080p e 4K.
-10. Repetir o teste na TCL de 55 polegadas.
+10. Repetir o teste na TCL de 50 polegadas, modelo `v8-r851t02-lf1v660`.
 
 ---
 

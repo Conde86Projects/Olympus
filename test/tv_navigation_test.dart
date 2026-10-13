@@ -593,6 +593,34 @@ void main() {
         _expectFocusVisible(tester, 'seta $i não cai no vazio nem no oculto');
       }
     });
+
+    testWidgets('concluído na TV: card sólido compacto, sem transparência',
+        (tester) async {
+      final harness = await _openPlayer(tester, tvMode: true);
+      harness.player.simulateStatus(PlaybackStatus.completed);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Reprodução concluída'), findsOneWidget);
+      final card = tester.widget<Container>(find.byWidgetPredicate(
+        (widget) =>
+            widget is Container &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration as BoxDecoration).color ==
+                PlayerSettingsPanel.panelColor,
+      ));
+      expect((card.decoration as BoxDecoration).color!.a, 1.0);
+      final title =
+          tester.widget<Text>(find.text('Reprodução concluída'));
+      expect(title.style!.fontSize, 17);
+      final wrap = tester.widget<Wrap>(find
+          .ancestor(
+            of: find.text('Reproduzir novamente'),
+            matching: find.byType(Wrap),
+          )
+          .first);
+      expect(wrap.spacing, 8);
+      expect(wrap.runSpacing, 8);
+    });
   });
 
   group('remoção de mídia pede confirmação (F3)', () {
@@ -725,7 +753,7 @@ void main() {
       expect(AppShell.marginFor(2000, tvMode: true), 96);
     });
 
-    testWidgets('botões crescem no modo TV', (tester) async {
+    testWidgets('botões usam o alvo mínimo em cada modo', (tester) async {
       Future<double> buttonHeight(bool tvMode) async {
         final harness = _Harness();
         if (tvMode) {
@@ -739,11 +767,11 @@ void main() {
             .height;
       }
 
-      expect(await buttonHeight(false), lessThan(56));
-      expect(await buttonHeight(true), greaterThanOrEqualTo(56));
+      expect(await buttonHeight(false), 48);
+      expect(await buttonHeight(true), 48);
     });
 
-    testWidgets('texto cresce no modo TV', (tester) async {
+    testWidgets('texto no modo TV usa escala 1.0', (tester) async {
       final harness = _Harness();
       await harness.preferences
           .update(harness.preferences.current.copyWith(tvMode: true));
@@ -753,7 +781,7 @@ void main() {
       final context = tester.element(find.byType(Scaffold).first);
       expect(
         MediaQuery.textScalerOf(context).scale(100),
-        closeTo(115, 0.01),
+        closeTo(100, 0.01),
       );
     });
 

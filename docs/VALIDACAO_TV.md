@@ -6,15 +6,15 @@ aparelho real. A suíte automatizada cobre a lógica (311 testes,
 
 ## Aparelho (§24.8 — decidido 11/10/2026)
 
-- [x] TCL 55" (BeyondTV), Android 9 (SDK 28), 192.168.1.8. Sem
+- [x] TCL 50" (v8-r851t02-lf1v660), Android 9 (SDK 28), 192.168.1.8. Sem
   "depuração sem fio" (Android antigo): adb via rede após ligar
   **Depuração USB** + autorizar o diálogo na TV (`adb connect
-  192.168.1.8`). Modelo registrado aqui: TCL 55" BeyondTV / Android 9.
+  192.168.1.8`). Modelo registrado aqui: TCL 50" v8-r851t02-lf1v660 / Android 9.
 - [ ] Android TV / Google TV (leanback). Tizen está fora: Flutter não
       tem alvo Tizen oficial (exigiria o fork da Samsung) — registrado
       como limitação.
 
-## TV física — TCL 55" BeyondTV / Android 9 (11/10/2026)
+## TV física — TCL 50" v8-r851t02-lf1v660 / Android 9 (11/10/2026)
 
 Primeira sessão em aparelho real. GPU ARM **Mali-470 MP, OpenGL ES
 2.0, sem Vulkan** (`dumpsys SurfaceFlinger`); Flutter 3.47/Impeller
@@ -35,7 +35,7 @@ fora do desktop (antes, `windowManager.ensureInitialized` lançava
 `MissingPluginException` não-fatal em todo boot Android, sujando
 o diagnóstico do guarda de arranque).
 
-### Resultados — TCL BeyondTV (dumps + logcat)
+### Resultados — TCL v8-r851t02-lf1v660 (dumps + logcat)
 
 - Boot sem crash; onboarding com "Começar" focado; D-pad só
   (ui_boot). Começar → inicial; UP ancora na Biblioteca (ui_nav).
@@ -379,7 +379,7 @@ Suíte 254/254 + analyze limpo. Correções em
   analisar; setas com barra oculta viram seek/volume (meus DOWNs "que
   nao funcionavam" eram volume-down + poke apos auto-hide).
 
-### F11 (slider trap) + TV-RESUME + error-exit -- TCL 55" BeyondTV fisica (311/311) -- 11/10/2026
+### F11 (slider trap) + TV-RESUME + error-exit -- TCL 50" v8-r851t02-lf1v660 fisica (311/311) -- 11/10/2026
 
 - **F11 PROVADO na TV fisica.** Settings Volume slider: DOWNx3 chegou no slider
   (ui_o2, 100%); UP nao saiu (armadilha confirmada: setas viram ajuste, 100->95).
@@ -406,7 +406,7 @@ Suíte 254/254 + analyze limpo. Correções em
   3 boots limpos desde entao. Side-effect restaurado: initialVolume 80%->100%.
 - Pixel items (frame de video, anel, overscan) seguem diferidos p/ TV Vulkan/GLES3.
 
-### Leanback launcher -- TCL 55" BeyondTV fisica -- 11/10/2026
+### Leanback launcher -- TCL 50" v8-r851t02-lf1v660 fisica -- 11/10/2026
 
 - **APK OK (aapt).** `banner='res/drawable-xhdpi-v4/tv_banner.png'`,
   `leanback-launchable-activity: MainActivity`,
@@ -426,7 +426,7 @@ Suíte 254/254 + analyze limpo. Correções em
   uiautomator 3x, retry resolve; cards sem texto/desc exigem screenshot).
 - Resta: teste manual do link autorizado (abaixo: FEITO).
 
-### Link autorizado -- TCL 55" BeyondTV fisica (312/312) -- 11/10/2026
+### Link autorizado -- TCL 50" v8-r851t02-lf1v660 fisica (312/312) -- 11/10/2026
 
 - **REPRODUCAO DE LINK PROVADA.** Home -> "Abrir link" (tap 580,984) -> campo
   URL -> digitacao em chunks via `input text` (string longa trunca: 77 chars
@@ -453,7 +453,7 @@ Suíte 254/254 + analyze limpo. Correções em
 - Validacao TV fisica 100% concluida: F11, TV-RESUME, error-exit, leanback,
   link autorizado. Itens de pixel seguem diferidos p/ TV Vulkan/GLES3.
 
-### Card Showtime + cantos -- TCL 55" BeyondTV fisica (399/399) -- 12/10/2026
+### Card Showtime + cantos -- TCL 50" v8-r851t02-lf1v660 fisica (399/399) -- 12/10/2026
 
 - **INSTALACAO/LANCAMENTO OK.** `install -r app-debug.apk` (Success), abertura
   via `monkey ... LEANBACK_LAUNCHER` (PID 1528). `aapt dump badging`:
@@ -481,10 +481,10 @@ Suíte 254/254 + analyze limpo. Correções em
   `ContrastChangeListener`, `SidecarCallback`) sao guards benignos de API nova
   no Android 9 (INFO, sem impacto).
 
-### Escala 10-foot -- TCL 55" (408/408) -- 12/10/2026
+### Escala 10-foot -- TCL 50" (408/408) -- 12/10/2026
 
 - **CAUSA.** TV 1920x1080 a 320 dpi = viewport logico de 960x540 (celular
-  esticado em 55"); o modo TV so aumentava o texto (1.15-1.3x). Icones,
+  esticado em 50"); o modo TV so aumentava o texto (1.15-1.3x). Icones,
   botoes, cards e linhas seguiam em escala de celular.
 - **FIX.** `AppScale` (classe de exibicao: compacto/padrao/expandido/10-foot;
   modo TV sempre 10-foot) + `PlayerTheme.dark(tvMode:)` com icones 40,
@@ -500,7 +500,7 @@ Suíte 254/254 + analyze limpo. Correções em
   nada adaptativo"). Capturas brancas transitorias no relance voltaram
   ao normal com uma tecla (frame inicial, sem excecao no logcat).
 
-### Spec 27: interface adaptativa -- TCL 55" (416/416) -- 12/10/2026
+### Spec 27: interface adaptativa -- TCL 50" (416/416) -- 12/10/2026
 
 - **DIAGNOSTICO (27.1/27.10.1).** `wm size` = 1920x1080 fisico a 320 dpi
   => 960x540 logico, proporcao 1.78 (classe normal). Ampliar o desktop
@@ -531,3 +531,239 @@ Suíte 254/254 + analyze limpo. Correções em
   culpa da fonte, overlay correto). Chips em linha igual com ellipsis
   de seguranca: titulo sempre visivel, valor cheio a um OK. Capturas
   brancas transitorias no relance persistem (uma tecla resolve).
+
+### Soak: reproducao continua + memoria -- TCL 50" -- 12/10/2026
+
+- **LINK (13 min).** `x36xhzz` (10:34) tocou de 0:00 ate 2:17 em 13 min
+  de relogio: a fonte entrega devagar (buffering), e o app segurou sem
+  travar. Memoria (TOTAL PSS): 278 MB -> 309 -> 310 -> 313 MB;
+  estabilizou apos o enchimento do buffer. Mesmo PID o tempo todo.
+- **LOOP (5 min).** `tv long` local com Repetir item (~3 voltas):
+  241 MB -> 233 MB, tocando, sem overlay de conclusao. Repetir-um
+  funciona pelo D-pad (engrenagem -> Repetir -> Repetir item).
+- **ERROS.** Zero FATAL/excecao Dart na janela; so linhas
+  transitorias do mpv no arranque (`file cache`, `surface NULL`
+  no mediacodec), sem impacto visivel.
+- **RESUME.** Posicoes 2:17 (link) e 1:12 (loop) salvas e exibidas
+  nos cartoes apos voltar. Retomar item concluido (progresso cheio)
+  conclui de novo em segundos: reaproveitar do fim em vez de
+  recomecar (backlog nao bloqueante).
+- **AMBIENTE.** adb caiu 1x com `device offline`: servidor adb local
+  travado, nao a TV (ping ok); `kill-server` + reconectar resolveu.
+
+### Barra compacta -- TCL 50" (422/422) -- 12/10/2026
+
+- **MOTIVO.** Painel de 545,6 px logicos (~57% do viewport 960x540)
+  ainda grande visualmente; trilho de volume sempre visivel.
+- **FIX.** `TvPlayerControls`: 50% ate 460 (440 reais via o teto 880
+  da tela), botoes de 44 com glifos de 36, titulo/tempo em caption
+  (14), slider de progresso 24 + anel slim, sem trilho de volume
+  (so o mudo; volume por cima/baixo com a barra oculta), sem chips.
+  Desktop pixel a pixel (parametros opcionais com default).
+- **PROVA (ui_compact_bar + tv_compact_bar.png).** Pausado em x36xhzz
+  2:17/10:34: painel 876x246 fisicos = 438x123 logicos (45,6% do
+  viewport); botoes 88x88 = 44; slider 24; titulo/tempo 19 de altura;
+  gaps/padding 12. Foco no Reproduzir apos pausar. So titulo,
+  progresso, mudo, voltar 10, play/pausa, avancar 10 e Opcoes.
+- **VALIDACAO VISUAL PENDENTE.** Captura enviada; tarefa NAO aprovada
+  ate o veredito do usuario. Diagnostico/celular parados.
+
+### Botoes 40 + Opcoes confortavel -- TCL 50" (425/425) -- 12/10/2026
+
+- **MOTIVO.** Botoes de 44 e glifos de 36 ainda exagerados; painel de
+  Opcoes com linhas de 52 estourava o topo (Idioma cortada).
+- **FIX.** Barra e cantos: botoes de 40 com glifos de 28 (D-pad nao
+  precisa de alvo de toque). Painel: densidade vertical -3 (piso 48
+  do ListTile denso cai), linhas de 40 em uma linha, chips e espacos
+  reduzidos, teto pela ancora (ancora - 72) com rolagem de seguranca.
+  Desktop pixel a pixel (overrides so na TV).
+- **PROVA (ui_compact_options + tv_compact_bar2/opt3.png).** Barra
+  876x238 = 438x119; botoes/cantos 80x80 = 40. Painel 680x738 =
+  340x369 (topo y=162, sem corte); 6 linhas de 80 = 40; chips 36;
+  Fechar alcancavel. Foco no Pausar/Reproduzir apos acoes.
+- **VALIDACAO VISUAL PENDENTE.** Capturas enviadas; tarefa NAO
+  aprovada ate o veredito do usuario.
+
+### Opcoes mais baixo -- TCL 50" (425/425) -- 12/10/2026
+
+- **MOTIVO.** Painel de 369 ainda alto; icones em 28 quase perfeitos
+  (mantidos), barra em 438x119 mantida.
+- **FIX.** Painel: densidade vertical -4, respiro 4, chips 5, Fechar
+  6. So TV; desktop em 52/467 intacto.
+- **PROVA (ui_compact_options2 + tv_compact_options2.png).** Painel
+  680x670 = 340x335 (topo y=230); 6 linhas de 72 = 36; chips 32.
+- **VALIDACAO VISUAL PENDENTE.** Captura enviada; tarefa NAO aprovada
+  ate o veredito do usuario.
+
+### Letras e icones menores -- TCL 50" (425/425) -- 12/10/2026
+
+- **MOTIVO.** Icones e letras ainda grandes no player; na principal,
+  cartoes, selecao e botoes de link grandes. Foto do usuario anexada.
+- **FIX (so TV).** Escala de texto minima 1.0 (era 1.1/1.15/1.25);
+  icones primario 24/28/32 e secundario 18/20/24; tema tvMode 28;
+  barra e cantos com glifos de 24; botoes 48/48/56; miniaturas
+  96x56, 112x64 e 128x72. Desktop intacto.
+- **PROVA (ui_home_small + tv_home_small/bar3/opt3.png).** Cartoes
+  224 de altura (eram 238); Abrir arquivo/link 96 = 48 (eram 112);
+  barra 438x~116; painel 5-6 linhas de 36. Link x36xhzz caiu de novo
+  (sem conexao); capturas do player com tv long local.
+- **VALIDACAO VISUAL PENDENTE.** Capturas enviadas; tarefa NAO
+  aprovada ate o veredito do usuario.
+
+### Mais uma volta + progresso fino -- TCL 50" (425/425) -- 12/10/2026
+
+- **MOTIVO.** Pedido do usuario: diminuir tudo so mais uma vez no
+  player e na principal; o trilho de progresso estava grosso.
+- **FIX (so TV).** Barra/cantos: botoes de 36 com glifos de 20
+  (respiro 8). Slider de progresso: trilho fino 4, dedao 10, halo
+  12 (slider 24, sem trilho de volume). Painel: densidade -4,
+  linhas de 34, teto pela ancora com rolagem de seguranca.
+  Tokens: icones 20/24/28 e 16/18/20, caption 12, altura 44/44/52,
+  escala minima de texto 1.0, miniaturas 96x56/96x56/112x64,
+  tema tvMode 24. Desktop pixel a pixel.
+- **PROVA (tv_home_v6/bar_v6/options_v6.png).** Principal enxuta
+  (cartoes compactos, Abrir arquivo/link 48); barra fina com
+  progresso fino e 5 botoes pequenos; painel de Opcoes compacto
+  (Idioma, Legendas, Repetir, Girar, velocidade, informacoes,
+  Fechar) sem corte. `tv long` local (link x36xhzz instavel).
+- **VALIDACAO VISUAL PENDENTE.** Capturas enviadas; tarefa NAO
+  aprovada ate o veredito do usuario. Diagnostico/celular parados.
+
+### Trilho extra-fino -- TCL 50" (426/426) -- 12/10/2026
+
+- **MOTIVO.** Usuario aprovou o restante; so o trilho de progresso
+  ainda parecia grosso.
+- **FIX (so TV).** Slider da barra: trilho 3 (era 4), dedao 8
+  (era 10), halo 10 (era 12); slider 20 (era 24). Trava nova em
+  teste para nao regredir. Desktop pixel a pixel.
+- **PROVA (tv_bar_v7.png).** `tv long` local com a barra visivel:
+  linha de progresso visivelmente mais fina, dedao proporcional,
+  resto identico ao aprovado.
+- **APROVADO (resto).** Principal, barra, botoes, painel de Opcoes,
+  letras e icones: aprovados pelo usuario nesta volta.
+- **CONFIGS FINAIS DO PERFIL TV (so TV; desktop intacto).**
+  - Barra: 50% ate 460 (440 reais na TCL 960x540); altura
+    105-125; botoes 36 com glifos 20; titulo/tempo caption 12.
+  - Progresso: trilho 3, dedao 8, halo 10, slider 20; sem trilho
+    de volume (so o mudo; volume por cima/baixo com a barra
+    oculta); sem chips.
+  - Painel de Opcoes: densidade -4, linhas 34, teto pela ancora
+    (ancora - 72) com rolagem de seguranca.
+  - Tokens compacto/normal/grande: icones 20/24/28 e 16/18/20;
+    titulo 20/22/24, corpo 15/17/19, caption 12/12/13; altura
+    44/44/52; anel 3/3/4; miniaturas 96x56/96x56/112x64;
+    escala minima de texto 1.0 (sistema respeitado ate o maximo);
+    tema tvMode 24.
+
+### Concluido solido -- TCL 50" (428/428) -- 12/10/2026
+
+- **MOTIVO.** Foto do usuario: card "Reproducao concluida" com fundo
+  preto 0.7 deixava o video atravessar e sumia com os botoes.
+- **FIX.** Card solido na cor do painel de Opcoes (0xFF232326),
+  nos DOIS modos: blur fica so na barra do player (unico
+  BackdropFilter do app alem da barra desktop), resto normal. Na
+  TV, o card entrou no padrao compacto: titulo corpo 17 w600,
+  "A seguir" caption 12, padding 16/12, raio do token (16),
+  gaps 8, borda branca 0.08; botoes ja estavam no padrao (alvo
+  minimo 44 dos tokens via FocusableButton). No desktop, SO a
+  cor mudou: padding 20/16, raio 12, gaps 12 e tipografia padrao
+  intactos, pixel a pixel.
+- **PROVA (tv_completed_v8.png).** `sample` local ate o fim: card
+  opaco e legivel (titulo, A seguir, 4 botoes com Rever focado),
+  zero vazamento do video. Travas novas: solido + compacto na TV,
+  solido + dimensoes no desktop.
+- **VALIDACAO VISUAL PENDENTE.** Captura enviada; tarefa NAO
+  aprovada ate o veredito do usuario.
+
+### Rotulos do painel com cor explicita (429/429) -- 12/10/2026
+
+- **MOTIVO.** Print do usuario no Windows: rotulos do painel de
+  Opcoes invisiveis (luminancia 36 = fundo 35), valores claros.
+  Codigo atual provado correto em 4 reproducoes (sonda de estilo,
+  app real, pixels sobre home e sobre player): o print veio de
+  outro build/estado. Padronizacao para a classe de bug sumir.
+- **FIX (desktop + TV, pixel identico).** Titulos das linhas
+  (`_NavRow`, `_RotateRow`) e cabecalhos (velocidade, submenu)
+  com `color: primaryText` explicita em vez de herdar do tema;
+  tamanhos seguem herdados. Trava nova sob tema claro hostil.
+- **PROVA.** 429/429 + analyze limpo. Pixels do app atual sobre o
+  player: rotulos claros e legiveis.
+
+### Lento na TV: 1080p acima do SoC (diagnostico) -- 12/10/2026
+
+- **SINTOMA (TV, nao Windows).** `x36xhzz` em camera lenta na TCL.
+  Medido: posicao avancou ~9 s em 64 s de relogio (0,14x);
+  resume de 1:16 caiu para ~8 s.
+- **CAUSA PROVADA (logcat).** mpv escolheu a variante 1080p fhd
+  (6,2 Mbps); hwdec mediacodec-copy OK (OMX.realtek); VO gpu com
+  shaders no Mali-470/GLES2; video parado em ~8 s com audio 29 s
+  a frente ("delaying audio start"); mpv sugere `--profile=fast`.
+  Rede entrega 8,68 Mbps (acima dos 6,2) e 720p local roda ~1x
+  pelo mesmo pipeline: gargalo e o render 1080p (copia por CPU +
+  upload + shaders a 30 fps) no SoC fraco, nao rede nem decode.
+- **LIMITACAO.** media_kit 1.2.6 nao expoe opcoes do mpv
+  (sem hls-bitrate/profile/framedrop). Proposta de fix no app:
+  detectar master HLS e abrir direto a variante <=720p na TV
+  (pendente de decisao: teto automatico x escolha do usuario).
+- **SECUNDARIO.** Seek de resume para 1:16 virou seek-to-0 interno
+  do mpv (faixa 10-14 s em cache; alvo fora dela); mesmo SoC fraco
+  e suspeito. Revalidar apos o teto de variante.
+
+### Teto HLS por classe (447/447) -- TCL 50" -- 12/10/2026
+
+- **FIX (votado: teto auto por classe).** Novo
+  `lib/core/utils/hls_variants.dart`: na abertura, TV compacta e
+  normal (largura <1280) resolve master HLS e abre direto a melhor
+  variante <=720p e <=500 kbps (sem `RESOLUTION`, so a banda
+  decide; nada no teto = a mais leve); TV grande, desktop,
+  playlist simples, falha/timeout e URL nao-.m3u8 seguem no
+  original. Item salvo segue o master (variante expira). Gate sem
+  inherited widget (pref + largura da view; `_open` roda no
+  initState). 16 testes novos (parse/pick/resolve + fiação).
+- **MEDICOES (x36xhzz na TCL, posicao vs relogio).** 1080p60 =
+  0,14x (video parado, audio 29 s a frente); 720p60 = 0,33x;
+  480p60 = 0,6-0,8x; **380p30 = 1,03x**. Rede entrega 8,68 Mbps,
+  demuxer corre a frente, cache cheio, CPU 62% com main thread
+  mais quente: gargalo e px/s no pipeline (copia+upload+shaders
+  no Mali-470), nao rede. Razao escala com Mpx/s.
+- **PROVA (tv_hls_capped.png).** 403 s -> 477,5 s em 80 s de parede
+  (1,03x), frame 380p legivel, barra compacta intacta.
+- **PENDENTE.** Select manual de qualidade HLS (linha Qualidade
+  hoje so lista faixas mpv, 1 no HLS) e revalidar resume apos seek
+  longo em HLS com SoC fraco.
+
+### Soak 21 min com teto HLS -- TCL 50" -- 12/10/2026
+
+- **ROTEIRO (x36xhzz, 380p).** Play 184 s ate concluir #1; replay +
+  150 s; pausa 46 s (4 frames byte-identicos, MD5 igual); resume +
+  60 s ate concluir #2; replay + seeks D-pad -10/+10/+10 sem erro;
+  BACK + reabertura + 34 s; BACK final. Parede total ~21 min.
+- **RESULTADO.** Reproducao 1x estavel o tempo todo (2 conclusoes
+  no ritmo: 477->634 e 575->634); pausa segura; seeks sem erro;
+  reabertura retoma; historico sao (posicao sobe, accessedAt
+  fresco, percent coerente, completed=false no meio).
+- **ERROS.** Zero excecao de app, zero timeout/falha do supervisor,
+  zero overlay de erro. So o trio benigno conhecido por abertura:
+  "Failed to create file cache", mediacodec surface-NULL
+  transitorio e aac env_facs_q invalido (HE-AAC toca normal).
+- **ACHADO.** Resume em HLS impreciso no SoC fraco: alem do undershoot
+  anterior (1:16 -> ~8 s), um overshoot de ~50 s (reabertura caiu
+  ~50 s a frente do salvo; playback 1x normal do ponto errado).
+  Seek HLS de 10 s + demuxer fraco = mira instavel. Item de backlog:
+  revalidar resume apos seek longo em HLS (pendente).
+- **PROVAS.** soak_completed1/replay/paused/seeks.png.
+
+### F5 limpo Windows (rotulos) -- 12/10/2026
+
+- **PROTOCOLO.** App fechado; `flutter clean` + `flutter pub get` +
+  `flutter run -d windows` (gancho temp `diag.f5nav` so para navegar;
+  revertido apos). Sem alteracao de tema.
+- **VEREDITO.** Rotulos legiveis na Home (titulos, cards, estado),
+  na barra do player (nome, tempo) e no painel (Idioma, Legendas,
+  Repetir, Qualidade, Girar, Velocidade, Fechar): textos claros.
+  Home conferida por captura; barra+painel confirmados pelo usuario
+  na tela (disputa de foco com video fullscreen no Brave impediu
+  captura remota da barra).
+- **CONCLUSAO.** O escurecimento anterior era estado de build/cache,
+  nao codigo/tema. Nada a alterar no tema. Ganchos revertidos;
+  447/447 testes + analyze limpo apos reversao.

@@ -1,8 +1,13 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/tv_layout.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/diagnostics_service.dart';
+import 'package:player/services/tv_info_service.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/focusable_button.dart';
 
@@ -57,6 +62,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _StateCard(report: report),
+                const SizedBox(height: 12),
+                const _DisplayCard(),
                 const SizedBox(height: 12),
                 _SafeModeCard(
                   dependencies: widget.dependencies,
@@ -354,6 +361,81 @@ class _RecoveryCard extends StatelessWidget {
       await dependencies.diagnosticsService.clearAppData();
       return 'Dados do app apagados. Seus vídeos foram preservados.';
     });
+  }
+}
+
+/// Exibicao real (spec 27): tamanho logico, densidade, resolucao
+/// fisica, orientacao, plataforma, Leanback e as restricoes que a
+/// barra TV recebeu. Base da validacao em hardware.
+class _DisplayCard extends StatelessWidget {
+  const _DisplayCard();
+
+  static String _size(Size size) =>
+      '${size.width.toStringAsFixed(0)} × ${size.height.toStringAsFixed(0)}';
+
+  static String _bound(double value) =>
+      value.isInfinite ? 'livre' : value.toStringAsFixed(0);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final size = MediaQuery.sizeOf(context);
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final physical = View.of(context).physicalSize;
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    final panel = TvPanelMetrics.current;
+    if (kDebugMode) {
+      debugPrint('[olympus][exibicao] logico=${_size(size)} dpr=$dpr '
+          'fisico=${_size(physical)} '
+          'orientacao=${landscape ? 'paisagem' : 'retrato'} '
+          'plataforma=${Platform.operatingSystem} '
+          'classe=${TvLayout.widthClassOf(context).name}');
+    }
+    return Card(
+      color: const Color(0xFF1C1C1E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Exibição', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            _Row(title: 'Tamanho lógico', value: _size(size)),
+            _Row(title: 'Densidade', value: dpr.toString()),
+            _Row(title: 'Resolução física', value: _size(physical)),
+            _Row(
+              title: 'Orientação',
+              value: landscape ? 'paisagem' : 'retrato',
+            ),
+            _Row(title: 'Plataforma', value: Platform.operatingSystem),
+            _Row(
+              title: 'Classe de largura',
+              value: TvLayout.widthClassOf(context).name,
+            ),
+            FutureBuilder<bool>(
+              future: const TvInfoService().isTv,
+              builder: (context, snapshot) => _Row(
+                title: 'Leanback',
+                value: snapshot.hasData
+                    ? (snapshot.data! ? 'sim' : 'não')
+                    : '…',
+              ),
+            ),
+            ValueListenableBuilder<TvPanelMetricsData?>(
+              valueListenable: panel,
+              builder: (context, metrics, _) => _Row(
+                title: 'Painel TV',
+                value: metrics == null
+                    ? 'não exibido ainda'
+                    : 'restrições ${_bound(metrics.constraints.maxWidth)} × ${_bound(metrics.constraints.maxHeight)} · aplicada ${metrics.appliedMaxWidth.toStringAsFixed(1)}',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

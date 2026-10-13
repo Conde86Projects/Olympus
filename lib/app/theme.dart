@@ -53,7 +53,8 @@ abstract final class PlayerTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: background,
       focusColor: accent.withValues(alpha: 0.25),
-      iconTheme: IconThemeData(size: tvMode ? 32 : 24),
+      // Icones convergiram: 24 no desktop e na TV (verificado na TCL).
+      iconTheme: const IconThemeData(size: 24),
       textTheme: const TextTheme(
         titleLarge: TextStyle(color: primaryText),
         titleMedium: TextStyle(color: primaryText),

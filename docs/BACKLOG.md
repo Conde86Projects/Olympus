@@ -22,7 +22,11 @@ de plataforma), fora do escopo da fase atual.
 
 ## Fora da fase atual (confirmado)
 
-- Qualidade dinâmica / seleção de qualidade (§13, "quando suportada").
+- Qualidade dinâmica e retomada HLS (§13): seleção manual,
+  política automática e resume HLS concluídos e aprovados na TCL
+  (504 testes, analyze limpo; 0.1.0-rc.2). Detalhes nos itens
+  abaixo; detecção fria segue como investigação separada, sem
+  bloquear a retomada aprovada.
 - Fontes autorizadas — Fase 5B pronta (tela adicionar/gerenciar:
   prévia de manifesto/feed, aviso de desconhecida, aprovação
   explícita, salva desativada, editar com reaprovação por origem,
@@ -150,3 +154,81 @@ Honestas e registradas, sem bloquear a revisão:
   MKV 2 vídeos e DASH 2 renditions sofrem o wipe + timeout de carga),
   com `EGL_BAD_ATTRIBUTE` no mesmo milissegundo — o emulador não
   carrega fontes com 2 faixas de vídeo. Exige TV física (§24.8).
+
+## Não bloqueante (Spec 27 aprovada, 12/10/2026)
+
+- Flash branco transitório ao relançar a tela na TV: o primeiro
+  `screencap` após instalar/relançar sai branco (~12 KB); uma tecla
+  resolve e o app segue normal, sem exceção no logcat. Cosmético e
+  raro em uso real (só no arranque frio). Não bloqueia a RC1.
+- Link de teste oscilante na sessão (§27.10) não é problema de
+  layout: falhou e voltou sozinho; o overlay de erro/fonte se
+  comportou corretamente em todas as classes. Sem ação.
+- Chips longos da barra TV: ellipsis no valor com rótulo completo
+  no tooltip e valor cheio a um OK no subpainel. Comportamento
+  travado em teste (`test/tv_layout_test.dart`). Sem ação.
+- Retomar item com progresso em 100% conclui em segundos em vez de
+  recomeçar do zero (observado no soak com `tv long`). UX menor:
+  item concluído deveria reabrir do início. Não bloqueia a RC1.
+- hwdec indisponível no PC de dev (12/10/2026): todos os drivers
+  falham no log do mpv (d3d11-egl, dxva2-egl com "Failed to create
+  EGL surface", d3d11va, dxva2-dxgi, dxva2-dxinterop; Intel Arc B580
+  via ANGLE) e o mpv cai para decode por software. Para 1080p30 é
+  suficiente (sonda mediu 1.00 cravado em 85 s de `x36xhzz`), mas
+  4K pode engasgar: avaliar forçar `d3d11va`/`dxva2` ou atualizar
+  driver/ANGLE. Não bloqueia a RC1.
+- Stall de rede vira "Cancelar" eterno em vez de erro (12/10/2026):
+  fonte lenta mantém o overlay de buffering sem prazo visível; o
+  `bufferTimeout` do supervisor existe mas o usuário não vê
+  progresso nem ação além de Cancelar. Proposta: timeout de rede
+  no mpv + overlay com "tentar de novo". Não bloqueia a RC1.
+- Seletor manual de qualidade HLS pronto (12/10/2026): Opções →
+  Qualidade lista Automática (padrão, teto da classe inalterado),
+  Original (só quando difere da Automática tetada) e apenas as
+  variantes reais do master; a troca reabre preservando item,
+  histórico e posição aproximada; na TV o acesso é por D-pad → OK
+  sem seção permanente na barra compacta; falha da variante cai no
+  erro controlado com "Voltar para Automática". Coberto por
+  `test/hls_quality_selector_test.dart`.
+- Política automática de qualidade por desempenho pronta
+  (12/10/2026): perfil por plataforma/Leanback/viewport
+  (`HlsVariants.autoDecision`) — TV compacta/normal mantém o teto
+  que estabilizou a TCL (≤720p/500 kbps), TV 4K e desktop sem
+  teto (desktop nunca é tetado pelo tamanho da janela), TV sem
+  viewport cai no teto fraco; MP4 e playlist simples fora da
+  política. Na TV em Automática, a capacidade observada
+  (posição/relógio < 0,9 na primeira janela) desce um degrau uma
+  vez por abertura; override manual nunca é rebaixado e a
+  qualidade efetiva aparece no painel ("Automática · 288p" /
+  "Efetiva: 288p"). Falha de detecção abre o master. Coberto por
+  `test/hls_auto_policy_test.dart`. Sem persistir a decisão além
+  da abertura; resume HLS é o item seguinte, separado.
+- Resume HLS pronto, 2ª etapa (12/10/2026; era o item separado
+  do seletor e da política): só em masters HLS reais. O seek
+  inicial espera prontidão real — sair de buffering e observar o
+  primeiro avanço de posição, com timeout limitado (~8 s) e seek
+  de melhor esforço ao estourar. Após cada seek, a sonda registra
+  posição antes, imediatamente depois e após estabilizar; a
+  correção (no máximo UMA, sem loop) só vale dentro da tolerância
+  de 4 s, validada após pousar. Pouso incorreto: pausa de
+  segurança, sem marcar concluído e sem sobrescrever o histórico
+  com o ponto errado (vale até nova abertura ou relocalização),
+  com o motivo em `resume-fallback` no log técnico. Falha do
+  primeiro seek não derruba a abertura; sem duração, a espera
+  estoura em silêncio. MP4, playlist simples e falha de detecção
+  seguem no fluxo anterior, sem fetch adicional no MP4.
+  Política de qualidade, histórico e ID intocados. Coberto por
+  `test/hls_resume_test.dart`, `test/hls_resume_probe_test.dart`
+  e `test/hls_resume_ready_test.dart`.
+- Conclusão HLS na TCL (12/10/2026): retomada aprovada no aparelho
+  — o gate de prontidão resolveu a causa raiz (seek após o
+  primeiro avanço real, fora de buffering; pouso exato em 2:08,
+  correção dispensada, histórico íntegro). Correção limitada e
+  sem loops, mantida.
+- [Investigação, sem bloqueio] Detecção fria de variantes HLS
+  (12/10/2026): no boot com rede fria o fetch do master falha e a
+  abertura cai no master pelo fallback (correto e seguro); o teto
+  da classe só engaja com a rede pronta. Investigar apenas o
+  aquecimento posterior da detecção — sem atrasar a abertura, sem
+  reiniciar reprodução e sem alterar histórico/ID. Não bloqueia a
+  retomada já aprovada.

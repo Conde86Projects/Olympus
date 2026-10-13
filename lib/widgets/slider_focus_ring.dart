@@ -11,9 +11,13 @@ import 'package:player/app/tv_layout.dart';
 /// qualquer descendente tem o foco. Fora da travessia: só pinta, o
 /// foco continua sendo do slider.
 class SliderFocusRing extends StatefulWidget {
-  const SliderFocusRing({super.key, required this.child});
+  const SliderFocusRing({super.key, required this.child, this.padding = 4});
 
   final Widget child;
+
+  /// Respiro fixo ao redor do slider (com e sem anel). A barra TV usa
+  /// 2 para caber na altura compacta; o padrao 4 segue no desktop.
+  final double padding;
 
   @override
   State<SliderFocusRing> createState() => _SliderFocusRingState();
@@ -56,7 +60,7 @@ class _SliderFocusRingState extends State<SliderFocusRing> {
         : 3.0;
     return Container(
       // Padding fixo (com e sem anel) para o layout não pular.
-      padding: const EdgeInsets.all(4),
+      padding: EdgeInsets.all(widget.padding),
       // Decoracao SEMPRE presente (borda transparente sem foco): alternar
       // entre null e BoxDecoration remontaria o filho e destruiria o
       // FocusNode do slider a cada mudanca de foco.

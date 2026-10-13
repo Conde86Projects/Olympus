@@ -271,6 +271,22 @@ class SupervisedPlayerService implements MediaPlayerService {
     _bufferTimer = null;
   }
 
+  /// Sonda de diagnostico da retomada HLS (instrumentacao, sem
+  /// efeito funcional): registra etapa + detalhe numerico no log
+  /// tecnico local. [detail] so pode conter numeros, estados, o id
+  /// do item e o rotulo da variante — nunca URL, caminho, token ou
+  /// mensagem nativa do motor.
+  void logResumeProbe(String stage, {String? detail}) {
+    _log.add(PlaybackLogEntry(
+      stage: 'resume-$stage',
+      at: DateTime.now(),
+      outcome: detail,
+    ));
+    while (_log.length > maxLogEntries) {
+      _log.removeAt(0);
+    }
+  }
+
   void _logEvent(String stage, {String? outcome}) {
     final started = _openStartedAt;
     _log.add(PlaybackLogEntry(

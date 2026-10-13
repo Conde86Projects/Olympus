@@ -70,6 +70,8 @@ class RoundPlayerButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.autofocus = false,
+    this.size,
+    this.padding,
   });
 
   final String tooltip;
@@ -77,11 +79,20 @@ class RoundPlayerButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool autofocus;
 
+  /// Diametro fixo (perfil compacto da TV). Null usa o alvo minimo do
+  /// contexto (44 no desktop, tokens na TV): fora da barra TV, o
+  /// desenho atual segue pixel a pixel.
+  final double? size;
+
+  /// Respiro interno do [IconButton]. Null usa o padrao (8). A barra
+  /// TV usa 4 para o glifo de 36 caber no botao de 44.
+  final EdgeInsetsGeometry? padding;
+
   @override
   Widget build(BuildContext context) {
     // O tooltip do proprio IconButton basta; um Tooltip externo duplicaria
     // a mensagem para leitores de tela.
-    final target = TvLayout.minTarget(context);
+    final target = size ?? TvLayout.minTarget(context);
     return SizedBox(
       width: target,
       height: target,
@@ -89,6 +100,7 @@ class RoundPlayerButton extends StatelessWidget {
         autofocus: autofocus,
         tooltip: tooltip,
         onPressed: onPressed,
+        padding: padding ?? const EdgeInsets.all(8),
         icon: Icon(icon),
         color: PlayerTheme.primaryText,
         style: IconButton.styleFrom(

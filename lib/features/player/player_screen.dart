@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:player/app/app.dart';
@@ -9,6 +10,7 @@ import 'package:player/app/theme.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/errors/app_error.dart';
+import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
 import 'package:player/core/utils/media_utils.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
@@ -18,6 +20,7 @@ import 'package:player/models/media_item.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_permission_service.dart';
 import 'package:player/services/media_player_service.dart';
+import 'package:player/services/supervised_player_service.dart';
 import 'package:player/services/thumbnail_service.dart';
 import 'package:player/widgets/confirm_dialog.dart';
 import 'package:player/widgets/empty_state.dart';
@@ -71,6 +74,32 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// "Qualidade" ao vivo sem precisar reabrir.
   late final ValueNotifier<String?> _sourceQuality;
 
+  /// Selecao HLS manual (id da opcao; Automática e o padrao) e as
+  /// variantes reais do master ja buscadas. Reabrir na variante
+  /// preserva item/historico: o id segue o do master.
+  late final ValueNotifier<String> _hlsQuality;
+  List<HlsVariant> _hlsVariants = const [];
+
+  /// Qualidade efetivamente aberta (rotulo da variante; null =
+  /// master/Original). Visivel na linha Qualidade do painel.
+  late final ValueNotifier<String?> _hlsEffective;
+
+  /// Observador de capacidade (TV, Automatica): amostra
+  /// posicao/relogio nos primeiros segundos e desce um degrau
+  /// uma unica vez por abertura se ficar abaixo do limiar.
+  Timer? _hlsObserveTimer;
+  bool _hlsAutoDowngraded = false;
+  DateTime? _obsAt;
+  Duration? _obsPos;
+
+  /// Retomada HLS com pouso não verificado: pausa de segurança e
+  /// preserva o histórico do ponto errado. Vale até nova abertura
+  /// ou nova localização de arquivo.
+  bool _hlsResumeProtect = false;
+
+  /// Leituras da sonda de retomada HLS (só leitura, sem seeks).
+  Timer? _resumeProbeTimer;
+
   /// Faixas preferidas ja aplicadas nesta abertura. Audio e legenda
   /// chegam em momentos distintos no inicio da midia: um flag so
   /// perderia a segunda leva.
@@ -111,12 +140,23 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool get _tvMode =>
       widget.dependencies.preferencesService.current.tvMode;
 
+  /// Cantos na TV: botoes de 36 como a barra (spec 27.6). Null no
+  /// desktop: o desenho atual segue pixel a pixel.
+  double? get _cornerSize => _tvMode ? 36.0 : null;
+
+  /// Respiro dos cantos na TV (glifo de 20 em botao de 36). Null no
+  /// desktop: vale o padrao do botao.
+  EdgeInsetsGeometry? get _cornerPadding =>
+      _tvMode ? const EdgeInsets.all(8) : null;
+
   @override
   void initState() {
     super.initState();
     _currentItem = widget.item;
     _baseItem = widget.item;
     _sourceQuality = ValueNotifier<String?>(null);
+    _hlsQuality = ValueNotifier<String>(HlsVariants.autoQualityId);
+    _hlsEffective = ValueNotifier<String?>(null);
     // Ao sair da barra no modo TV, rearma o auto-hide (e so).
     _controlsScope.addListener(() {
       if (mounted &&
@@ -143,6 +183,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
       if (session.status == PlaybackStatus.completed &&
           was != PlaybackStatus.completed) {
         _maybeAutoAdvance();
+      }
+      if (session.status == PlaybackStatus.error &&
+          was != PlaybackStatus.error &&
+          _panelOpen &&
+          _hlsVariants.isNotEmpty &&
+          _hlsQuality.value != HlsVariants.autoQualityId) {
+        // Falha da variante com o painel aberto: fecha o painel
+        // para o erro controlado (overlay) aparecer com a volta
+        // para Automatica alcancavel.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _panelOpen) Navigator.of(context).pop();
+        });
       }
       if ((was == PlaybackStatus.error || was == PlaybackStatus.completed) &&
           session.status != PlaybackStatus.error &&
@@ -182,7 +234,45 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final player = widget.dependencies.playerService;
     _appliedAudio = false;
     _appliedSubtitles = false;
-    await player.open(_currentItem);
+    _hlsAutoDowngraded = false;
+    _hlsObserveTimer?.cancel();
+    _hlsResumeProtect = false;
+    var openItem = _currentItem;
+    // Teto HLS por classe (SoC fraco): compacto/normal abrem a
+    // variante <=720p; grande (4K) segue no master. Falha, timeout
+    // ou playlist simples: abre a URL original. O item salvo segue
+    // o master (variante expira; resolve de novo a cada abertura).
+    // Sem inherited widget (roda no initState): tvMode vem da pref
+    // e a largura direto da view; 1280 e o piso da classe grande
+    // (spec 27.4).
+    if (openItem.sourceType == MediaSourceType.url &&
+        _isCappedClass &&
+        _isM3u8Url(_baseItem.source)) {
+      // Classe com teto: busca as variantes reais uma vez e abre
+      // pela selecao (Automatica = teto atual, sem mudanca).
+      final variants =
+          await HlsVariants.fetchVariants(_baseItem.source);
+      _hlsVariants = variants;
+      final target = _hlsTarget(
+        _hlsQuality.value,
+        _baseItem.source,
+        variants,
+      );
+      openItem = _baseItem.copyWith(source: target);
+      _currentItem = openItem;
+    } else if (openItem.sourceType == MediaSourceType.url &&
+        _hlsQuality.value != HlsVariants.autoQualityId &&
+        _hlsVariants.isNotEmpty) {
+      // Retry apos troca manual: respeita a selecao vigente.
+      final target = _hlsTarget(
+        _hlsQuality.value,
+        _baseItem.source,
+        _hlsVariants,
+      );
+      openItem = _baseItem.copyWith(source: target);
+      _currentItem = openItem;
+    }
+    await player.open(openItem);
     // Aplica preferencias de reproducao apos abrir (spec 16).
     final prefs = widget.dependencies.preferencesService.current;
     await player.setSpeed(prefs.defaultSpeed);
@@ -201,20 +291,420 @@ class _PlayerScreenState extends State<PlayerScreen> {
       // arquivo quebrado: o erro segue o fluxo normal).
       await _waitForDuration(player, const Duration(seconds: 5));
       if (!mounted) return;
-      await player.seek(resume);
-      _verifyResume(player, resume);
+      if (await _isHlsMaster()) {
+        // Master HLS: seek com verificacao da posicao real e no
+        // maximo UMA correcao (resume HLS). Os demais fluxos
+        // seguem exatamente como estavam.
+        await _resumeHlsMaster(player, resume);
+      } else {
+        await player.seek(resume);
+        _verifyResume(player, resume);
+      }
     }
     if (prefs.autoplay) {
       await player.play();
     }
     if (mounted) {
       setState(() => _session = player.session);
+      if (_isM3u8Url(_baseItem.source)) {
+        _hlsEffective.value = _effectiveLabelFor(openItem.source);
+      } else {
+        _hlsEffective.value = null;
+      }
+      _startHlsObserver();
       // Reexibe (retry apos erro) e rearma; sem isso o retry voltava
       // tocando com a barra oculta e o foco orfao (F2, Fase 4b).
       _poke();
       // Tentar de novo fecha o overlay modal: o foco morreu com ele.
       _restoreFocusIfLost();
     }
+  }
+
+  /// Largura logica da view principal (null sem view).
+  double? get _logicalWidth {
+    final views = WidgetsBinding.instance.platformDispatcher.views;
+    if (views.isEmpty) return null;
+    return views.first.physicalSize.width /
+        views.first.devicePixelRatio;
+  }
+
+  /// Perfil automatico: plataforma + Leanback (dobrado em tvMode
+  /// na abertura/manual) + viewport. Teto estatico inalterado.
+  HlsAutoDecision get _autoDecision => HlsVariants.autoDecision(
+        isTv: _tvMode,
+        logicalWidth: _logicalWidth,
+        platform: defaultTargetPlatform.name,
+      );
+
+  bool get _isCappedClass => _autoDecision.capped;
+
+  DateTime _now() =>
+      HlsVariants.debugNowOverride?.call() ?? DateTime.now();
+
+  /// Rotulo da variante efetivamente aberta (null = master).
+  String? _effectiveLabelFor(String target) {
+    if (target == _baseItem.source) return null;
+    for (final variant in _hlsVariants) {
+      if (variant.uri.toString() == target) {
+        return HlsVariants.variantLabel(variant);
+      }
+    }
+    return null;
+  }
+
+  static bool _isM3u8Url(String source) {
+    final uri = Uri.tryParse(source);
+    return uri != null && uri.path.toLowerCase().endsWith('.m3u8');
+  }
+
+  /// URL concreta de uma selecao HLS: Automatica (teto/master),
+  /// Original (master) ou a variante, validada contra as reais.
+  String _hlsTarget(
+    String qualityId,
+    String master,
+    List<HlsVariant> variants,
+  ) {
+    if (qualityId == HlsVariants.originalQualityId) return master;
+    if (qualityId != HlsVariants.autoQualityId) {
+      for (final variant in variants) {
+        if (variant.uri.toString() == qualityId) return qualityId;
+      }
+      // Variante que sumiu do master: cai na Automatica.
+    }
+    final decision = _autoDecision;
+    return HlsVariants.automaticUrl(
+      master,
+      variants,
+      capped: decision.capped,
+      maxHeight: decision.maxHeight,
+      maxBandwidth: decision.maxBandwidth,
+    );
+  }
+
+  /// Opcoes HLS para o painel: Original so quando difere da
+  /// Automatica tetada.
+  List<HlsQualityOption> get _hlsOptions {
+    if (_hlsVariants.isEmpty) return const [];
+    final decision = _autoDecision;
+    final auto = HlsVariants.automaticUrl(
+      _baseItem.source,
+      _hlsVariants,
+      capped: decision.capped,
+      maxHeight: decision.maxHeight,
+      maxBandwidth: decision.maxBandwidth,
+    );
+    return HlsVariants.qualityOptions(
+      _hlsVariants,
+      includeOriginal: decision.capped && auto != _baseItem.source,
+    );
+  }
+
+  /// Troca de qualidade HLS: reabre na URL alvo preservando item
+  /// (mesmo id), historico e posicao aproximada. Falha da variante
+  /// segue pelo erro controlado da sessao (overlay), de onde o
+  /// usuario volta para Automatica.
+  Future<void> _switchHlsQuality(String qualityId) async {
+    if (qualityId != HlsVariants.autoQualityId &&
+        qualityId != HlsVariants.originalQualityId &&
+        !_hlsVariants.any((v) => v.uri.toString() == qualityId)) {
+      return;
+    }
+    // Nova decisao do usuario: o observador ganha um ciclo novo
+    // apenas se a escolha for a Automatica.
+    _hlsAutoDowngraded = false;
+    final target = _hlsTarget(qualityId, _baseItem.source, _hlsVariants);
+    await _reopenHlsTarget(target, qualityId);
+    if (!mounted) return;
+    if (qualityId == HlsVariants.autoQualityId) {
+      _startHlsObserver();
+    } else {
+      _hlsObserveTimer?.cancel();
+    }
+  }
+
+  /// Reabre numa URL HLS concreta preservando item (mesmo id),
+  /// historico e posicao aproximada, e registra a efetiva.
+  Future<void> _reopenHlsTarget(String target, String selectionId) async {
+    final player = widget.dependencies.playerService;
+    final position = player.session.position;
+    final wasPlaying =
+        player.session.status == PlaybackStatus.playing ||
+            player.session.status == PlaybackStatus.buffering;
+    final next = _baseItem.copyWith(source: target);
+    try {
+      await player.open(next);
+      if (position > Duration.zero) await player.seek(position);
+      if (wasPlaying) await player.play();
+    } catch (_) {
+      // Motor direto pode lancar; o supervisor converte em sessao
+      // de erro. A selecao vale mesmo assim: o overlay oferece a
+      // volta para Automatica.
+    }
+    if (!mounted) return;
+    setState(() {
+      _hlsQuality.value = selectionId;
+      _currentItem = next;
+      _hlsEffective.value = _effectiveLabelFor(target);
+    });
+    _poke();
+  }
+
+  /// Inicia o observador de capacidade: so TV, so Automatica, so
+  /// HLS com master. Desktop, MP4 e playlist simples nunca entram.
+  void _startHlsObserver() {
+    _hlsObserveTimer?.cancel();
+    _obsAt = null;
+    _obsPos = null;
+    if (!_tvMode) return;
+    if (_hlsQuality.value != HlsVariants.autoQualityId) return;
+    if (_currentItem.sourceType != MediaSourceType.url) return;
+    if (!_isM3u8Url(_baseItem.source)) return;
+    _hlsObserveTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => unawaited(_observeHlsTick()),
+    );
+  }
+
+  /// Tick do observador: primeira janela de reproducao real.
+  /// Saudavel encerra a observacao; lento desce um degrau uma
+  /// vez; sem dados/variantes mantem o que esta tocando.
+  Future<void> _observeHlsTick() async {
+    if (!mounted || _hlsAutoDowngraded) {
+      _hlsObserveTimer?.cancel();
+      return;
+    }
+    if (!_tvMode || _hlsQuality.value != HlsVariants.autoQualityId) {
+      _hlsObserveTimer?.cancel();
+      return;
+    }
+    final player = widget.dependencies.playerService;
+    final session = player.session;
+    if (session.status != PlaybackStatus.playing) {
+      _obsAt = null;
+      _obsPos = null;
+      return;
+    }
+    final now = _now();
+    final startAt = _obsAt;
+    final startPos = _obsPos;
+    if (startAt == null || startPos == null) {
+      _obsAt = now;
+      _obsPos = session.position;
+      return;
+    }
+    final wall = now.difference(startAt);
+    if (wall < const Duration(seconds: 3)) return;
+    final ratio =
+        HlsVariants.playbackRatio(startPos, session.position, wall);
+    if (ratio == null) {
+      _obsAt = null;
+      _obsPos = null;
+      return;
+    }
+    if (ratio >= HlsVariants.observedRatioThreshold) {
+      _hlsObserveTimer?.cancel();
+      return;
+    }
+    var variants = _hlsVariants;
+    if (variants.isEmpty) {
+      variants = await HlsVariants.fetchVariants(_baseItem.source);
+      if (!mounted) return;
+      if (variants.isNotEmpty) {
+        setState(() => _hlsVariants = variants);
+      }
+    }
+    final target = HlsVariants.downgradeUrl(
+      masterUrl: _baseItem.source,
+      variants: variants,
+      currentUrl: _currentItem.source,
+      ratio: ratio,
+    );
+    _hlsObserveTimer?.cancel();
+    if (target == null) return;
+    _hlsAutoDowngraded = true;
+    await _reopenHlsTarget(target, HlsVariants.autoQualityId);
+  }
+
+  /// E master HLS de verdade? URL .m3u8 com variantes reais.
+  /// Falha de deteccao ou playlist simples: false (fluxo atual).
+  Future<bool> _isHlsMaster() async {
+    if (_currentItem.sourceType != MediaSourceType.url) return false;
+    if (!_isM3u8Url(_baseItem.source)) return false;
+    if (_hlsVariants.isNotEmpty) return true;
+    final variants = await HlsVariants.fetchVariants(_baseItem.source);
+    if (!mounted) return false;
+    if (variants.isNotEmpty) {
+      setState(() => _hlsVariants = variants);
+    }
+    return variants.isNotEmpty;
+  }
+
+  /// Retomada HLS: a variante ja abriu no caminho normal; aqui so
+  /// o seek (falha dele nao derruba a abertura) e o agendamento
+  /// da verificacao unica. Tudo que esta sonda registra e leitura:
+  /// nenhum seek, seekBy, open ou stop novo.
+  /// Prontidão real da retomada: sai de buffering e observa o
+  /// primeiro avanço real de posição (prova de demuxer vivo; seek
+  /// em demuxer frio morre em silêncio). Timeout limitado: estoura
+  /// e o seek sai mesmo assim (melhor esforço, registrado).
+  Future<bool> _waitForHlsReady(MediaPlayerService player) async {
+    Duration? baseline;
+    for (var i = 0; i < HlsVariants.hlsReadyMaxSamples; i++) {
+      if (!mounted) return false;
+      final session = player.session;
+      if (session.status == PlaybackStatus.error ||
+          session.status == PlaybackStatus.completed) {
+        return false;
+      }
+      final settled = session.status != PlaybackStatus.loading &&
+          session.status != PlaybackStatus.buffering;
+      if (settled) {
+        final pos = session.position;
+        if (baseline != null && pos != baseline) return true;
+        baseline ??= pos;
+      } else {
+        baseline = null;
+      }
+      await Future.delayed(HlsVariants.hlsReadyPoll);
+    }
+    return false;
+  }
+
+  Future<void> _resumeHlsMaster(
+      MediaPlayerService player, Duration target) async {
+    final before = player.session;
+    _probeHlsResume(player, 'start',
+        'id=${_currentItem.id} targetMs=${target.inMilliseconds} '
+        'durMs=${before.duration?.inMilliseconds ?? 'none'} '
+        'statusBefore=${before.status.name} '
+        'effective=${_hlsEffective.value ?? 'master'} '
+        'loading=${_isLoadingStatus(before.status)}');
+    final ready = await _waitForHlsReady(player);
+    if (!mounted) return;
+    final readySession = player.session;
+    _probeHlsResume(player, 'readiness',
+        'ready=$ready status=${readySession.status.name} '
+        'posMs=${readySession.position.inMilliseconds}');
+    final beforeMs = player.session.position.inMilliseconds;
+    final seekAt = _now();
+    try {
+      await player.seek(target);
+    } catch (_) {
+      // Seek recusado: a verificacao abaixo e a correcao unica.
+    }
+    final afterSeek = player.session;
+    _probeHlsResume(player, 'seek',
+        'at=${seekAt.toIso8601String()} beforeMs=$beforeMs '
+        'posAfterMs=${afterSeek.position.inMilliseconds} '
+        'status=${afterSeek.status.name} '
+        'loading=${_isLoadingStatus(afterSeek.status)}');
+    if (!mounted) return;
+    _scheduleResumeProbeReadings(player);
+    _resumeTimer?.cancel();
+    _resumeTimer = Timer(HlsVariants.hlsVerifyDelay, () async {
+      _resumeTimer = null;
+      if (!mounted) return;
+      final session = player.session;
+      _probeHlsResume(player, 'verify',
+          'posMs=${session.position.inMilliseconds} '
+          'status=${session.status.name} '
+          'loading=${_isLoadingStatus(session.status)}');
+      if (session.status == PlaybackStatus.error ||
+          session.status == PlaybackStatus.completed) {
+        _probeHlsResume(player, 'correction', 'skipped=status');
+        return;
+      }
+      final duration = session.duration;
+      if (duration != null &&
+          session.position >= duration - const Duration(seconds: 5)) {
+        _probeHlsResume(player, 'correction', 'skipped=near-end');
+        return;
+      }
+      if (!HlsVariants.resumeNeedsCorrection(
+          session.position, target)) {
+        _probeHlsResume(player, 'correction', 'skipped=within-tolerance');
+        return;
+      }
+      // No maximo UMA correcao: este timer e de disparo unico e
+      // nada reagenda outra tentativa.
+      final beforeMs = session.position.inMilliseconds;
+      try {
+        await player.seek(target);
+      } catch (_) {
+        // Correcao recusada: segue do ponto real, sem loop.
+      }
+      _probeHlsResume(player, 'correction',
+          'beforeMs=$beforeMs '
+          'afterMs=${player.session.position.inMilliseconds} '
+          'status=${player.session.status.name}');
+      // A correção só vale dentro da tolerância: valida o pouso
+      // após estabilizar. Pouso incorreto cai no fallback seguro
+      // (pausa + histórico preservado), nunca num loop de seeks.
+      await Future.delayed(HlsVariants.hlsCorrectionSettle);
+      if (!mounted) return;
+      final landed = player.session;
+      final within = !HlsVariants.resumeNeedsCorrection(
+          landed.position, target);
+      _probeHlsResume(player, 'correction-settle',
+          'posMs=${landed.position.inMilliseconds} within=$within');
+      if (within) return;
+      try {
+        await player.pause();
+      } catch (_) {
+        // Pausa best-effort: a proteção abaixo vale de todo jeito.
+      }
+      if (!mounted) return;
+      _hlsResumeProtect = true;
+      _probeHlsResume(player, 'fallback',
+          'reason=landing-unverified '
+          'targetMs=${target.inMilliseconds} '
+          'posMs=${player.session.position.inMilliseconds} '
+          'effective=${_hlsEffective.value ?? 'master'}');
+    });
+  }
+
+  static bool _isLoadingStatus(PlaybackStatus status) =>
+      status == PlaybackStatus.loading ||
+      status == PlaybackStatus.buffering;
+
+  /// Leituras agendadas da sonda (500 ms, 1 s, 1,5 s): só leem a
+  /// sessão e registram; nunca disparam seeks.
+  void _scheduleResumeProbeReadings(MediaPlayerService player) {
+    _resumeProbeTimer?.cancel();
+    var ticks = 0;
+    _resumeProbeTimer =
+        Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      ticks++;
+      if (!mounted || ticks > 3) {
+        timer.cancel();
+        if (identical(_resumeProbeTimer, timer)) _resumeProbeTimer = null;
+        return;
+      }
+      final session = player.session;
+      _probeHlsResume(player, 'reading',
+          'atMs=${ticks * 500} posMs=${session.position.inMilliseconds} '
+          'status=${session.status.name} '
+          'loading=${_isLoadingStatus(session.status)}');
+    });
+  }
+
+  /// Registra a sonda no log técnico local (quando o motor é o
+  /// supervisionado) e no logcat em debug. Só números, estados, o
+  /// id do item e o rótulo da variante — nunca URL ou segredo.
+  void _probeHlsResume(MediaPlayerService player, String stage,
+      [String? detail]) {
+    final inner = player is SupervisedPlayerService
+        ? player
+        : widget.dependencies.playerService
+                is SupervisedPlayerService
+            ? widget.dependencies.playerService
+                as SupervisedPlayerService
+            : null;
+    inner?.logResumeProbe(stage, detail: detail);
+    assert(() {
+      debugPrint('[hls-resume] $stage ${detail ?? ''}');
+      return true;
+    }());
   }
 
   /// Espera a duracao chegar (mpv com arquivo conhecido) antes do seek
@@ -313,9 +803,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
     HardwareKeyboard.instance.removeHandler(_handleHiddenKeys);
     _hideTimer?.cancel();
     _resumeTimer?.cancel();
+    _resumeProbeTimer?.cancel();
+    _hlsObserveTimer?.cancel();
     _subscription?.cancel();
     _screenFocus.dispose();
     _sourceQuality.dispose();
+    _hlsQuality.dispose();
+    _hlsEffective.dispose();
     _controlsScope.dispose();
     _cornerScope.dispose();
     _overlayPrimaryFocus.dispose();
@@ -406,6 +900,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             next == null ? null : () => _playNext(next),
                         onClose: () =>
                             Navigator.of(context).maybePop(),
+                        onBackToAutomatic: _hlsVariants.isNotEmpty &&
+                                _hlsQuality.value !=
+                                    HlsVariants.autoQualityId
+                            ? () => _switchHlsQuality(
+                                HlsVariants.autoQualityId)
+                            : null,
                         primaryFocus: _overlayPrimaryFocus,
                       ),
                       // Cantos flutuantes (Showtime): tela cheia a esquerda;
@@ -430,47 +930,60 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                   !_controlsVisible || _cinema,
                               child: FocusScope(
                                 node: _cornerScope,
-                                child: Row(
-                                  children: [
-                                    RoundPlayerButton(
-                                      tooltip: _fullscreen
-                                          ? 'Sair da tela cheia'
-                                          : 'Tela cheia',
-                                      icon: _fullscreen
-                                          ? Icons.fullscreen_exit
-                                          : Icons.fullscreen,
-                                      onPressed: _toggleFullscreen,
-                                    ),
-                                    const Spacer(),
-                                    RoundPlayerButton(
-                                      tooltip: 'Modo cinema',
-                                      icon: Icons.theaters_outlined,
-                                      onPressed: _toggleCinema,
-                                    ),
-                                    RoundPlayerButton(
-                                      tooltip: _compact
-                                          ? 'Sair do modo compacto'
-                                          : 'Modo compacto',
-                                      icon: Icons
-                                          .picture_in_picture_alt_outlined,
-                                      onPressed: _toggleCompact,
-                                    ),
-                                    RoundPlayerButton(
-                                      tooltip: _isFavorite
-                                          ? 'Remover dos favoritos'
-                                          : 'Adicionar aos favoritos',
-                                      icon: _isFavorite
-                                          ? Icons.favorite
-                                          : Icons.favorite_outline,
-                                      onPressed: _toggleFavorite,
-                                    ),
-                                    RoundPlayerButton(
-                                      tooltip: 'Fechar',
-                                      icon: Icons.close,
-                                      onPressed: () => Navigator.of(context)
-                                          .maybePop(),
-                                    ),
-                                  ],
+                                child: _TvCornerIcons(
+                                  tvMode: _tvMode,
+                                  child: Row(
+                                    children: [
+                                      RoundPlayerButton(
+                                        tooltip: _fullscreen
+                                            ? 'Sair da tela cheia'
+                                            : 'Tela cheia',
+                                        icon: _fullscreen
+                                            ? Icons.fullscreen_exit
+                                            : Icons.fullscreen,
+                                        size: _cornerSize,
+                                        padding: _cornerPadding,
+                                        onPressed: _toggleFullscreen,
+                                      ),
+                                      const Spacer(),
+                                      RoundPlayerButton(
+                                        tooltip: 'Modo cinema',
+                                        icon: Icons.theaters_outlined,
+                                        size: _cornerSize,
+                                        padding: _cornerPadding,
+                                        onPressed: _toggleCinema,
+                                      ),
+                                      RoundPlayerButton(
+                                        tooltip: _compact
+                                            ? 'Sair do modo compacto'
+                                            : 'Modo compacto',
+                                        icon: Icons
+                                            .picture_in_picture_alt_outlined,
+                                        size: _cornerSize,
+                                        padding: _cornerPadding,
+                                        onPressed: _toggleCompact,
+                                      ),
+                                      RoundPlayerButton(
+                                        tooltip: _isFavorite
+                                            ? 'Remover dos favoritos'
+                                            : 'Adicionar aos favoritos',
+                                        icon: _isFavorite
+                                            ? Icons.favorite
+                                            : Icons.favorite_outline,
+                                        size: _cornerSize,
+                                        padding: _cornerPadding,
+                                        onPressed: _toggleFavorite,
+                                      ),
+                                      RoundPlayerButton(
+                                        tooltip: 'Fechar',
+                                        icon: Icons.close,
+                                        size: _cornerSize,
+                                        padding: _cornerPadding,
+                                        onPressed: () =>
+                                            Navigator.of(context).maybePop(),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -510,12 +1023,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                           session: _session,
                                           videoTitle: _currentItem.title,
                                           settingsKey: _settingsKey,
-                                          sourceQualities:
-                                              decodeSourceQualities(
-                                                  _baseItem.metadata[
-                                                      'qualities']),
-                                          sourceQualityListenable:
-                                              _sourceQuality,
                                           onOpenPanel: (view, anchor) =>
                                               _openSettings(anchor,
                                                   view: view),
@@ -748,6 +1255,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
     BuildContext? anchorContext, {
     PlayerPanelView view = PlayerPanelView.main,
   }) async {
+    // Variantes HLS sob demanda: na classe tetada a abertura ja
+    // buscou; nas demais, buscar ao abrir Opcoes nao muda a
+    // abertura (desktop segue abrindo o master sem fetch).
+    if (_hlsVariants.isEmpty &&
+        _currentItem.sourceType == MediaSourceType.url &&
+        _isM3u8Url(_baseItem.source)) {
+      final variants =
+          await HlsVariants.fetchVariants(_baseItem.source);
+      if (!mounted) return;
+      if (variants.isNotEmpty) {
+        setState(() => _hlsVariants = variants);
+      }
+    }
     setState(() {
       _panelOpen = true;
       _controlsVisible = true;
@@ -755,6 +1275,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _hideTimer?.cancel();
     final prefs = widget.dependencies.preferencesService.current;
     final animations = prefs.animations;
+    if (!context.mounted) return;
     await PlayerSettingsPanel.show(
       context,
       anchorContext: anchorContext,
@@ -769,6 +1290,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
       selectedSourceQualityId: _sourceQuality.value,
       sourceQualityListenable: _sourceQuality,
       onSelectSourceQuality: _switchSourceQuality,
+      hlsQualities: _hlsOptions,
+      selectedHlsQualityId: _hlsQuality.value,
+      hlsQualityListenable: _hlsQuality,
+      onSelectHlsQuality: _switchHlsQuality,
+      effectiveHlsLabel: _hlsEffective.value,
+      effectiveHlsListenable: _hlsEffective,
       initialView: view,
       transitionDuration:
           animations ? AppConstants.shortTransition : Duration.zero,
@@ -938,6 +1465,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _currentItem = updated;
       _baseItem = updated;
       _sourceQuality.value = null;
+      _hlsQuality.value = HlsVariants.autoQualityId;
+      _hlsVariants = const [];
+      _hlsEffective.value = null;
+      _hlsAutoDowngraded = false;
+      _hlsObserveTimer?.cancel();
+      _hlsResumeProtect = false;
     });
     await _open();
   }
@@ -978,6 +1511,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// preserva o ponto salvo (abertura falhada na TV). Estreia sem
   /// progresso registra normal (visita aparece no historico).
   Future<void> _saveSession() async {
+    // Retomada HLS com pouso não verificado: nunca marca concluído
+    // nem sobrescreve o histórico com o ponto errado — só pausa e
+    // mantém o ponto salvo anterior.
+    if (_hlsResumeProtect) {
+      final kept =
+          widget.dependencies.historyService.latestFor(_currentItem.id);
+      _probeHlsResume(widget.dependencies.playerService, 'history-protect',
+          'keptMs=${kept?.position?.inMilliseconds ?? 'none'} '
+          'completed=${kept?.completed ?? 'none'}');
+      await widget.dependencies.playerService.pause();
+      return;
+    }
     // Le o motor (fresco), nao o espelho: no BACK o evento de erro pode
     // ainda nao ter chegado ao listener do widget.
     final live = widget.dependencies.playerService.session;
@@ -1037,6 +1582,7 @@ class _VideoArea extends StatelessWidget {
     required this.onPlayNext,
     required this.onClose,
     required this.primaryFocus,
+    this.onBackToAutomatic,
   });
 
   final MediaPlayerService player;
@@ -1058,6 +1604,10 @@ class _VideoArea extends StatelessWidget {
   final String? nextTitle;
   final VoidCallback? onPlayNext;
   final VoidCallback onClose;
+
+  /// Volta para a qualidade Automatica (falha de variante HLS
+  /// manual). Null esconde a acao.
+  final VoidCallback? onBackToAutomatic;
   final FocusNode primaryFocus;
 
   /// Mensagem pelo TIPO do erro, nunca a string nativa (pode conter
@@ -1102,6 +1652,12 @@ class _VideoArea extends StatelessWidget {
             autofocus: true,
             onPressed: onRetry,
           ),
+          if (onBackToAutomatic != null)
+            FocusableButton(
+              label: 'Voltar para Automática',
+              icon: Icons.tune,
+              onPressed: onBackToAutomatic!,
+            ),
           if (isLocal)
             FocusableButton(
               label: 'Localizar arquivo…',
@@ -1152,69 +1708,103 @@ class _VideoArea extends StatelessWidget {
             ),
           ),
         if (session.status == PlaybackStatus.completed)
-          Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Reprodução concluída',
-                      style:
-                          TextStyle(color: PlayerTheme.primaryText)),
-                  if (nextTitle != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'A seguir: $nextTitle',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: PlayerTheme.secondaryText),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    alignment: WrapAlignment.center,
+          Builder(
+            builder: (context) {
+              // Card solido na cor do painel de Opcoes, nos dois
+              // modos: o preto 0.7 deixava o video atravessar e sumia
+              // com os botoes (blur e so na barra do player). Na TV,
+              // tipografia, respiros e raio seguem os tokens compactos
+              // e os botoes ja usam o alvo minimo dos tokens via
+              // FocusableButton. No desktop, so a cor muda: dimensoes
+              // intactas, pixel a pixel.
+              final isTv = TvLayout.isTv(context);
+              final tokens =
+                  isTv ? TvLayout.tokensOf(context) : null;
+              return Center(
+                child: Container(
+                  padding: isTv
+                      ? const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12)
+                      : const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: PlayerSettingsPanel.panelColor,
+                    borderRadius: BorderRadius.circular(
+                        isTv ? tokens!.panelRadius : 12),
+                    border: isTv
+                        ? Border.all(
+                            color:
+                                Colors.white.withValues(alpha: 0.08))
+                        : null,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      FocusableButton(
-                        label: 'Reproduzir novamente',
-                        focusNode: primaryFocus,
-                        icon: Icons.replay,
-                        primary: true,
-                        autofocus: true,
-                        onPressed: onReplay,
-                      ),
-                      FocusableButton(
-                        label: isFavorite
-                            ? 'Remover dos favoritos'
-                            : 'Adicionar aos favoritos',
-                        icon: isFavorite
-                            ? Icons.favorite
-                            : Icons.favorite_outline,
-                        onPressed: onToggleFavorite,
-                      ),
-                      if (nextTitle != null && onPlayNext != null)
-                        FocusableButton(
-                          label: 'Próximo',
-                          icon: Icons.skip_next,
-                          onPressed: onPlayNext,
+                      Text('Reprodução concluída',
+                          style: isTv
+                              ? TextStyle(
+                                  color: PlayerTheme.primaryText,
+                                  fontSize: tokens!.textBody,
+                                  fontWeight: FontWeight.w600,
+                                )
+                              : const TextStyle(
+                                  color: PlayerTheme.primaryText)),
+                      if (nextTitle != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'A seguir: $nextTitle',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: isTv
+                              ? TextStyle(
+                                  color: PlayerTheme.secondaryText,
+                                  fontSize: tokens!.textCaption,
+                                )
+                              : const TextStyle(
+                                  color: PlayerTheme.secondaryText),
                         ),
-                      FocusableButton(
-                        label: 'Fechar',
-                        icon: Icons.close,
-                        onPressed: onClose,
+                      ],
+                      SizedBox(height: isTv ? 8 : 12),
+                      Wrap(
+                        spacing: isTv ? 8 : 12,
+                        runSpacing: isTv ? 8 : 12,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          FocusableButton(
+                            label: 'Reproduzir novamente',
+                            focusNode: primaryFocus,
+                            icon: Icons.replay,
+                            primary: true,
+                            autofocus: true,
+                            onPressed: onReplay,
+                          ),
+                          FocusableButton(
+                            label: isFavorite
+                                ? 'Remover dos favoritos'
+                                : 'Adicionar aos favoritos',
+                            icon: isFavorite
+                                ? Icons.favorite
+                                : Icons.favorite_outline,
+                            onPressed: onToggleFavorite,
+                          ),
+                          if (nextTitle != null && onPlayNext != null)
+                            FocusableButton(
+                              label: 'Próximo',
+                              icon: Icons.skip_next,
+                              onPressed: onPlayNext,
+                            ),
+                          FocusableButton(
+                            label: 'Fechar',
+                            icon: Icons.close,
+                            onPressed: onClose,
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
       ],
     );
@@ -1303,5 +1893,22 @@ class _PlayerTraversalPolicy extends ReadingOrderTraversalPolicy {
 
     visit(scope);
     return best;
+  }
+}
+
+/// Glifos dos cantos: 20 na TV (como a barra), tema no desktop.
+class _TvCornerIcons extends StatelessWidget {
+  const _TvCornerIcons({required this.tvMode, required this.child});
+
+  final bool tvMode;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!tvMode) return child;
+    return IconTheme(
+      data: const IconThemeData(size: 20),
+      child: child,
+    );
   }
 }

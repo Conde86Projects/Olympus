@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/extensions/duration_extensions.dart';
+import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
 import 'package:player/models/addon_catalog_item.dart';
 import 'package:player/models/playback_state.dart';
@@ -30,8 +31,15 @@ class PlayerSettingsPanel extends StatefulWidget {
     this.selectedSourceQualityId,
     this.sourceQualityListenable,
     this.onSelectSourceQuality,
+    this.hlsQualities = const [],
+    this.selectedHlsQualityId,
+    this.hlsQualityListenable,
+    this.onSelectHlsQuality,
+    this.effectiveHlsLabel,
+    this.effectiveHlsListenable,
     this.initialView = PlayerPanelView.main,
     this.transitionDuration = AppConstants.shortTransition,
+    this.maxHeight,
   });
 
   final MediaPlayerService player;
@@ -57,6 +65,26 @@ class PlayerSettingsPanel extends StatefulWidget {
   /// [sourceQualities] nao e vazia.
   final Future<void> Function(String? qualityId)? onSelectSourceQuality;
 
+  /// Opcoes do seletor HLS (Automatica/Original/variantes reais).
+  /// Vazia = sem secao HLS (comportamento anterior).
+  final List<HlsQualityOption> hlsQualities;
+
+  /// Selecao HLS atual (id da opcao; padrao Automatica).
+  final String? selectedHlsQualityId;
+
+  /// Ouvinte ao vivo da selecao HLS (dialogo e rota separada).
+  final ValueListenable<String>? hlsQualityListenable;
+
+  /// Troca de qualidade HLS pelo id da opcao.
+  final Future<void> Function(String qualityId)? onSelectHlsQuality;
+
+  /// Qualidade efetivamente aberta na Automatica (ex. "288p"),
+  /// quando difere do master. Null = master/Original.
+  final String? effectiveHlsLabel;
+
+  /// Ouvinte ao vivo da qualidade efetiva.
+  final ValueListenable<String?>? effectiveHlsListenable;
+
   /// Idiomas preferidos (codigos, ex. "por"): quando nenhuma faixa
   /// casa, o submenu informa ("sem faixa em portugues", spec 26.12).
   final String? preferredAudio;
@@ -64,6 +92,10 @@ class PlayerSettingsPanel extends StatefulWidget {
 
   /// Proveniencia exibida nas informacoes ("Arquivo local", add-on...).
   final String? sourceLabel;
+
+  /// Altura maxima do corpo, calculada pelo [show] a partir da
+  /// ancora (TV). Null = sem teto (desktop).
+  final double? maxHeight;
 
   /// Subview aberta de inicio (atalhos I/S/A abrem direto nela, spec 12.3).
   final PlayerPanelView initialView;
@@ -92,6 +124,12 @@ class PlayerSettingsPanel extends StatefulWidget {
     String? selectedSourceQualityId,
     ValueListenable<String?>? sourceQualityListenable,
     Future<void> Function(String? qualityId)? onSelectSourceQuality,
+    List<HlsQualityOption> hlsQualities = const [],
+    String? selectedHlsQualityId,
+    ValueListenable<String>? hlsQualityListenable,
+    Future<void> Function(String qualityId)? onSelectHlsQuality,
+    String? effectiveHlsLabel,
+    ValueListenable<String?>? effectiveHlsListenable,
     BuildContext? anchorContext,
     PlayerPanelView initialView = PlayerPanelView.main,
     Duration transitionDuration = AppConstants.shortTransition,
@@ -125,6 +163,12 @@ class PlayerSettingsPanel extends StatefulWidget {
             .toDouble();
         final caretX =
             anchorX.clamp(left + 14.0, left + panelWidth - 14.0).toDouble();
+        // Teto na TV: acima da ancora cabem os cantos (40) + a margem
+        // segura (~27) + folga; o resto e do painel. Na TCL (ancora em
+        // ~456) = ~384. No desktop, null (sem mudanca).
+        final cap = TvLayout.isTv(context) && anchored
+            ? (anchorTop - 72.0).clamp(200.0, 600.0).toDouble()
+            : null;
         return Stack(
           children: [
             Positioned(
@@ -150,8 +194,15 @@ class PlayerSettingsPanel extends StatefulWidget {
                   selectedSourceQualityId: selectedSourceQualityId,
                   sourceQualityListenable: sourceQualityListenable,
                   onSelectSourceQuality: onSelectSourceQuality,
+                  hlsQualities: hlsQualities,
+                  selectedHlsQualityId: selectedHlsQualityId,
+                  hlsQualityListenable: hlsQualityListenable,
+                  onSelectHlsQuality: onSelectHlsQuality,
+                  effectiveHlsLabel: effectiveHlsLabel,
+                  effectiveHlsListenable: effectiveHlsListenable,
                   initialView: initialView,
                   transitionDuration: transitionDuration,
+                  maxHeight: cap,
                 ),
               ),
             ),
@@ -187,6 +238,8 @@ class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
     super.initState();
     _view = widget.initialView;
     widget.sourceQualityListenable?.addListener(_onQualityChanged);
+    widget.hlsQualityListenable?.addListener(_onQualityChanged);
+    widget.effectiveHlsListenable?.addListener(_onQualityChanged);
   }
 
   @override
@@ -197,11 +250,22 @@ class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
       oldWidget.sourceQualityListenable?.removeListener(_onQualityChanged);
       widget.sourceQualityListenable?.addListener(_onQualityChanged);
     }
+    if (oldWidget.hlsQualityListenable != widget.hlsQualityListenable) {
+      oldWidget.hlsQualityListenable?.removeListener(_onQualityChanged);
+      widget.hlsQualityListenable?.addListener(_onQualityChanged);
+    }
+    if (oldWidget.effectiveHlsListenable !=
+        widget.effectiveHlsListenable) {
+      oldWidget.effectiveHlsListenable?.removeListener(_onQualityChanged);
+      widget.effectiveHlsListenable?.addListener(_onQualityChanged);
+    }
   }
 
   @override
   void dispose() {
     widget.sourceQualityListenable?.removeListener(_onQualityChanged);
+    widget.hlsQualityListenable?.removeListener(_onQualityChanged);
+    widget.effectiveHlsListenable?.removeListener(_onQualityChanged);
     super.dispose();
   }
 
@@ -211,37 +275,64 @@ class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final tiles = ListTileTheme.of(context);
+    final base = Theme.of(context);
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 340),
       child: Theme(
-        data: PlayerTheme.playerSurface(Theme.of(context)),
-        child: Material(
-          color: PlayerSettingsPanel.panelColor,
-          elevation: 12,
-          shadowColor: Colors.black87,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: StreamBuilder<PlaybackSession>(
-            stream: widget.player.sessionStream,
-            initialData: widget.session,
-            builder: (context, snapshot) => _PanelBody(
-              player: widget.player,
-              session: snapshot.data ?? widget.session,
-              videoTitle: widget.videoTitle,
-              preferredAudio: widget.preferredAudio,
-              preferredSubtitle: widget.preferredSubtitle,
-              sourceLabel: widget.sourceLabel,
-              sourceQualities: widget.sourceQualities,
-              selectedSourceQualityId:
-                  widget.sourceQualityListenable?.value ??
-                      widget.selectedSourceQualityId,
-              onSelectSourceQuality: widget.onSelectSourceQuality,
-              view: _view,
-              onViewChanged: (view) => setState(() => _view = view),
-              transitionDuration: widget.transitionDuration,
+        // Na TV, densidade vertical minima: o piso de 48 do ListTile
+        // denso cai e as linhas ficam em ~36. No desktop, a densidade
+        // do tema (pixel a pixel).
+        data: PlayerTheme.playerSurface(base).copyWith(
+          visualDensity: TvLayout.isTv(context)
+              ? const VisualDensity(vertical: -4)
+              : base.visualDensity,
+        ),
+        child: ListTileTheme(
+          // Linhas confortaveis na TV: respiro do desktop (4) com a
+          // densidade minima, para o painel caber folgado acima da
+          // barra. No desktop, o proprio tema (pixel a pixel).
+          data: TvLayout.isTv(context)
+              ? tiles.copyWith(
+                  minVerticalPadding: 3,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                )
+              : tiles,
+          child: Material(
+            color: PlayerSettingsPanel.panelColor,
+            elevation: 12,
+            shadowColor: Colors.black87,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: StreamBuilder<PlaybackSession>(
+              stream: widget.player.sessionStream,
+              initialData: widget.session,
+              builder: (context, snapshot) => _PanelBody(
+                player: widget.player,
+                session: snapshot.data ?? widget.session,
+                videoTitle: widget.videoTitle,
+                preferredAudio: widget.preferredAudio,
+                preferredSubtitle: widget.preferredSubtitle,
+                sourceLabel: widget.sourceLabel,
+                sourceQualities: widget.sourceQualities,
+                selectedSourceQualityId:
+                    widget.sourceQualityListenable?.value ??
+                        widget.selectedSourceQualityId,
+                onSelectSourceQuality: widget.onSelectSourceQuality,
+                hlsQualities: widget.hlsQualities,
+                selectedHlsQualityId: widget.hlsQualityListenable?.value ??
+                    widget.selectedHlsQualityId,
+                onSelectHlsQuality: widget.onSelectHlsQuality,
+                effectiveHlsLabel: widget.effectiveHlsListenable?.value ??
+                    widget.effectiveHlsLabel,
+                view: _view,
+                onViewChanged: (view) => setState(() => _view = view),
+                transitionDuration: widget.transitionDuration,
+                maxHeight: widget.maxHeight,
+              ),
             ),
           ),
         ),
@@ -264,6 +355,11 @@ class _PanelBody extends StatelessWidget {
     this.sourceQualities = const [],
     this.selectedSourceQualityId,
     this.onSelectSourceQuality,
+    this.hlsQualities = const [],
+    this.selectedHlsQualityId,
+    this.onSelectHlsQuality,
+    this.effectiveHlsLabel,
+    this.maxHeight,
   });
 
   final MediaPlayerService player;
@@ -275,13 +371,18 @@ class _PanelBody extends StatelessWidget {
   final List<SourceQuality> sourceQualities;
   final String? selectedSourceQualityId;
   final Future<void> Function(String? qualityId)? onSelectSourceQuality;
+  final List<HlsQualityOption> hlsQualities;
+  final String? selectedHlsQualityId;
+  final Future<void> Function(String qualityId)? onSelectHlsQuality;
+  final String? effectiveHlsLabel;
   final PlayerPanelView view;
   final ValueChanged<PlayerPanelView> onViewChanged;
   final Duration transitionDuration;
+  final double? maxHeight;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
+    final body = AnimatedSwitcher(
       duration: transitionDuration,
       child: switch (view) {
         PlayerPanelView.main => _mainView(context),
@@ -311,6 +412,15 @@ class _PanelBody extends StatelessWidget {
         PlayerPanelView.info => _infoSubView(context),
       },
     );
+    final cap = maxHeight;
+    // Com teto (TV via show): o conteudo compacto cabe sem rolar na
+    // TCL; em telas menores, rola em vez de estourar para fora da
+    // area segura. Sem teto (desktop), o corpo direto.
+    if (cap == null) return body;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: cap),
+      child: SingleChildScrollView(child: body),
+    );
   }
 
   Widget _mainView(BuildContext context) {
@@ -338,26 +448,36 @@ class _PanelBody extends StatelessWidget {
           value: _repeatLabel(session.repeatMode),
           onTap: () => onViewChanged(PlayerPanelView.repeat),
         ),
-        // Qualidade existe com múltiplas faixas de vídeo (spec 13)
-        // OU rendições da fonte (5C): sem nenhum dos dois, sem linha.
-        if (session.videoTracks.length > 1 || _showSourceQualities)
+        // Qualidade existe com múltiplas faixas de vídeo (spec 13),
+        // rendições da fonte (5C) OU variantes HLS reais: sem
+        // nenhum dos três, sem linha.
+        if (session.videoTracks.length > 1 ||
+            _showSourceQualities ||
+            _showHlsQualities)
           _NavRow(
             title: 'Qualidade',
             value: _sourceQualityLabel() ??
-                _trackLabel(
-                    session.videoTracks, session.selectedVideoId) ??
+                _hlsQualityLabel() ??
+                _trackLabel(session.videoTracks, session.selectedVideoId) ??
                 'Automática',
             onTap: () => onViewChanged(PlayerPanelView.quality),
           ),
         _RotateRow(player: player),
         const Divider(height: 1),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          padding: EdgeInsets.fromLTRB(
+              16, TvLayout.isTv(context) ? 8.0 : 12.0, 16, 4),
           child: Text('Velocidade de reprodução',
-              style: Theme.of(context).textTheme.titleMedium),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(color: PlayerTheme.primaryText)),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          padding: EdgeInsets.fromLTRB(
+              12, 0, 12, TvLayout.isTv(context) ? 6.0 : 8.0),
           child: Row(
             children: AppConstants.speeds.map((speed) {
               final selected = speed == session.speed;
@@ -376,7 +496,8 @@ class _PanelBody extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: EdgeInsets.symmetric(
+                          vertical: TvLayout.isTv(context) ? 5.0 : 10.0),
                       textStyle: const TextStyle(fontSize: 13),
                     ),
                     child: Text('${speed}x'.replaceAll('.', ',')),
@@ -392,7 +513,8 @@ class _PanelBody extends StatelessWidget {
           onTap: () => onViewChanged(PlayerPanelView.info),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: EdgeInsets.fromLTRB(
+              16, 0, 16, TvLayout.isTv(context) ? 6.0 : 8.0),
           child: TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Fechar'),
@@ -604,6 +726,57 @@ class _PanelBody extends StatelessWidget {
   bool get _showSourceQualities =>
       sourceQualities.isNotEmpty && onSelectSourceQuality != null;
 
+  bool get _showHlsQualities =>
+      hlsQualities.length > 1 && onSelectHlsQuality != null;
+
+  String? _hlsQualityLabel() {
+    if (!_showHlsQualities) return null;
+    final id = selectedHlsQualityId ?? HlsVariants.autoQualityId;
+    if (id == HlsVariants.autoQualityId) {
+      // Efetiva visivel: Automatica sozinha nao diz o que abriu.
+      final effective = effectiveHlsLabel;
+      return effective == null
+          ? 'Automática'
+          : 'Automática · $effective';
+    }
+    for (final option in hlsQualities) {
+      if (option.id == id) return option.label;
+    }
+    return 'Automática';
+  }
+
+  Widget _hlsList(BuildContext context) {
+    final select = onSelectHlsQuality!;
+    final selected = selectedHlsQualityId ?? HlsVariants.autoQualityId;
+    // Linhas focaveis (sem RadioGroup): no RadioGroup as setas
+    // SELECIONAM ao passar, mas na TV a troca so pode acontecer
+    // no OK (Opcoes -> Qualidade -> D-pad -> OK). ListTile move o
+    // foco com as setas e so ativa no OK/toque. Coluna sem ListView
+    // aninhada: todas montadas; na TV o painel rola por fora.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final option in hlsQualities)
+          ListTile(
+            dense: true,
+            selected: option.id == selected,
+            leading: Icon(
+              option.id == selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              size: 20,
+            ),
+            title: Text(option.label),
+            subtitle: option.id == HlsVariants.autoQualityId &&
+                    effectiveHlsLabel != null
+                ? Text('Efetiva: $effectiveHlsLabel')
+                : null,
+            onTap: () => _choose(() => select(option.id)),
+          ),
+      ],
+    );
+  }
+
   String? _sourceQualityLabel() {
     final id = selectedSourceQualityId;
     if (id == null) return null;
@@ -616,6 +789,39 @@ class _PanelBody extends StatelessWidget {
   /// Qualidade com rendições da fonte acima das faixas do motor.
   /// Sem rendições, idêntico ao submenu de faixas de antes.
   Widget _qualitySubView(BuildContext context) {
+    if (_showHlsQualities && !_showSourceQualities) {
+      return Column(
+        key: const ValueKey('sub-Qualidade'),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SubHeader(
+            title: 'Qualidade',
+            onBack: () => onViewChanged(PlayerPanelView.main),
+          ),
+          const Divider(height: 1),
+          _hlsList(context),
+          if (session.videoTracks.length > 1) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                  16, TvLayout.isTv(context) ? 8.0 : 12.0, 16, 4),
+              child: Text('Do vídeo',
+                  style: Theme.of(context).textTheme.titleMedium),
+            ),
+            _trackList(
+              context,
+              tracks: session.videoTracks,
+              selectedId: session.selectedVideoId,
+              emptyLabel: 'Nenhuma qualidade disponível',
+              allowNone: true,
+              noneLabel: 'Automática',
+              onSelect: player.selectVideo,
+            ),
+          ],
+        ],
+      );
+    }
     if (!_showSourceQualities) {
       return _trackSubView(
         context,
@@ -640,9 +846,10 @@ class _PanelBody extends StatelessWidget {
         ),
         const Divider(height: 1),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Text('Da fonte',
-              style: Theme.of(context).textTheme.titleMedium),
+          padding: EdgeInsets.fromLTRB(
+              16, TvLayout.isTv(context) ? 8.0 : 12.0, 16, 4),
+          child:
+              Text('Da fonte', style: Theme.of(context).textTheme.titleMedium),
         ),
         ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 200),
@@ -671,9 +878,10 @@ class _PanelBody extends StatelessWidget {
         ),
         const Divider(height: 1),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Text('Do vídeo',
-              style: Theme.of(context).textTheme.titleMedium),
+          padding: EdgeInsets.fromLTRB(
+              16, TvLayout.isTv(context) ? 8.0 : 12.0, 16, 4),
+          child:
+              Text('Do vídeo', style: Theme.of(context).textTheme.titleMedium),
         ),
         _trackList(
           context,
@@ -684,6 +892,16 @@ class _PanelBody extends StatelessWidget {
           noneLabel: 'Automática',
           onSelect: player.selectVideo,
         ),
+        if (_showHlsQualities) ...[
+          const Divider(height: 1),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+                16, TvLayout.isTv(context) ? 8.0 : 12.0, 16, 4),
+            child: Text('HLS',
+                style: Theme.of(context).textTheme.titleMedium),
+          ),
+          _hlsList(context),
+        ],
       ],
     );
   }
@@ -707,9 +925,19 @@ class _NavRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       dense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      contentPadding: EdgeInsets.symmetric(
+          horizontal: 16, vertical: TvLayout.isTv(context) ? 1.0 : 2.0),
       hoverColor: Colors.white.withValues(alpha: 0.06),
-      title: Text(title),
+      // Uma linha sempre: no aparelho cabe folgado e a altura da linha
+      // fica estavel (a fonte larga dos testes quebraria em duas).
+      // Cor explicita: titulo nunca herda do tema (um tema claro
+      // acima apagaria o rotulo no fundo escuro).
+      title: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: PlayerTheme.primaryText),
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -717,6 +945,7 @@ class _NavRow extends StatelessWidget {
             Flexible(
               child: Text(
                 value!,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
@@ -743,9 +972,13 @@ class _RotateRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       dense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      contentPadding: EdgeInsets.symmetric(
+          horizontal: 16, vertical: TvLayout.isTv(context) ? 1.0 : 2.0),
       hoverColor: Colors.white.withValues(alpha: 0.06),
-      title: const Text('Girar'),
+      title: const Text(
+        'Girar',
+        style: TextStyle(color: PlayerTheme.primaryText),
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -811,7 +1044,10 @@ class _SubHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(color: PlayerTheme.primaryText),
           ),
         ),
       ],
