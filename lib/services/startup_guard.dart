@@ -78,14 +78,34 @@ class StartupGuard extends ChangeNotifier {
   /// Registra um erro capturado (zona ou FlutterError). Mensagem e
   /// pilha truncadas: erros podem carregar caminhos e URLs (spec 6.1:
   /// sem dados sensiveis). A pilha (4 primeiras linhas) identifica o
-  /// ponto exato sem vazar o resto.
+  /// ponto exato sem vazar o resto. URLs, caminhos e credenciais
+  /// viram marcadores antes de persistir (spec 6.1).
+  static final _urlPattern = RegExp(r'[a-zA-Z][a-zA-Z0-9+.-]*://\S+');
+  static final _windowsPathPattern = RegExp(r'[A-Za-z]:\\\S*');
+  static final _unixPathPattern = RegExp(r'(?<![\w:])/(?:[\w.\-]+/)+[\w.\-]*');
+  static final _credentialPattern = RegExp(
+      r'(token|key|sig|secret|password|passwd|auth|session)=([^\s&;]+)',
+      caseSensitive: false);
+
+  static String sanitizeErrorText(String text) {
+    var out = text.replaceAll(_urlPattern, '[url]');
+    out = out.replaceAll(_windowsPathPattern, '[caminho]');
+    out = out.replaceAll(_unixPathPattern, '[caminho]');
+    out = out.replaceAllMapped(
+        _credentialPattern, (m) => '${m.group(1)}=[credencial]');
+    return out;
+  }
+
   Future<void> recordError(Object error, [StackTrace? stack]) async {
-    final message = error.toString();
-    final trace = stack?.toString().split('\n').take(4).join('\n') ?? '';
+    final rawMessage = error.toString();
+    final message = sanitizeErrorText(rawMessage);
+    final rawTrace = stack?.toString() ?? '';
+    final trace =
+        sanitizeErrorText(rawTrace.split('\n').take(4).join('\n'));
     _lastError = {
       'at': DateTime.now().toIso8601String(),
       'message': message.length > 200 ? message.substring(0, 200) : message,
-      'kind': classifyPlaybackError(message).name,
+      'kind': classifyPlaybackError(rawMessage).name,
       if (trace.isNotEmpty)
         'stack': trace.length > 300 ? trace.substring(0, 300) : trace,
     };

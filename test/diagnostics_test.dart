@@ -197,6 +197,20 @@ void main() {
       expect(text.contains('falha em http'), isFalse);
     });
 
+    test('exportacao nunca contem URL, caminho ou credencial', () async {
+      final harness = _Harness();
+      await harness.seed();
+      await harness.guard.recordError(StateError(
+          'token=segredo em C:\\tmp\\x.mp4 via https://a.test/v?a=1'));
+      final report = await harness.diagnostics.collect();
+      final text = harness.diagnostics.buildReport(report);
+
+      expect(text.contains(RegExp(r'[a-zA-Z][a-zA-Z0-9+.-]*://')), isFalse);
+      expect(text.contains(RegExp(r'[A-Za-z]:\\')), isFalse);
+      expect(text.contains('segredo'), isFalse);
+      expect(text.contains('[credencial]'), isFalse);
+    });
+
     test('exportacao identifica o tipo do erro', () async {
       final harness = _Harness();
       await harness.guard.recordError('cannot decode: codec missing');
@@ -330,9 +344,10 @@ void main() {
       await harness.pump(tester);
       await harness.openDiagnostics(tester);
 
-      // A tela mostra a mensagem (dado local); a area de transferencia
+      // A tela mostra a mensagem higienizada (sem URL); a area de transferencia
       // recebe o relatorio higienizado (capturado pelo mock).
-      expect(find.textContaining('falha em http'), findsOneWidget);
+      expect(find.textContaining('falha em [url]'), findsOneWidget);
+      expect(find.textContaining('videos.exemplo.com'), findsNothing);
 
       String? copied;
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
