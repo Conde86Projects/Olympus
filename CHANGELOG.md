@@ -19,6 +19,34 @@ se importa). Detalhes de implementação ficam nos documentos em
   master) com suíte 512/512 e `dart analyze` limpo. Prepara a
   próxima RC; a tag `v0.1.0-rc.2` permanece imutável.
 
+## [0.1.0-rc.8] - 2026-10-14
+
+Release candidate com detecção fria de variantes HLS +
+navegação do seletor de idioma por D-pad, aprovados em hardware
+real (TCL). Gates preservados: suíte completa verde e
+`dart analyze` limpo. Tags anteriores intactas.
+
+### Adicionado
+
+- Detecção fria de variantes HLS: com a rede ainda fria, o player
+  abre de imediato no master e faz no máximo uma sonda posterior
+  limitada (3 s), que só aquece a lista do seletor de qualidade —
+  sem trocar qualidade em silêncio, sem reabrir, sem novo seek e
+  sem alterar histórico ou ID. Validado na TCL (rede fria com
+  recuperação, rede pronta e rede permanentemente indisponível).
+- Idioma preferido de legendas vira seletor navegável na TV:
+  lista dedicada de 26 idiomas (+ Padrão do sistema), com
+  navegação por setas, OK para confirmar e voltar para preservar.
+  Remove os campos de texto do caminho do D-pad em Configurações.
+
+### Corrigido
+
+- D-pad preso no campo "Idioma preferido" em Configurações (TCL):
+  com o IME fechado o foco ficava retido no campo de texto e as
+  setas não saíam dele. Sem mexer em DropdownButton, fontes,
+  reprodução, retomada HLS, seletor manual, política automática,
+  modo seguro ou diagnóstico.
+
 ## [0.1.0-rc.2] - 2026-10-13
 
 Segundo release candidate: qualidade dinâmica e retomada HLS na
