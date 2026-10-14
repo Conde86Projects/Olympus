@@ -19,6 +19,16 @@ se importa). Detalhes de implementação ficam nos documentos em
   master) com suíte 512/512 e `dart analyze` limpo. Prepara a
   próxima RC; a tag `v0.1.0-rc.2` permanece imutável.
 
+## [0.1.0] - 2026-10-14
+
+Versão final: player local completo, validado em hardware real
+(TCL BeyondTV, Android 9). Inclui tudo das RCs (retomada HLS
+precisa, seleção manual de qualidade, política automática,
+detecção fria de variantes, seletor de idioma navegável por
+D-pad, diagnóstico e modo seguro). Gates: suíte completa verde
+e `dart analyze` limpo; APK da RC8 validado na TCL. Tag `v0.1.0`
+ainda não criada.
+
 ## [0.1.0-rc.8] - 2026-10-14
 
 Release candidate com detecção fria de variantes HLS +
