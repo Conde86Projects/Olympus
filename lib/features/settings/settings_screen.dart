@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/core/constants/app_constants.dart';
+import 'package:player/core/utils/language_names.dart';
+import 'package:player/features/settings/language_picker_page.dart';
 import 'package:player/models/preferences.dart';
 import 'package:player/services/tv_info_service.dart';
 import 'package:player/widgets/app_shell.dart';
-import 'package:player/widgets/dpad_field_exit.dart';
 import 'package:player/widgets/exit_slider.dart';
 import 'package:player/widgets/slider_focus_ring.dart';
 
 /// Configuracoes do aplicativo (spec 16): aparencia, reproducao, legendas,
 /// audio, janela, atalhos, armazenamento e sobre. Todas ligadas ao
-/// [PreferencesService]. Com estado por causa dos campos de idioma.
+/// [PreferencesService]. Os idiomas preferidos usam o seletor navegável
+/// ([LanguagePickerPage]) em vez de campo de texto: na TV física o IME
+/// come as setas com o campo focado e o D-pad prende.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.dependencies});
 
@@ -22,23 +25,29 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late final TextEditingController _subtitleLanguage;
-  late final TextEditingController _audioLanguage;
-
-  @override
-  void initState() {
-    super.initState();
-    final prefs = widget.dependencies.preferencesService.current;
-    _subtitleLanguage =
-        TextEditingController(text: prefs.defaultSubtitle ?? '');
-    _audioLanguage = TextEditingController(text: prefs.defaultAudio ?? '');
+  /// Rótulo do idioma atual (null/vazio = padrão do sistema).
+  String _languageLabel(String? code) {
+    if (code == null || code.trim().isEmpty) return 'Padrão do sistema';
+    return languageDisplayName(code);
   }
 
-  @override
-  void dispose() {
-    _subtitleLanguage.dispose();
-    _audioLanguage.dispose();
-    super.dispose();
+  void _openLanguagePicker({
+    required String title,
+    required String? currentValue,
+    required ValueChanged<String?> onSelected,
+  }) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LanguagePickerPage(
+          title: title,
+          current: currentValue,
+          onSelected: (v) {
+            onSelected(v);
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -157,23 +166,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: (v) =>
                       prefs.update(current.copyWith(subtitlesByDefault: v)),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                  child: DpadFieldExit(
-                    controller: _subtitleLanguage,
-                    child: TextField(
-                      controller: _subtitleLanguage,
-                      decoration: const InputDecoration(
-                        labelText: 'Idioma preferido',
-                        hintText: 'ex. por, eng — vazio usa o padrão',
-                        border: OutlineInputBorder(),
-                      ),
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (v) => prefs.update(current.copyWith(
-                        defaultSubtitle: () =>
-                            v.trim().isEmpty ? null : v.trim(),
-                      )),
-                    ),
+                ListTile(
+                  title: const Text('Idioma preferido'),
+                  subtitle: Text(_languageLabel(current.defaultSubtitle)),
+                  onTap: () => _openLanguagePicker(
+                    title: 'Idioma das legendas',
+                    currentValue: current.defaultSubtitle,
+                    onSelected: (v) => prefs.update(current.copyWith(
+                      defaultSubtitle: () => v,
+                    )),
                   ),
                 ),
               ]),
@@ -194,22 +195,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                  child: DpadFieldExit(
-                    controller: _audioLanguage,
-                    child: TextField(
-                      controller: _audioLanguage,
-                      decoration: const InputDecoration(
-                        labelText: 'Idioma preferido',
-                        hintText: 'ex. por, eng — vazio usa o padrão',
-                        border: OutlineInputBorder(),
-                      ),
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (v) => prefs.update(current.copyWith(
-                        defaultAudio: () => v.trim().isEmpty ? null : v.trim(),
-                      )),
-                    ),
+                ListTile(
+                  title: const Text('Idioma preferido'),
+                  subtitle: Text(_languageLabel(current.defaultAudio)),
+                  onTap: () => _openLanguagePicker(
+                    title: 'Idioma do áudio',
+                    currentValue: current.defaultAudio,
+                    onSelected: (v) => prefs.update(current.copyWith(
+                      defaultAudio: () => v,
+                    )),
                   ),
                 ),
               ]),

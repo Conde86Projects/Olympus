@@ -172,15 +172,19 @@ void main() {
       await tester.pumpAndSettle();
       expect(harness.preferences.current.initialVolume, lessThan(1.0));
 
-      final fields = find.byType(TextField);
-      expect(fields, findsNWidgets(2));
-      await tester.enterText(fields.first, 'por');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
+      // Idiomas pelo seletor navegável (sem campo de texto: na TV o
+      // IME come as setas e o D-pad prendia).
+      final rows = find.widgetWithText(ListTile, 'Idioma preferido');
+      expect(rows, findsNWidgets(2));
+      await tester.tap(rows.first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('português'));
       await tester.pumpAndSettle();
       expect(harness.preferences.current.defaultSubtitle, 'por');
 
-      await tester.enterText(fields.last, 'eng');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.tap(rows.last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('inglês'));
       await tester.pumpAndSettle();
       expect(harness.preferences.current.defaultAudio, 'eng');
     });

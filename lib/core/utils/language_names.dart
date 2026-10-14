@@ -27,6 +27,40 @@ String? findTrackForLanguage(List<MediaTrack> tracks, String? preferred) {
   return null;
 }
 
+/// Códigos primários (um por idioma) para o seletor de idioma
+/// preferido — mesma base dos rótulos acima. Sem campo de texto: na
+/// TV física o IME come as setas com o campo focado e o D-pad prende
+/// (o DpadFieldExit não recebe o evento); a lista navegável não
+/// prende nunca. Ordem alfabética pelo rótulo em pt-BR.
+const languagePickerCodes = [
+  'deu', // alemão
+  'ara', // árabe
+  'zho', // chinês
+  'kor', // coreano
+  'dan', // dinamarquês
+  'spa', // espanhol
+  'fin', // finlandês
+  'fra', // francês
+  'ell', // grego
+  'heb', // hebraico
+  'hin', // hindi
+  'nld', // holandês
+  'ind', // indonésio
+  'eng', // inglês
+  'ita', // italiano
+  'jpn', // japonês
+  'msa', // malaio
+  'nor', // norueguês
+  'pol', // polonês
+  'por', // português
+  'rus', // russo
+  'swe', // sueco
+  'tha', // tailandês
+  'tur', // turco
+  'vie', // vietnamita
+  'und', // indefinido
+];
+
 const _names = {
   'por': 'português',
   'pt': 'português',
