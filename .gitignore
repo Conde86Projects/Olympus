@@ -50,3 +50,9 @@ app.*.map.json
 # Scratch de sessao (dumps adb, capturas TV, temporarios)
 .tmp-*/
 .fl-tmp/
+
+# Assinatura release Android (chave privada: nunca commitar)
+*.jks
+*.keystore
+android/key.properties
+/android/build/
