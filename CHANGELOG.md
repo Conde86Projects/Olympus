@@ -6,6 +6,15 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
+### Adicionado
+
+- Item concluído (Fase 0.2.0, item 1): fração assistida >= 97%
+  marca o histórico como concluído; concluídos saem do "Continuar
+  assistindo" mas permanecem em biblioteca e histórico; reabrir
+  começa em 0:00 com a ação "Ver de novo"; sair sem assistir
+  preserva o concluído. Retomada de não concluídos intacta.
+  Validado na TCL com suíte 548/548 e `dart analyze` limpo.
+
 ### Corrigido
 
 - Preservação de posição na troca de qualidade HLS (TV): a

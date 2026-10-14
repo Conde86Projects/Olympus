@@ -21,6 +21,29 @@ abstract final class AppConstants {
   /// Limite de itens em "Continuar assistindo".
   static const continueWatchingLimit = 10;
 
+  /// Fracao assistida que marca o item como concluido (spec 11):
+  /// posicao/duracao >= 97%. Vale para salvar o historico, sair do
+  /// "Continuar assistindo" e oferecer "Ver de novo" na reabertura.
+  static const completedThreshold = 0.97;
+
+  /// Diz se a posicao equivale a item concluido. Aceita a fracao
+  /// pronta (historico) ou calcula de posicao/duracao (player,
+  /// biblioteca). Sem dados suficientes, nao conclui.
+  static bool isCompletedPosition({
+    Duration? position,
+    Duration? duration,
+    double? percent,
+  }) {
+    final double? p = percent ??
+        (position == null ||
+                duration == null ||
+                duration.inMilliseconds <= 0
+            ? null
+            : position.inMilliseconds / duration.inMilliseconds);
+    if (p == null) return false;
+    return p >= completedThreshold;
+  }
+
   /// Versao exibida no diagnostico. Manual de proposito (sem
   /// package_info para nao puxar dependencia nativa): sincronizar com
   /// o `version:` do pubspec.yaml a cada release.

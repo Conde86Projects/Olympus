@@ -165,7 +165,11 @@ class HomeScreen extends StatelessWidget {
     for (final entry in entries) {
       if (!seen.add(entry.mediaId)) continue;
       final item = library.findById(entry.mediaId);
-      if (item == null || entry.completed) continue;
+      if (item == null ||
+          entry.completed ||
+          AppConstants.isCompletedPosition(percent: entry.percentWatched)) {
+        continue;
+      }
       result.add(item.copyWith(lastPosition: () => entry.position));
       if (result.length >= AppConstants.continueWatchingLimit) break;
     }

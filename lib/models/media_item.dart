@@ -1,3 +1,5 @@
+import 'package:player/core/constants/app_constants.dart';
+
 /// Item de midia da biblioteca (spec 5.1). Imutavel: alteracoes produzem uma
 /// copia via [copyWith]. Serializacao em [toMap]/[fromMap] para o
 /// armazenamento local.
@@ -45,13 +47,15 @@ class MediaItem {
   }
 
   /// Item pode entrar em "Continuar assistindo": tem posicao salva e nao
-  /// chegou ao fim (tolerancia de 5 segundos).
+  /// esta concluido (fracao assistida abaixo de
+  /// [AppConstants.completedThreshold]).
   bool get isResumable {
     final total = duration;
     final position = lastPosition;
     if (position == null || position <= Duration.zero) return false;
     if (total == null) return true;
-    return position < total - const Duration(seconds: 5);
+    return !AppConstants.isCompletedPosition(
+        position: position, duration: total);
   }
 
   MediaItem copyWith({
