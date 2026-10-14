@@ -24,8 +24,12 @@ intactas (`v0.1.0-rc.7` em `09ca0af`, etc.).
 - [x] Tela Diagnóstico e Sobre exibindo `0.1.0-rc.7` no binário
       do fix (o bump para rc.8 é só string de versão; o
       conteúdo validado é idêntico).
-- [ ] `versionName=0.1.0-rc.8` via dumpsys (vale no flash do APK
-      da RC8, se gerado).
+- [x] `versionName=0.1.0-rc.8` via dumpsys após `adb install -r`
+      do APK gerado de `9dddc7c` (debug, mesmo perfil da RC7).
+- [x] SHA-256 do APK:
+  `B32A8DFE4C02B37BADFCED304CC3B9A7215E8A4F147F6D875DBD7EE0530FDBC4`.
+- [x] Diagnóstico e Sobre no binário RC8 exibem `0.1.0-rc.8`
+  (Sobre usa o mesmo `AppConstants.appVersion` do Diagnóstico).
 
 ## Validação do fix na TCL (BeyondTV, Android 9, 13/10/2026)
 
@@ -59,6 +63,31 @@ ListTiles, foco determinístico via FocusNode pós-frame).
 - [x] Modo seguro: on → banner → off → boot normal.
 - [x] Cold probe: por construção (player/HLS intocados desde a
       validação RC7 S1/S2/S3 + pronta + permanente).
+
+## Validação do APK RC8 na TCL (13/10/2026, `9dddc7c`)
+
+APK debug instalado por cima (dados preservados). Protetor de
+tela (dream) cobriu a tela no início — tela do launcher por cima do
+app focado; dispensa com qualquer tecla, sem relação com o app.
+
+- [x] Boot + Home normais (x36 5:10, ForBigger 0:33).
+- [x] D-pad completo: DOWN/UP/OK (`deu`, linha mostra alemão),
+      BACK preserva, Padrão restaurado (`null`).
+- [x] Retomada HLS: x36 3:54→5:10 tocando, ID/fonte intactos.
+- [x] Player + histórico: biblioteca 4 itens, 4 entradas.
+- [x] Modo seguro: on → banner → off → boot normal
+      (`manualSafeMode=false`).
+- [x] Diagnóstico: `0.1.0-rc.8`, 4 vídeos, 4 entradas, último
+      erro antigo (11/10, pré-existente).
+- [x] Volume: `initialVolume=1.0` antes e depois da reabertura.
+- [x] Cold probe: rede lenta → master imediato + erro
+      controlado com `cold-failed attempt=1` único; com
+      recuperação → `cold-ready attempt=1 count=5` e reprodução
+      flui (BBB); sem troca silenciosa, reopen, seek ou
+      mudança de histórico/ID.
+- [x] Aparelho limpo ao fim: 4 lib / 4 hist (só RC6), prefs em
+      default, `player_data` só com os 3 JSON, tmp e sdcard
+      limpos, servidor local parado, reverse removido.
 
 ## Comportamento de volume (definição)
 
