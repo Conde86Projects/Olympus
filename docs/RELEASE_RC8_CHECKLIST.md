@@ -89,6 +89,20 @@ app focado; dispensa com qualquer tecla, sem relação com o app.
       default, `player_data` só com os 3 JSON, tmp e sdcard
       limpos, servidor local parado, reverse removido.
 
+## APK final 0.1.0 (commit `29f7965`, 14/10/2026)
+
+- [x] APK debug gerado sem alterar código, instalado na TCL
+      (BeyondTV, Android 9 — DHCP mudou para `192.168.1.4:5555`).
+- [x] `versionName=0.1.0` exato via dumpsys.
+- [x] SHA-256 do APK final:
+  `5211A70DE76B3E2786E330AA8AD7E49BAAC311E987841C4494D89759AA06C0F0`.
+- [x] Diagnóstico exibe `0.1.0` (4 vídeos, 4 entradas, modo
+      seguro não); Sobre exibe `Versão 0.1.0 — protótipo`.
+- [x] Gates reconfirmados: 536/536 testes, `analyze` limpo,
+      árvore limpa, tags rc.1–rc.8 intactas.
+- [x] Tag `v0.1.0` criada exatamente em `29f7965` (tags
+      `v0.1.0-rc.1`…`v0.1.0-rc.8` não movidas).
+
 ## Comportamento de volume (definição)
 
 - Primeira instalação → volume padrão seguro (`initialVolume`
