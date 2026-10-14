@@ -202,6 +202,14 @@ abstract final class HlsVariants {
   @visibleForTesting
   static Future<String> Function(Uri uri)? debugFetchOverride;
 
+  /// GET textual do master honrando a substituição de teste quando
+  /// houver (a sonda fria usa este ponto único, sem tocar o membro
+  /// de teste fora daqui).
+  static Future<String> fetchMasterText(Uri uri) {
+    final fetch = debugFetchOverride ?? fetchText;
+    return fetch(uri);
+  }
+
   /// Resolve a URL a abrir: variante tetada ou a original.
   static Future<String> resolve(
     String url, {

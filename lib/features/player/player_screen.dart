@@ -10,6 +10,7 @@ import 'package:player/app/theme.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/errors/app_error.dart';
+import 'package:player/core/utils/hls_cold_probe.dart';
 import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
 import 'package:player/core/utils/media_utils.dart';
@@ -88,6 +89,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// posicao/relogio nos primeiros segundos e desce um degrau
   /// uma unica vez por abertura se ficar abaixo do limiar.
   Timer? _hlsObserveTimer;
+  /// Redetecção fria (uma única tentativa posterior, limitada): só
+  /// aquece [_hlsVariants] para o seletor; nunca reabre nem troca.
+  Timer? _hlsColdTimer;
   bool _hlsAutoDowngraded = false;
   DateTime? _obsAt;
   Duration? _obsPos;
@@ -237,6 +241,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _appliedSubtitles = false;
     _hlsAutoDowngraded = false;
     _hlsObserveTimer?.cancel();
+    _hlsColdTimer?.cancel();
+    _hlsColdTimer = null;
     _hlsPositionProtect = false;
     var openItem = _currentItem;
     // Teto HLS por classe (SoC fraco): compacto/normal abrem a
@@ -254,6 +260,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
       final variants =
           await HlsVariants.fetchVariants(_baseItem.source);
       _hlsVariants = variants;
+      if (_hlsVariants.isEmpty) {
+        // Rede fria: abre o master agora (fallback abaixo) e agenda
+        // no máximo UMA redetecção limitada posterior, só para
+        // aquecer a lista do seletor — sem trocar qualidade, sem
+        // reabrir, sem buscar posição e sem tocar histórico/ID.
+        _scheduleHlsColdWarm();
+      }
       final target = _hlsTarget(
         _hlsQuality.value,
         _baseItem.source,
@@ -591,6 +604,31 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _probeHlsResume(player, '$probe-settle',
         'posMs=${landed.position.inMilliseconds} within=$within');
     return within;
+  }
+
+  /// Redetecção fria: UMA tentativa posterior, limitada por
+  /// timeout, em segundo plano. Só aquece [_hlsVariants] (o seletor
+  /// passa a oferecer qualidade); nunca chama open/seek, nunca muda
+  /// [_currentItem]/[_baseItem] e nunca escreve no histórico.
+  void _scheduleHlsColdWarm() {
+    _hlsColdTimer?.cancel();
+    if (!_isCappedClass) return;
+    if (_currentItem.sourceType != MediaSourceType.url) return;
+    if (!_isM3u8Url(_baseItem.source)) return;
+    final player = widget.dependencies.playerService;
+    _hlsColdTimer = Timer(HlsColdProbe.retryDelay, () async {
+      _hlsColdTimer = null;
+      if (!mounted) return;
+      final result = await HlsColdProbe.probe(
+        _baseItem.source,
+        maxAttempts: 1,
+        log: (stage, {detail}) => _probeHlsResume(player, stage, detail),
+      );
+      if (!mounted) return;
+      if (result.variants.isNotEmpty && _hlsVariants.isEmpty) {
+        setState(() => _hlsVariants = result.variants);
+      }
+    });
   }
 
   /// Inicia o observador de capacidade: so TV, so Automatica, so
@@ -949,6 +987,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _resumeTimer?.cancel();
     _resumeProbeTimer?.cancel();
     _hlsObserveTimer?.cancel();
+    _hlsColdTimer?.cancel();
+    _hlsColdTimer = null;
     _subscription?.cancel();
     _screenFocus.dispose();
     _sourceQuality.dispose();
