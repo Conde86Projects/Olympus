@@ -155,7 +155,10 @@ Rect? _restoredBoundsOrNull(UserPreferences prefs) {
   final w = prefs.windowWidth;
   final h = prefs.windowHeight;
   if (x == null || y == null || w == null || h == null) return null;
-  if (w < 800 || h < 600 || w > 10000 || h > 10000) return null;
+  const min = WindowManagerService.minimumSize;
+  if (w < min.width || h < min.height || w > 10000 || h > 10000) {
+    return null;
+  }
   if (x < -2000 || y < -2000 || x > 10000 || y > 10000) return null;
   return Rect.fromLTWH(x, y, w, h);
 }

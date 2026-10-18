@@ -30,7 +30,10 @@ class _SliderFocusRingState extends State<SliderFocusRing> {
   void initState() {
     super.initState();
     FocusManager.instance.addListener(_sync);
-    _sync();
+    // Depois do frame: montado no meio de uma troca de layout (card de
+    // janela baixa <-> normal), o foco ainda aponta para um elemento
+    // sendo desativado, e subir os ancestrais dele dispara assert.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
   }
 
   @override
