@@ -65,6 +65,18 @@ fechamento (o player grava a posição, com teto de 2 s) e só então
 destrói a janela. No app: vídeo aberto em 0:30, X depois de ~12 s, o
 app fechou e o histórico ficou em 0:41.
 
+## Escala de 150% (18/10/2026)
+
+Mesmo monitor com a escala do Windows em 150% (144 dpi), mesmo build.
+
+| Caso | Resultado |
+|---|---|
+| Janela 1280x720 | OK. Início e player com o desenho de desktop, nada cortado. |
+| Janela 480x270 (mínimo) | OK. O Windows segura em 480x270 lógicos; card de uma fileira legível. |
+| Modo compacto | OK. 480x270, sempre no topo; sair volta a 1280x720 sem topo. |
+| Minimizar e restaurar | OK. Posição gravada em 0:56; o vídeo seguiu (1:06 ao restaurar). |
+| Fechar pelo X | OK. O app fechou e o histórico ficou em 1:14. |
+
 ## Pendências
 
-- Não testado num monitor 1080p de verdade nem em 100%/150% de escala.
+- Não testado num monitor 1080p de verdade nem em 100% de escala.
