@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/router.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/app/theme.dart';
@@ -28,6 +29,7 @@ class PlayerApp extends StatelessWidget {
     required this.addonService,
     required this.startupGuard,
     required this.diagnosticsService,
+    this.mobilePlatform = false,
   });
 
   final PreferencesService preferencesService;
@@ -39,13 +41,19 @@ class PlayerApp extends StatelessWidget {
   final StartupGuard startupGuard;
   final DiagnosticsService diagnosticsService;
 
+  /// Android/iOS. Com o modo TV desligado vira a composicao de
+  /// celular ([MobileMode]); desktop e testes ficam no padrao (false).
+  final bool mobilePlatform;
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: preferencesService,
       builder: (context, _) {
         final prefs = preferencesService.current;
-        return TvMode(
+        return MobileMode(
+          enabled: mobilePlatform && !prefs.tvMode,
+          child: TvMode(
           enabled: prefs.tvMode,
           child: MaterialApp(
             title: 'Player',
@@ -94,6 +102,7 @@ class PlayerApp extends StatelessWidget {
               startupGuard: startupGuard,
               diagnosticsService: diagnosticsService,
             ),
+          ),
           ),
           ),
         );

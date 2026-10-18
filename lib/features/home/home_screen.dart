@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/core/constants/app_constants.dart';
@@ -24,19 +25,25 @@ class HomeScreen extends StatelessWidget {
     final library = dependencies.libraryService;
     final history = dependencies.historyService;
     final guard = dependencies.startupGuard;
+    // No celular, Biblioteca, Add-ons, Favoritos e Configuracoes moram
+    // na navegacao inferior ([MobileShell]); o Historico fica aqui.
+    final mobile = MobileMode.of(context);
     return AppShell(
       title: 'Player',
       actions: [
+        if (!mobile)
         IconButton(
           tooltip: 'Biblioteca',
           icon: const Icon(Icons.video_library_outlined),
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.library),
         ),
+        if (!mobile)
         IconButton(
           tooltip: 'Add-ons',
           icon: const Icon(Icons.extension_outlined),
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.addons),
         ),
+        if (!mobile)
         IconButton(
           tooltip: 'Favoritos',
           icon: const Icon(Icons.favorite_outline),
@@ -47,6 +54,7 @@ class HomeScreen extends StatelessWidget {
           icon: const Icon(Icons.history),
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.history),
         ),
+        if (!mobile)
         IconButton(
           tooltip: 'Configurações',
           icon: const Icon(Icons.settings_outlined),
