@@ -72,12 +72,18 @@ class RoundPlayerButton extends StatelessWidget {
     this.autofocus = false,
     this.size,
     this.padding,
+    this.overVideo = false,
   });
 
   final String tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
   final bool autofocus;
+
+  /// Botao solto sobre o video (cantos do player): fundo escuro
+  /// translucido. O branco a 8% do card sumia com o glifo branco sobre
+  /// imagem clara (ceu, neve).
+  final bool overVideo;
 
   /// Diametro fixo (perfil compacto da TV). Null usa o alvo minimo do
   /// contexto (44 no desktop, tokens na TV): fora da barra TV, o
@@ -104,7 +110,9 @@ class RoundPlayerButton extends StatelessWidget {
         icon: Icon(icon),
         color: PlayerTheme.primaryText,
         style: IconButton.styleFrom(
-          backgroundColor: Colors.white.withValues(alpha: 0.08),
+          backgroundColor: overVideo
+              ? Colors.black.withValues(alpha: 0.45)
+              : Colors.white.withValues(alpha: 0.08),
           shape: const CircleBorder(),
         ),
       ),
