@@ -315,6 +315,30 @@ void main() {
           isNotEmpty);
     });
 
+    for (final mobile in const [true, false]) {
+      testWidgets('cantos com fundo escuro (mobile: $mobile)',
+          (tester) async {
+        await openPlayer(
+            tester, mobile ? _portrait : const Size(1280, 720),
+            mobile: mobile);
+        Color fill(String tip) => tester
+            .widget<IconButton>(find.ancestor(
+                of: find.byTooltip(tip), matching: find.byType(IconButton)))
+            .style!
+            .backgroundColor!
+            .resolve(<WidgetState>{})!;
+        // Cantos: escuro e opaco o bastante para o glifo branco
+        // aparecer sobre video claro.
+        for (final tip in const ['Tela cheia', 'Modo cinema', 'Fechar']) {
+          final c = fill(tip);
+          expect(c.computeLuminance(), lessThan(0.05), reason: tip);
+          expect(c.a, greaterThanOrEqualTo(0.4), reason: tip);
+        }
+        // Card: sem mudanca (branco a 8%).
+        expect(fill('Configurações'), Colors.white.withValues(alpha: 0.08));
+      });
+    }
+
     testWidgets('desktop: toque duplo nao busca e compacto continua',
         (tester) async {
       final harness =

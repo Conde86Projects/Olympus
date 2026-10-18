@@ -1244,6 +1244,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                             : Icons.fullscreen,
                                         size: _cornerSize,
                                         padding: _cornerPadding,
+                                        overVideo: true,
                                         onPressed: _toggleFullscreen,
                                       ),
                                       const Spacer(),
@@ -1252,6 +1253,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                         icon: Icons.theaters_outlined,
                                         size: _cornerSize,
                                         padding: _cornerPadding,
+                                        overVideo: true,
                                         onPressed: _toggleCinema,
                                       ),
                                       // Compacto e janela do desktop: no
@@ -1265,6 +1267,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                             .picture_in_picture_alt_outlined,
                                         size: _cornerSize,
                                         padding: _cornerPadding,
+                                        overVideo: true,
                                         onPressed: _toggleCompact,
                                       ),
                                       RoundPlayerButton(
@@ -1276,6 +1279,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                             : Icons.favorite_outline,
                                         size: _cornerSize,
                                         padding: _cornerPadding,
+                                        overVideo: true,
                                         onPressed: _toggleFavorite,
                                       ),
                                       RoundPlayerButton(
@@ -1283,6 +1287,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                         icon: Icons.close,
                                         size: _cornerSize,
                                         padding: _cornerPadding,
+                                        overVideo: true,
                                         onPressed: () =>
                                             Navigator.of(context).maybePop(),
                                       ),
