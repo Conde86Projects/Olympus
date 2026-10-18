@@ -26,7 +26,13 @@ class PlayerControls extends StatelessWidget {
     required this.onOpenSettings,
     this.videoTitle,
     this.settingsKey,
+    this.dense = false,
   });
+
+  /// Altura de janela abaixo da qual a tela usa o card [dense]. O
+  /// minimo normal da janela e 600: so o compacto e janelas pequenas
+  /// arrastadas ficam abaixo.
+  static const denseMaxHeight = 420.0;
 
   final MediaPlayerService player;
   final PlaybackSession session;
@@ -41,6 +47,11 @@ class PlayerControls extends StatelessWidget {
   /// Chave do botao de configuracoes: atalhos de teclado (I/S/A) usam o
   /// contexto dela como ancora do painel (spec 3.5, 12.3).
   final Key? settingsKey;
+
+  /// Janela baixa (compacto 480x270): uma fileira so, com transporte,
+  /// tempo, progresso e configuracoes, botoes de 36 e sem titulo. O
+  /// card normal cobria metade do video e encostava nos cantos.
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -58,12 +69,14 @@ class PlayerControls extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
-            padding: const EdgeInsets.fromLTRB(
-              16,
-              12,
-              16,
-              12,
-            ),
+            padding: dense
+                ? const EdgeInsets.symmetric(horizontal: 8, vertical: 2)
+                : const EdgeInsets.fromLTRB(
+                    16,
+                    12,
+                    16,
+                    12,
+                  ),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.68),
               borderRadius: BorderRadius.circular(16),
@@ -77,7 +90,9 @@ class PlayerControls extends StatelessWidget {
                 ),
               ],
             ),
-            child: Column(
+            child: dense
+                ? _denseRow(position, duration, value, max, isPlaying)
+                : Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
@@ -175,23 +190,94 @@ class PlayerControls extends StatelessWidget {
       ),
     );
   }
+
+  /// Fileira unica do card [dense]: mudo, transporte, tempo/progresso
+  /// e configuracoes. Mesmos tooltips e acoes do card normal.
+  Widget _denseRow(Duration position, Duration duration, double value,
+      double max, bool isPlaying) {
+    const size = 36.0;
+    const padding = EdgeInsets.all(6);
+    final muted = session.isMuted || session.volume <= 0;
+    return Row(
+      children: [
+        RoundPlayerButton(
+          tooltip: muted ? 'Ativar som' : 'Silenciar',
+          icon: muted ? Icons.volume_off : Icons.volume_up,
+          size: size,
+          padding: padding,
+          onPressed: () => player.setMuted(!session.isMuted),
+        ),
+        RoundPlayerButton(
+          tooltip: 'Retroceder 10 segundos',
+          icon: Icons.replay_10,
+          size: size,
+          padding: padding,
+          onPressed: () => player.seekBy(-AppConstants.seekStep),
+        ),
+        RoundPlayerButton(
+          autofocus: true,
+          tooltip: isPlaying ? 'Pausar' : 'Reproduzir',
+          icon: isPlaying ? Icons.pause : Icons.play_arrow,
+          size: size,
+          padding: padding,
+          onPressed: () => isPlaying ? player.pause() : player.play(),
+        ),
+        RoundPlayerButton(
+          tooltip: 'Avançar 10 segundos',
+          icon: Icons.forward_10,
+          size: size,
+          padding: padding,
+          onPressed: () => player.seekBy(AppConstants.seekStep),
+        ),
+        _TimeLabel(position.timestamp, dense: true),
+        Expanded(
+          child: SliderFocusRing(
+            child: ExitSlider(
+              exit: TraversalDirection.down,
+              child: Slider(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                value: value,
+                max: max <= 0 ? 1 : max,
+                onChanged: max <= 0
+                    ? null
+                    : (v) => player.seek(Duration(milliseconds: v.round())),
+              ),
+            ),
+          ),
+        ),
+        _TimeLabel(duration.timestamp, dense: true),
+        Builder(
+          builder: (anchorContext) => RoundPlayerButton(
+            key: settingsKey,
+            tooltip: 'Configurações',
+            icon: Icons.settings,
+            size: size,
+            padding: padding,
+            onPressed: () => onOpenSettings(anchorContext),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _TimeLabel extends StatelessWidget {
-  const _TimeLabel(this.text);
+  const _TimeLabel(this.text, {this.dense = false});
 
   final String text;
 
+  /// Card de janela baixa: fonte 12 e coluna de 48.
+  final bool dense;
+
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return SizedBox(
-      width: 56,
+      width: dense ? 48 : 56,
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: Theme.of(context)
-            .textTheme
-            .bodyMedium
+        style: (dense ? textTheme.bodySmall : textTheme.bodyMedium)
             ?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
       ),
     );

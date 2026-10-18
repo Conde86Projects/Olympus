@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:window_manager/window_manager.dart';
@@ -13,6 +14,11 @@ abstract class WindowService {
 
   Future<bool> get isFullscreen;
   Future<bool> get isCompact;
+
+  /// Emite a cada minimizar da janela. O player grava a posicao sem
+  /// pausar: no Windows o ciclo de vida do Flutter nao chega como
+  /// `hidden` com o window_manager na frente das mensagens da janela.
+  Stream<void> get minimized;
 }
 
 /// Implementacao real sobre window_manager (Windows/Linux).
@@ -23,11 +29,16 @@ class WindowManagerService with WindowListener implements WindowService {
 
   Size? _restoredSize;
   bool _compact = false;
+  final _minimized = StreamController<void>.broadcast();
 
-  /// Tamanho inicial e minimo da janela (Fase 2).
+  /// Tamanho inicial e minimo da janela (Fase 2). O minimo e o do
+  /// compacto: assistir numa janela pequena e o uso central, e com
+  /// 800x600 o Windows prendia o compacto e o arrasto nesse piso.
+  /// Abaixo de `PlayerControls.denseMaxHeight` o player usa o card de uma
+  /// fileira; menus rolam em vez de estourar.
   static const initialSize = Size(1280, 720);
-  static const minimumSize = Size(800, 600);
   static const compactSize = Size(480, 270);
+  static const minimumSize = compactSize;
 
   /// Aplica a geometria inicial apos o `runApp` (nunca antes: operacoes
   /// de janela antes do primeiro frame deixam a tela branca no Windows).
@@ -63,6 +74,12 @@ class WindowManagerService with WindowListener implements WindowService {
 
   @override
   void onWindowMoved() => _saveBounds();
+
+  @override
+  void onWindowMinimize() => _minimized.add(null);
+
+  @override
+  Stream<void> get minimized => _minimized.stream;
 
   /// Persiste a geometria normal da janela. Ignora tela cheia, maximizada
   /// e modo compacto para nao restaurar um estado transitorio.
@@ -113,6 +130,13 @@ class WindowManagerService with WindowListener implements WindowService {
 class NoOpWindowService implements WindowService {
   bool _fullscreen = false;
   bool _compact = false;
+  final _minimized = StreamController<void>.broadcast();
+
+  /// Testes: simula o minimizar da janela.
+  void simulateMinimize() => _minimized.add(null);
+
+  @override
+  Stream<void> get minimized => _minimized.stream;
 
   @override
   Future<void> setFullscreen(bool enabled) async => _fullscreen = enabled;

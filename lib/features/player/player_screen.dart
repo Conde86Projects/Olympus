@@ -50,8 +50,10 @@ class PlayerScreen extends StatefulWidget {
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> {
+class _PlayerScreenState extends State<PlayerScreen>
+    with WidgetsBindingObserver {
   StreamSubscription<PlaybackSession>? _subscription;
+  StreamSubscription<void>? _minimizedSub;
   PlaybackSession _session = const PlaybackSession();
   Timer? _hideTimer;
   Timer? _resumeTimer;
@@ -155,14 +157,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool get _tvMode =>
       widget.dependencies.preferencesService.current.tvMode;
 
-  /// Cantos na TV: botoes de 36 como a barra (spec 27.6). Null no
-  /// desktop: o desenho atual segue pixel a pixel.
-  double? get _cornerSize => _tvMode ? 36.0 : null;
+  /// Janela baixa no desktop (compacto 480x270, janela pequena): card
+  /// de uma fileira e cantos de 36. Recalculado a cada build; acima do
+  /// limite o desenho do desktop segue pixel a pixel.
+  bool _dense = false;
 
-  /// Respiro dos cantos na TV (glifo de 20 em botao de 36). Null no
-  /// desktop: vale o padrao do botao.
+  /// Cantos na TV e na janela baixa: botoes de 36 como a barra (spec
+  /// 27.6). Null no desktop: o desenho atual segue pixel a pixel.
+  double? get _cornerSize => _tvMode || _dense ? 36.0 : null;
+
+  /// Respiro dos cantos na TV e na janela baixa (glifo de 20 em botao
+  /// de 36). Null no desktop: vale o padrao do botao.
   EdgeInsetsGeometry? get _cornerPadding =>
-      _tvMode ? const EdgeInsets.all(8) : null;
+      _tvMode || _dense ? const EdgeInsets.all(8) : null;
 
   @override
   void initState() {
@@ -237,6 +244,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     // com o foco dentro da subarvore. Handler global, independente
     // de foco; consome a tecla para executar uma unica vez.
     HardwareKeyboard.instance.addHandler(_handleHiddenKeys);
+    WidgetsBinding.instance.addObserver(this);
+    _minimizedSub = widget.dependencies.windowService.minimized
+        .listen((_) => unawaited(_saveSession(pause: false)));
   }
 
   Future<void> _open() async {
@@ -1014,6 +1024,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleHiddenKeys);
+    WidgetsBinding.instance.removeObserver(this);
+    _minimizedSub?.cancel();
     _hideTimer?.cancel();
     _resumeTimer?.cancel();
     _resumeProbeTimer?.cancel();
@@ -1031,6 +1043,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.dispose();
   }
 
+  /// App oculto (`hidden`) ou em segundo plano (`paused`): grava a
+  /// posicao sem pausar. O video segue tocando no minimizado e, se o
+  /// app for encerrado la, a retomada nao se perde. No Windows o
+  /// minimizar chega por [WindowService.minimized] (ver initState).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      unawaited(_saveSession(pause: false));
+    }
+  }
+
   /// Overlay modal de erro ou fim de video no ar (spec 11, 17).
   bool get _overlayUp =>
       _session.status == PlaybackStatus.error ||
@@ -1039,9 +1063,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final next = _nextItem;
-    // Margem segura anti-overscan na TV (spec 27.5); 16 no desktop.
-    final edge =
-        TvLayout.isTv(context) ? TvLayout.safeMarginOf(context) : 16.0;
+    // Margem segura anti-overscan na TV (spec 27.5); 16 no desktop e
+    // 8 na janela baixa.
+    _dense = !_tvMode &&
+        MediaQuery.sizeOf(context).height < PlayerControls.denseMaxHeight;
+    final edge = TvLayout.isTv(context)
+        ? TvLayout.safeMarginOf(context)
+        : (_dense ? 8.0 : 16.0);
     // Toda saida pela navegacao (X dos cantos, gesto, voltar do
     // sistema/TV, Q) passa por aqui: salva a sessao antes de fechar
     // (spec 11, 19). O Esc passa pelo _onBack e cai aqui no fim.
@@ -1259,6 +1287,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                     onOpenSettings: _openSettings,
                                     videoTitle: _currentItem.title,
                                     settingsKey: _settingsKey,
+                                    dense: _dense,
                                   ),
                                 ),
                               ),
@@ -1735,7 +1764,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// sem duracao) sobre uma retomada anterior, tambem nao registra:
   /// preserva o ponto salvo (abertura falhada na TV). Estreia sem
   /// progresso registra normal (visita aparece no historico).
-  Future<void> _saveSession() async {
+  /// [pause] falso so grava (minimizar): a reproducao continua.
+  Future<void> _saveSession({bool pause = true}) async {
     // Posição HLS não verificada (retomada ou troca): nunca marca
     // concluído nem sobrescreve o histórico com o ponto errado —
     // só pausa e mantém o ponto salvo anterior.
@@ -1745,7 +1775,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _probeHlsResume(widget.dependencies.playerService, 'history-protect',
           'keptMs=${kept?.position?.inMilliseconds ?? 'none'} '
           'completed=${kept?.completed ?? 'none'}');
-      await widget.dependencies.playerService.pause();
+      if (pause) await widget.dependencies.playerService.pause();
       return;
     }
     // Le o motor (fresco), nao o espelho: no BACK o evento de erro pode
@@ -1787,7 +1817,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ));
       }
     }
-    await widget.dependencies.playerService.pause();
+    if (pause) await widget.dependencies.playerService.pause();
   }
 }
 

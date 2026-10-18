@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:player/app/theme.dart';
+import 'package:player/widgets/scroll_when_short.dart';
 
 /// Estado vazio ou de erro com icone, titulo, mensagem e acoes (spec 8).
 /// Nunca uma tela em branco.
@@ -19,6 +20,11 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Janela baixa (compacto ~480x270): rola em vez de estourar.
+    return ScrollWhenShort(child: _content(context));
+  }
+
+  Widget _content(BuildContext context) {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
