@@ -83,6 +83,14 @@ class OnboardingScreen extends StatelessWidget {
     final prefs = dependencies.preferencesService;
     await prefs.update(prefs.current.copyWith(showOnboarding: false));
     if (!context.mounted) return;
-    Navigator.of(context).pushReplacementNamed(route, arguments: arguments);
+    // A rota inicial '/onboarding' monta um '/' escondido por baixo.
+    // Indo ao Inicio, troca tudo por ele (senao ficavam dois Inicios e
+    // o voltar levava ao de baixo); indo a outra tela, o Inicio de
+    // baixo fica como destino do voltar.
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      route,
+      (r) => route != AppRoutes.home && r.settings.name == AppRoutes.home,
+      arguments: arguments,
+    );
   }
 }

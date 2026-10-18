@@ -35,14 +35,14 @@ class _SeekPlayer extends NoOpMediaPlayerService {
 }
 
 class _Harness {
-  _Harness({this.mobile = true, bool tvMode = false})
+  _Harness({this.mobile = true, bool tvMode = false, bool onboarding = false})
       : preferences = InMemoryPreferencesService(),
         library = InMemoryLibraryService(),
         history = InMemoryHistoryService(),
         guard = StartupGuard(InMemoryLocalStore()),
         addons = LocalAddonService(InMemoryLocalStore()) {
     preferences.update(preferences.current
-        .copyWith(showOnboarding: false, tvMode: tvMode));
+        .copyWith(showOnboarding: onboarding, tvMode: tvMode));
   }
 
   final bool mobile;
@@ -84,11 +84,12 @@ final _item = MediaItem(
 );
 
 Future<_Harness> _boot(WidgetTester tester, Size size,
-    {bool mobile = true, bool tvMode = false}) async {
+    {bool mobile = true, bool tvMode = false, bool onboarding = false}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
-  final harness = _Harness(mobile: mobile, tvMode: tvMode);
+  final harness =
+      _Harness(mobile: mobile, tvMode: tvMode, onboarding: onboarding);
   await tester.pumpWidget(harness.app);
   await tester.pumpAndSettle();
   return harness;
@@ -138,6 +139,36 @@ void main() {
           tester.widget<NavigationBar>(find.byType(NavigationBar))
               .selectedIndex,
           0);
+    });
+
+    // Regressao (emulador): a rota inicial '/onboarding' deixava um
+    // Inicio escondido por baixo; "Comecar" empilhava outro e as abas
+    // mostravam a seta de voltar.
+    testWidgets('depois da apresentacao, abas sem seta de voltar',
+        (tester) async {
+      await _boot(tester, _portrait, onboarding: true);
+      await tester.tap(find.text('Começar'));
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(
+          Navigator.of(tester.element(find.byType(MobileShell))).canPop(),
+          isFalse);
+      for (final label in const ['Biblioteca', 'Add-ons', 'Ajustes']) {
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        expect(find.byType(BackButton), findsNothing, reason: label);
+      }
+    });
+
+    testWidgets('apresentacao -> Abrir video volta ao Inicio',
+        (tester) async {
+      await _boot(tester, _portrait, onboarding: true);
+      await tester.tap(find.text('Abrir vídeo'));
+      await tester.pumpAndSettle();
+      expect(find.text('Abrir vídeo'), findsWidgets);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsOneWidget);
     });
 
     testWidgets('alvos de toque da barra com pelo menos 48', (tester) async {
