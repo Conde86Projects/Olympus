@@ -8,6 +8,7 @@ import 'package:player/core/storage/local_store.dart';
 import 'package:player/features/home/mobile_shell.dart';
 import 'package:player/widgets/focusable_button.dart';
 import 'package:player/widgets/player_controls.dart';
+import 'package:player/widgets/tv_player_controls.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/services/diagnostics_service.dart';
 import 'package:player/services/history_service.dart';
@@ -183,6 +184,20 @@ void main() {
     });
   });
 
+  // Regressao (emulador): telas abertas por cima das abas (instalar
+  // add-on, detalhes, catalogo) desenhavam o fim do conteudo embaixo da
+  // barra de gestos do Android.
+  testWidgets('tela por cima das abas respeita a barra de gestos',
+      (tester) async {
+    tester.view.padding = const FakeViewPadding(bottom: 48);
+    await _boot(tester, _portrait);
+    final context = tester.element(find.byType(MobileShell));
+    Navigator.of(context).pushNamed(AppRoutes.settings);
+    await tester.pumpAndSettle();
+    final list = tester.getRect(find.byType(Scrollable).last);
+    expect(list.bottom, lessThanOrEqualTo(_portrait.height - 48));
+  });
+
   group('TV e desktop nao mudam', () {
     testWidgets('desktop: Home com acoes no topo, sem barra inferior',
         (tester) async {
@@ -246,6 +261,16 @@ void main() {
         expect(card.top, greaterThan(corner.bottom));
       });
     }
+
+    // Sem D-pad no celular: nunca a barra da TV (navegada por setas),
+    // sempre o card de toque. Hover so existe com mouse e nao e
+    // necessario: o toque alterna os controles.
+    testWidgets('celular usa o card de toque, nunca a barra da TV',
+        (tester) async {
+      await openPlayer(tester, _portrait);
+      expect(find.byType(TvPlayerControls), findsNothing);
+      expect(find.byType(PlayerControls), findsOneWidget);
+    });
 
     testWidgets('toque alterna os controles', (tester) async {
       await openPlayer(tester, _portrait);
