@@ -54,6 +54,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     with WidgetsBindingObserver {
   StreamSubscription<PlaybackSession>? _subscription;
   StreamSubscription<void>? _minimizedSub;
+
+  /// Gravacao no X do sistema (Windows). Referencia estavel para
+  /// remover so a deste player no dispose.
+  late final Future<void> Function() _saveOnWindowClose = _saveSession;
   PlaybackSession _session = const PlaybackSession();
   Timer? _hideTimer;
   Timer? _resumeTimer;
@@ -247,6 +251,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     WidgetsBinding.instance.addObserver(this);
     _minimizedSub = widget.dependencies.windowService.minimized
         .listen((_) => unawaited(_saveSession(pause: false)));
+    widget.dependencies.windowService.addBeforeClose(_saveOnWindowClose);
   }
 
   Future<void> _open() async {
@@ -1026,6 +1031,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     HardwareKeyboard.instance.removeHandler(_handleHiddenKeys);
     WidgetsBinding.instance.removeObserver(this);
     _minimizedSub?.cancel();
+    widget.dependencies.windowService.removeBeforeClose(_saveOnWindowClose);
     _hideTimer?.cancel();
     _resumeTimer?.cancel();
     _resumeProbeTimer?.cancel();

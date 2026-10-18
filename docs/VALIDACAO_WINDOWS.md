@@ -57,8 +57,14 @@ configurações, o card de desktop intacto a partir de 420 de altura,
 minimizar gravando a posição e a sequência compacto → minimizar → sair
 → fechar sem erro.
 
+## Fechar pelo X do Windows (18/10/2026)
+
+Antes, fechar a janela pelo X com o player aberto perdia a posição.
+Agora a janela usa `setPreventClose`: o X roda as tarefas de
+fechamento (o player grava a posição, com teto de 2 s) e só então
+destrói a janela. No app: vídeo aberto em 0:30, X depois de ~12 s, o
+app fechou e o histórico ficou em 0:41.
+
 ## Pendências
 
-- Fechar a janela pelo X do Windows com o player aberto ainda não
-  grava a posição (não há `setPreventClose`). Fica para outra rodada.
 - Não testado num monitor 1080p de verdade nem em 100%/150% de escala.
