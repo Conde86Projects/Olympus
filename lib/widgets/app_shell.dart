@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/tv_mode.dart';
 import 'package:player/core/constants/app_constants.dart';
 
@@ -34,7 +35,15 @@ class AppShell extends StatelessWidget {
         title: Text(title),
         actions: actions,
       ),
-      body: LayoutBuilder(
+      // Celular: telas abertas por cima das abas reservam a barra de
+      // gestos e o recorte da camera (o fim da lista e botoes como
+      // Instalar ficavam embaixo dela). Desktop e TV nao tem inset.
+      body: SafeArea(
+        top: false,
+        left: MobileMode.of(context),
+        right: MobileMode.of(context),
+        bottom: MobileMode.of(context),
+        child: LayoutBuilder(
         builder: (context, constraints) {
           final margin = marginFor(
             constraints.maxWidth,
@@ -54,6 +63,7 @@ class AppShell extends StatelessWidget {
             ),
           );
         },
+      ),
       ),
     );
   }
