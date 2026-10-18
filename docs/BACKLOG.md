@@ -256,3 +256,13 @@ Honestas e registradas, sem bloquear a revisão:
   das trocas validadas e está coberto por 8 testes novos
   (`test/hls_switch_position_test.dart`). Suíte 512/512 e
   `dart analyze` limpo.
+
+## Melhorias futuras (mobile, 18/10/2026)
+
+- Mobile: controle visual de volume ou gesto vertical.
+  Status: melhoria futura. Não bloqueia a versão atual.
+  Hoje no celular: botão de mudo no card e botões físicos do
+  aparelho (aceito para a primeira versão mobile). Em retrato o
+  card não tem espaço para a barra de volume; entrar sem mexer no
+  layout aprovado (ex.: gesto vertical na metade direita do vídeo
+  ou barra no painel de configurações).
