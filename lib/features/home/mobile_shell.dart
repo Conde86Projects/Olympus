@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/theme.dart';
 import 'package:player/features/addons/addons_screen.dart';
 import 'package:player/features/favorites/favorites_screen.dart';
 import 'package:player/features/home/home_screen.dart';
@@ -90,10 +91,19 @@ class _MobileShellState extends State<MobileShell> {
               _visited.contains(i) ? _page(i) : const SizedBox.shrink(),
           ],
         ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _index,
-          onDestinationSelected: _select,
-          destinations: MobileShell.destinations,
+        // Aba ativa na cor de destaque do app (o padrao do Material
+        // saia verde-agua, fora da paleta).
+        bottomNavigationBar: NavigationBarTheme(
+          data: NavigationBarThemeData(
+            indicatorColor: PlayerTheme.accent.withValues(alpha: 0.35),
+            iconTheme: const WidgetStatePropertyAll(
+                IconThemeData(color: PlayerTheme.primaryText)),
+          ),
+          child: NavigationBar(
+            selectedIndex: _index,
+            onDestinationSelected: _select,
+            destinations: MobileShell.destinations,
+          ),
         ),
       ),
     );
