@@ -211,6 +211,33 @@ void main() {
     expect(find.text('Continuar assistindo'), findsOneWidget);
   });
 
+  group('fechar pelo X do Windows', () {
+    testWidgets('grava a posicao antes de a janela fechar', (tester) async {
+      final harness = await _boot(tester, const Size(1264, 681));
+      await _openPlayer(tester, harness);
+      expect(harness.history.entries, isEmpty);
+
+      await harness.windows.simulateClose();
+      await tester.pumpAndSettle();
+
+      expect(harness.history.entries, hasLength(1));
+      expect(harness.history.entries.single.mediaId, _item.id);
+    });
+
+    testWidgets('fora do player o X nao grava nada', (tester) async {
+      final harness = await _boot(tester, const Size(1264, 681));
+      await _openPlayer(tester, harness);
+      await tester.tap(find.byTooltip('Fechar'));
+      await tester.pumpAndSettle();
+      final saved = harness.history.entries.single.accessedAt;
+
+      // O player saiu: a tarefa dele foi removida (nenhuma gravacao nova).
+      await harness.windows.simulateClose();
+      await tester.pumpAndSettle();
+      expect(harness.history.entries.single.accessedAt, saved);
+    });
+  });
+
   group('minimizar', () {
     testWidgets('janela minimizada grava a posicao e segue no player',
         (tester) async {

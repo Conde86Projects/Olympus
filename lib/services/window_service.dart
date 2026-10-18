@@ -19,6 +19,11 @@ abstract class WindowService {
   /// pausar: no Windows o ciclo de vida do Flutter nao chega como
   /// `hidden` com o window_manager na frente das mensagens da janela.
   Stream<void> get minimized;
+
+  /// Tarefa rodada antes de a janela fechar pelo X do sistema (o
+  /// player grava a posicao). Remover com [removeBeforeClose].
+  void addBeforeClose(Future<void> Function() task);
+  void removeBeforeClose(Future<void> Function() task);
 }
 
 /// Implementacao real sobre window_manager (Windows/Linux).
@@ -30,6 +35,10 @@ class WindowManagerService with WindowListener implements WindowService {
   Size? _restoredSize;
   bool _compact = false;
   final _minimized = StreamController<void>.broadcast();
+  final _beforeClose = <Future<void> Function()>[];
+
+  /// Teto para as tarefas de fechamento: a janela nunca fica presa.
+  static const closeTimeout = Duration(seconds: 2);
 
   /// Tamanho inicial e minimo da janela (Fase 2). O minimo e o do
   /// compacto: assistir numa janela pequena e o uso central, e com
@@ -52,6 +61,8 @@ class WindowManagerService with WindowListener implements WindowService {
   }) async {
     await windowManager.ensureInitialized();
     windowManager.addListener(this);
+    // O X do sistema passa pelo onWindowClose: grava antes de destruir.
+    await windowManager.setPreventClose(true);
     final size = restoredBounds?.size ?? initialSize;
     await windowManager.waitUntilReadyToShow(
       WindowOptions(
@@ -80,6 +91,29 @@ class WindowManagerService with WindowListener implements WindowService {
 
   @override
   Stream<void> get minimized => _minimized.stream;
+
+  @override
+  void addBeforeClose(Future<void> Function() task) => _beforeClose.add(task);
+
+  @override
+  void removeBeforeClose(Future<void> Function() task) =>
+      _beforeClose.remove(task);
+
+  @override
+  void onWindowClose() => unawaited(_close());
+
+  /// Roda as tarefas (com teto) e so entao destroi a janela. Erro ou
+  /// demora numa tarefa nunca impede o fechamento.
+  Future<void> _close() async {
+    try {
+      await Future.wait([
+        for (final task in List.of(_beforeClose))
+          task().timeout(closeTimeout).catchError((_) {}),
+      ]);
+    } finally {
+      await windowManager.destroy();
+    }
+  }
 
   /// Persiste a geometria normal da janela. Ignora tela cheia, maximizada
   /// e modo compacto para nao restaurar um estado transitorio.
@@ -132,8 +166,24 @@ class NoOpWindowService implements WindowService {
   bool _compact = false;
   final _minimized = StreamController<void>.broadcast();
 
+  final _beforeClose = <Future<void> Function()>[];
+
   /// Testes: simula o minimizar da janela.
   void simulateMinimize() => _minimized.add(null);
+
+  /// Testes: simula o X do sistema (roda as tarefas de fechamento).
+  Future<void> simulateClose() async {
+    for (final task in List.of(_beforeClose)) {
+      await task();
+    }
+  }
+
+  @override
+  void addBeforeClose(Future<void> Function() task) => _beforeClose.add(task);
+
+  @override
+  void removeBeforeClose(Future<void> Function() task) =>
+      _beforeClose.remove(task);
 
   @override
   Stream<void> get minimized => _minimized.stream;
