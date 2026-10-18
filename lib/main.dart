@@ -131,6 +131,7 @@ Future<void> _boot(void Function(StartupGuard) onGuard) async {
       addonService: addons,
       startupGuard: guard,
       diagnosticsService: diagnostics,
+      mobilePlatform: Platform.isAndroid || Platform.isIOS,
     ),
   );
   // Arranque concluido no primeiro frame: zera as falhas. Se a

@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/extensions/duration_extensions.dart';
@@ -91,7 +92,8 @@ class PlayerControls extends StatelessWidget {
               ],
             ),
             child: dense
-                ? _denseRow(position, duration, value, max, isPlaying)
+                ? _denseRow(
+                    context, position, duration, value, max, isPlaying)
                 : Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -193,10 +195,12 @@ class PlayerControls extends StatelessWidget {
 
   /// Fileira unica do card [dense]: mudo, transporte, tempo/progresso
   /// e configuracoes. Mesmos tooltips e acoes do card normal.
-  Widget _denseRow(Duration position, Duration duration, double value,
-      double max, bool isPlaying) {
-    const size = 36.0;
-    const padding = EdgeInsets.all(6);
+  Widget _denseRow(BuildContext context, Duration position,
+      Duration duration, double value, double max, bool isPlaying) {
+    // Celular em paisagem tambem cai aqui (altura < 420): alvos de 48.
+    final touch = MobileMode.of(context);
+    final size = touch ? MobileMode.minTouchTarget : 36.0;
+    final padding = EdgeInsets.all(touch ? 12 : 6);
     final muted = session.isMuted || session.volume <= 0;
     return Row(
       children: [

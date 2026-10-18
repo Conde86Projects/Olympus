@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/tv_mode.dart';
 
 /// Classe de largura logica (spec 27.4). A decisao de layout usa a
@@ -165,9 +166,12 @@ abstract final class TvLayout {
   static TvLayoutTokens tokensOf(BuildContext context) =>
       TvLayoutTokens.forClass(widthClassOf(context));
 
-  /// Alvo minimo de toque: tokens na TV, 44 no desktop (spec 3.4).
-  static double minTarget(BuildContext context) =>
-      isTv(context) ? tokensOf(context).controlHeight : 44.0;
+  /// Alvo minimo de toque: tokens na TV, 48 no celular, 44 no
+  /// desktop (spec 3.4).
+  static double minTarget(BuildContext context) {
+    if (isTv(context)) return tokensOf(context).controlHeight;
+    return MobileMode.of(context) ? MobileMode.minTouchTarget : 44.0;
+  }
 
   /// Espaco base (paddings e gaps): fator por classe na TV, 1.0 fora.
   static double spacing(BuildContext context, double base) {

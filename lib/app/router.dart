@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/features/addons/addon_details_screen.dart';
 import 'package:player/features/addons/addon_install_screen.dart';
@@ -10,6 +11,7 @@ import 'package:player/features/diagnostics/diagnostics_screen.dart';
 import 'package:player/features/favorites/favorites_screen.dart';
 import 'package:player/features/history/history_screen.dart';
 import 'package:player/features/home/home_screen.dart';
+import 'package:player/features/home/mobile_shell.dart';
 import 'package:player/features/library/library_screen.dart';
 import 'package:player/features/onboarding/onboarding_screen.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
@@ -26,8 +28,11 @@ abstract final class AppRouter {
   }) {
     switch (settings.name) {
       case AppRoutes.home:
+        // Celular: navegacao inferior; desktop e TV seguem na Home.
         return MaterialPageRoute(
-          builder: (_) => HomeScreen(dependencies: dependencies),
+          builder: (context) => MobileMode.of(context)
+              ? MobileShell(dependencies: dependencies)
+              : HomeScreen(dependencies: dependencies),
           settings: settings,
         );
       case AppRoutes.player:

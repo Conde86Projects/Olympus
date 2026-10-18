@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/app/tv_layout.dart';
@@ -166,14 +167,36 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// limite o desenho do desktop segue pixel a pixel.
   bool _dense = false;
 
+  /// Celular ([MobileMode]): toque, sem hover nem D-pad. Recalculado a
+  /// cada build. Cantos de 48, toque alterna os controles, toque duplo
+  /// nas laterais busca 10 s, tela cheia imersiva em paisagem.
+  bool _mobile = false;
+
+  /// Rotulo rapido do toque duplo ("-10 s"/"+10 s") e o lado dele.
+  String? _seekFlash;
+  bool _seekFlashLeft = false;
+  Timer? _seekFlashTimer;
+
+  /// Ponto do ultimo toque duplo (decide o lado da busca).
+  Offset? _doubleTapAt;
+
   /// Cantos na TV e na janela baixa: botoes de 36 como a barra (spec
-  /// 27.6). Null no desktop: o desenho atual segue pixel a pixel.
-  double? get _cornerSize => _tvMode || _dense ? 36.0 : null;
+  /// 27.6); 48 no celular. Null no desktop: o desenho atual segue
+  /// pixel a pixel.
+  double? get _cornerSize {
+    if (_tvMode) return 36.0;
+    if (_mobile) return MobileMode.minTouchTarget;
+    return _dense ? 36.0 : null;
+  }
 
   /// Respiro dos cantos na TV e na janela baixa (glifo de 20 em botao
-  /// de 36). Null no desktop: vale o padrao do botao.
-  EdgeInsetsGeometry? get _cornerPadding =>
-      _tvMode || _dense ? const EdgeInsets.all(8) : null;
+  /// de 36); 12 no celular (glifo de 24 em 48). Null no desktop: vale
+  /// o padrao do botao.
+  EdgeInsetsGeometry? get _cornerPadding {
+    if (_tvMode) return const EdgeInsets.all(8);
+    if (_mobile) return const EdgeInsets.all(12);
+    return _dense ? const EdgeInsets.all(8) : null;
+  }
 
   @override
   void initState() {
@@ -1031,6 +1054,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     HardwareKeyboard.instance.removeHandler(_handleHiddenKeys);
     WidgetsBinding.instance.removeObserver(this);
     _minimizedSub?.cancel();
+    _seekFlashTimer?.cancel();
+    // Saiu do player em tela cheia no celular: devolve barras e giro.
+    if (_mobile && _fullscreen) unawaited(_applyMobileFullscreen(false));
     widget.dependencies.windowService.removeBeforeClose(_saveOnWindowClose);
     _hideTimer?.cancel();
     _resumeTimer?.cancel();
@@ -1073,6 +1099,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     // 8 na janela baixa.
     _dense = !_tvMode &&
         MediaQuery.sizeOf(context).height < PlayerControls.denseMaxHeight;
+    _mobile = !_tvMode && MobileMode.of(context);
     final edge = TvLayout.isTv(context)
         ? TvLayout.safeMarginOf(context)
         : (_dense ? 8.0 : 16.0);
@@ -1127,11 +1154,22 @@ class _PlayerScreenState extends State<PlayerScreen>
               child: MouseRegion(
                 onHover: (_) => _poke(),
                 child: GestureDetector(
-                  onTap: _poke,
+                  // Celular: toque alterna os controles. Desktop segue
+                  // com o clique so reexibindo.
+                  onTap: _mobile ? _toggleControlsByTouch : _poke,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      _VideoArea(
+                      // Toque duplo (celular) so no video: nos botoes ele
+                      // seguraria cada toque 300 ms. Com aviso na tela
+                      // (erro, fim, Ver de novo) desliga pelo mesmo motivo.
+                      GestureDetector(
+                        onDoubleTapDown: _mobile && !modalUp
+                            ? (d) => _doubleTapAt = d.localPosition
+                            : null,
+                        onDoubleTap:
+                            _mobile && !modalUp ? _seekByDoubleTap : null,
+                        child: _VideoArea(
                         player: widget.dependencies.playerService,
                         session: _session,
                         isLocal:
@@ -1167,6 +1205,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                         onDismissReplay: () =>
                             setState(() => _replayOffer = false),
                       ),
+                      ),
+                      if (_seekFlash != null)
+                        _SeekFlash(
+                            label: _seekFlash!, left: _seekFlashLeft),
                       // Cantos flutuantes (Showtime): tela cheia a esquerda;
                       // cinema, compacto, favorito e fechar a direita. Mesma
                       // regra da AppBar antiga (escopo proprio, politica
@@ -1212,6 +1254,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                                         padding: _cornerPadding,
                                         onPressed: _toggleCinema,
                                       ),
+                                      // Compacto e janela do desktop: no
+                                      // celular nao ha janela a encolher.
+                                      if (!_mobile)
                                       RoundPlayerButton(
                                         tooltip: _compact
                                             ? 'Sair do modo compacto'
@@ -1460,9 +1505,52 @@ class _PlayerScreenState extends State<PlayerScreen>
     });
   }
 
+  /// Toque no video (celular): oculta se visivel, reexibe se oculto.
+  void _toggleControlsByTouch() {
+    if (_controlsVisible && !_panelOpen && !_overlayUp) {
+      _hideTimer?.cancel();
+      setState(() => _controlsVisible = false);
+    } else {
+      _poke();
+    }
+  }
+
+  /// Toque duplo (celular): metade esquerda volta, direita avanca.
+  void _seekByDoubleTap() {
+    final at = _doubleTapAt;
+    if (at == null || _overlayUp) return;
+    final width = MediaQuery.sizeOf(context).width;
+    final back = at.dx < width / 2;
+    final player = widget.dependencies.playerService;
+    player.seekBy(back ? -AppConstants.seekStep : AppConstants.seekStep);
+    final seconds = AppConstants.seekStep.inSeconds;
+    _seekFlashTimer?.cancel();
+    setState(() {
+      _seekFlash = back ? '-$seconds s' : '+$seconds s';
+      _seekFlashLeft = back;
+    });
+    _seekFlashTimer = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) setState(() => _seekFlash = null);
+    });
+  }
+
+  /// Celular em tela cheia: barras do sistema escondidas e paisagem.
+  /// Fora dela, barras de volta e qualquer orientacao.
+  Future<void> _applyMobileFullscreen(bool enabled) async {
+    await SystemChrome.setEnabledSystemUIMode(
+        enabled ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge);
+    await SystemChrome.setPreferredOrientations(enabled
+        ? const [
+            DeviceOrientation.landscapeLeft,
+            DeviceOrientation.landscapeRight,
+          ]
+        : const []);
+  }
+
   Future<void> _toggleFullscreen() async {
     final next = !_fullscreen;
     await widget.dependencies.windowService.setFullscreen(next);
+    if (_mobile) await _applyMobileFullscreen(next);
     if (!mounted) return;
     setState(() {
       _fullscreen = next;
@@ -2251,6 +2339,37 @@ class _TvCornerIcons extends StatelessWidget {
     return IconTheme(
       data: const IconThemeData(size: 20),
       child: child,
+    );
+  }
+}
+
+/// Rotulo do toque duplo no celular ("-10 s" a esquerda, "+10 s" a
+/// direita). So desenha: nao recebe toques.
+class _SeekFlash extends StatelessWidget {
+  const _SeekFlash({required this.label, required this.left});
+
+  final String label;
+  final bool left;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Align(
+        alignment: left ? const Alignment(-0.6, 0) : const Alignment(0.6, 0),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
