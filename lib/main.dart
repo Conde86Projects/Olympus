@@ -13,6 +13,7 @@ import 'package:player/services/media_kit_player_service.dart';
 import 'package:player/services/persistent_history_service.dart';
 import 'package:player/services/persistent_library_service.dart';
 import 'package:player/services/shared_preferences_service.dart';
+import 'package:player/services/sources/owned_test_source.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/services/supervised_player_service.dart';
 import 'package:player/services/tv_info_service.dart';
@@ -70,7 +71,12 @@ Future<void> _boot(void Function(StartupGuard) onGuard) async {
 
   final library = PersistentLibraryService(store);
   final history = PersistentHistoryService(store);
-  final addons = LocalAddonService(store);
+  // Fonte propria de smoke (Fase 2): so atua no host do feed
+  // publicado; o resto do app nao muda.
+  final addons = LocalAddonService(
+    store,
+    adapters: const [OwnedTestSourceAdapter()],
+  );
   await Future.wait([library.load(), history.load()]);
   if (!guard.safeMode) {
     await addons.load();

@@ -158,6 +158,17 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
                       icon: Icons.refresh,
                       onPressed: _busy ? null : () => _refresh(info),
                     ),
+                  if (hasFeed && info.state == AddonState.active)
+                    FocusableButton(
+                      label: 'Abrir catálogo',
+                      icon: Icons.video_library_outlined,
+                      onPressed: _busy
+                          ? null
+                          : () => Navigator.of(context).pushNamed(
+                                AppRoutes.sourceCatalog,
+                                arguments: info.manifest.id,
+                              ),
+                    ),
                   FocusableButton(
                     label: 'Remover',
                     icon: Icons.delete_outline,
@@ -166,6 +177,8 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
                 ],
               ),
               const SizedBox(height: 8),
+              if (hasFeed && info.state != AddonState.active)
+                const Text('Ative a fonte para abrir o catálogo.'),
               const Divider(),
               _Row(
                   title: 'Descrição', value: info.manifest.description),

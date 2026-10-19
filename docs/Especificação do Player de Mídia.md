@@ -548,6 +548,54 @@ Até essas medidas existirem, a aplicação deverá aceitar fontes desconhecidas
 - A fonte pode ser desativada e removida sem apagar a biblioteca local.
 - A fonte não executa código arbitrário somente por fornecer JSON.
 
+### 6.1.2 Tela de catálogo da fonte
+
+O catálogo disponibilizado por uma fonte ativa deverá ser navegável dentro do aplicativo. Não basta instalar, aprovar e atualizar a fonte: o usuário deverá conseguir visualizar os itens retornados e abrir um item para reprodução.
+
+#### Fluxo mínimo
+
+```text
+Fontes
+→ escolher fonte ativa
+→ abrir catálogo
+→ listar itens válidos
+→ selecionar item
+→ abrir detalhes rápidos
+→ Reproduzir
+→ resolver mídia pelo adaptador
+→ abrir o player
+```
+
+#### Requisitos da tela
+
+- A tela deverá mostrar o nome da fonte e o estado da última atualização.
+- Somente itens aceitos pelo parser deverão ser exibidos.
+- Cada item deverá mostrar título e, quando disponíveis, miniatura, descrição, duração e qualidades.
+- A ausência de miniatura deverá usar placeholder sem quebrar o card.
+- O estado vazio deverá informar que a fonte não possui itens válidos.
+- Erro de atualização deverá mostrar diagnóstico da fonte sem bloquear as demais fontes.
+- O usuário deverá conseguir atualizar o catálogo novamente.
+- O usuário deverá conseguir selecionar um item com mouse, teclado ou D-pad, conforme a plataforma.
+- O item selecionado deverá possuir foco visível na TV.
+- A ação **Reproduzir** deverá chamar `resolvePlayback` e abrir o player com o item correto.
+- O ID, título, pôster, qualidades e metadados deverão acompanhar a resolução para o player e o histórico.
+- A falha ao resolver ou abrir a mídia deverá usar o erro controlado existente e não travar a tela do catálogo.
+- O catálogo deverá respeitar paginação e busca quando o adaptador informar que são suportadas.
+- A tela não deverá executar código recebido da fonte; deverá consumir somente dados compatíveis.
+
+#### Critérios de aceitação
+
+- Após aprovar e ativar uma fonte, o usuário encontra uma ação clara para abrir seu catálogo.
+- O item `mux-smoke` ou equivalente aparece quando está presente no feed válido.
+- Selecionar o item abre uma prévia ou detalhe rápido com ação **Reproduzir**.
+- **Reproduzir** abre o player pelo fluxo normal, sem exigir colar a URL manualmente.
+- O player recebe o mesmo ID do item e preserva histórico, miniatura, duração e qualidades.
+- Feed vazio mostra estado vazio compreensível.
+- Itens inválidos não aparecem na lista quando itens válidos existem.
+- Falha de mídia mostra erro controlado e mantém o catálogo navegável.
+- A navegação por D-pad usa foco previsível, OK confirma e voltar retorna ao catálogo.
+- A fonte desativada não disponibiliza itens para reprodução até ser ativada novamente.
+
 ### Formas de instalação previstas
 
 1. **Repositório autorizado:** lista de add-ons mantida em um endereço confiável.
