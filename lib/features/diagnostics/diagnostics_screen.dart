@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:player/widgets/tv_switch_theme.dart';
+import 'package:player/widgets/app_switch_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/tv_layout.dart';
@@ -192,7 +192,7 @@ class _SafeModeCard extends StatelessWidget {
             Text('Modo seguro', style: theme.textTheme.titleMedium),
             AnimatedBuilder(
               animation: guard,
-              builder: (context, _) => TvSwitchTheme(
+              builder: (context, _) => AppSwitchTheme(
                 child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Ativar modo seguro'),

@@ -2,11 +2,11 @@
 
 > Player de mídia minimalista, bonito e eficiente, inspirado na simplicidade do Showtime e na flexibilidade dos players com extensões.
 
-**Versão atual:** `0.1.0-rc.1`  
+**Versão atual:** `0.2.0`  
 **Codinome do projeto:** `Olympus`  
 **Tecnologia principal:** Flutter / Dart  
 **Interface inicial:** Português do Brasil  
-**Status:** Release Candidate 1 em validação
+**Status:** marco 0.2.0 validado em Windows, TV (TCL) e celular físico
 
 ---
 
@@ -34,6 +34,12 @@ O projeto prioriza:
 
 ## Estado atual
 
+Marco 0.2.0 (19/10/2026): composição mobile, janela pequena no
+Windows, catálogo da fonte própria, saída direta do vídeo no
+Android/TV, menus compactos da TV e padrão visual único. Detalhes em
+`docs/RELEASE_v0.2.0_CHECKLIST.md`; visual em
+`docs/PADROES_VISUAIS.md`.
+
 ```text
 Scaffold Flutter                         concluído
 Interface principal                      concluída
@@ -47,11 +53,15 @@ Credenciais seguras                      preparadas
 Miniaturas e pôsteres                    concluídos
 Qualidades dinâmicas                     concluídas
 Refinamento de UX                        concluído
-Testes automatizados                     394/394 aprovados
+Composição mobile (celular)              concluída
+Saída direta de vídeo (Android/TV)       concluída
+Padrão visual único (TV/desktop/celular) concluído
+Testes automatizados                     verdes (ver checklist 0.2.0)
 flutter analyze                          limpo
 Provider real                            não conectado
-Validação visual Windows                 pendente do ambiente
-Validação em TV física                   fase posterior
+Validação Windows                        concluída (0.2.0)
+Validação em TV física (TCL)             concluída (0.2.0)
+Validação em celular físico              concluída (0.2.0)
 ```
 
 O adaptador demo é usado para validar o fluxo de fontes sem depender de um serviço externo. Nenhum provider real deve ser inventado ou conectado sem URL, formato, autorização e testes específicos.

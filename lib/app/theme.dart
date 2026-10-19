@@ -104,12 +104,13 @@ abstract final class PlayerTheme {
     );
   }
 
-  /// Interruptor discreto na TV: o Switch do Material 3 tem 52x32
-  /// fixos (sem parametro de tamanho) e, com trilho azul cheio,
-  /// chamava mais atencao que o texto. Na TV usamos o desenho
-  /// classico (trilho 33x14, dedao 20) com cores neutras; aplicado so
-  /// ao redor dos interruptores via [TvSwitchTheme].
-  static ThemeData tvSwitch(ThemeData base) => base.copyWith(
+  /// Interruptor padrão do app (TV, desktop e celular): o Switch do
+  /// Material 3 tem 52x32 fixos (sem parametro de tamanho) e, com
+  /// trilho azul cheio, chamava mais atencao que o texto. Usamos o
+  /// desenho classico (trilho 33x14, dedao 20) com cores neutras,
+  /// aprovado na TV e estendido as demais plataformas (19/10/2026);
+  /// aplicado ao redor dos interruptores via [AppSwitchTheme].
+  static ThemeData appSwitch(ThemeData base) => base.copyWith(
         // So o desenho do Switch muda; sem alternativa nao depreciada.
         // ignore: deprecated_member_use
         useMaterial3: false,
@@ -124,6 +125,16 @@ abstract final class PlayerTheme {
                 ? accent.withValues(alpha: 0.4)
                 : Colors.white.withValues(alpha: 0.15),
           ),
+        ),
+        // O modo classico tambem troca o texto da linha (titulo em
+        // negrito do M2). Fixa o estilo atual (M3) para a linha com
+        // interruptor ficar igual as demais; na TV os menus compactos
+        // ja definem os seus e prevalecem.
+        listTileTheme: base.listTileTheme.copyWith(
+          titleTextStyle: base.listTileTheme.titleTextStyle ??
+              base.textTheme.bodyLarge,
+          subtitleTextStyle: base.listTileTheme.subtitleTextStyle ??
+              base.textTheme.bodyMedium,
         ),
       );
 
