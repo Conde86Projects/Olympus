@@ -47,7 +47,7 @@ abstract final class AppConstants {
   /// Versao exibida no diagnostico. Manual de proposito (sem
   /// package_info para nao puxar dependencia nativa): sincronizar com
   /// o `version:` do pubspec.yaml a cada release.
-  static const appVersion = '0.1.0';
+  static const appVersion = '0.2.0';
 
   /// Tamanho maximo de um manifesto JSON (colado, arquivo ou URL).
   static const maxManifestBytes = 256 * 1024;

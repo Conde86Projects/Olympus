@@ -1,0 +1,60 @@
+# Checklist de release — Olympus 0.2.0
+
+Marco 0.2.0: composição mobile, janela pequena no Windows, catálogo da
+fonte própria, saída direta do vídeo no Android/TV e polimentos de
+TV. Testes finais em `docs/TESTES_FINAIS_0.2.0.md`, resultados em
+`docs/RESULTADOS_TESTES_0.2.0.md`. `v0.1.0` (`bd3270a`) e as tags
+`rc` anteriores ficam intactas.
+
+## Gates (antes da tag)
+
+- [x] Suíte completa verde: 638/638 (`flutter test`) numa cópia limpa
+      do commit do marco (sem as alterações locais de menus da TV).
+- [x] `dart analyze` limpo.
+- [x] Árvore limpa no commit do marco (cópia limpa/worktree).
+- [x] `version_consistency_test`: `AppConstants.appVersion` acompanha
+      o núcleo do `version:` do pubspec.
+- [x] Celular físico validado (Xiaomi 24069PC21G, Android 16).
+- [x] Windows validado (125% e 150%, janela pequena e grande).
+- [x] TCL validada com APK **release** (BeyondTV, Android 9).
+
+## Consistência das versões
+
+- [x] `pubspec.yaml`: `0.2.0+10`.
+- [x] `AppConstants.appVersion`: `0.2.0` (Diagnóstico e Sobre exibem
+      este valor).
+- [x] APK release instalado na TCL: `versionName=0.2.0`,
+      `versionCode=10` (dumpsys).
+- [x] Windows release: `ProductVersion`/`FileVersion` `0.2.0+10`.
+- [x] SHA-256 do APK release (93,3 MB, `flutter build apk --release`,
+      assinatura de release dedicada):
+  `8E117D3AF61950E877C3D1F975FB9CC83748ACB7069300B2BD0EF72D6D61442E`.
+
+## O que entra (desde a 0.1.0)
+
+- Windows: janela mínima 480x270, card de uma fileira em janela baixa,
+  menus que rolam, minimizar e fechar pelo X gravam a posição, a
+  janela some na hora ao fechar.
+- Mobile (Android/iOS sem modo TV): navegação inferior, alvos de
+  48 dp, toque/toque duplo no player, tela cheia em paisagem, barra de
+  gestos respeitada, painel de configurações que cabe deitado.
+- Fontes: catálogo navegável e fonte própria de teste (feed
+  `mux-smoke`, temporário).
+- Android/TV: saída direta do MediaCodec com fallback por arquivo,
+  guarda por aparelho e "Modo de vídeo compatível".
+- Player: barra que some parada na TV, primeiro BACK só esconde a
+  barra na TV, "Ajustando a posição…" na retomada e na troca de
+  qualidade HLS, fundo escuro nos botões dos cantos.
+- Avisos do app no topo (caem, esperam 4 s e sobem).
+
+## Fora deste marco (sem bloqueio)
+
+- Menus compactos da TV (tema de diálogos, interruptores e cabeçalhos
+  da outra sessão): alterações locais ainda não commitadas.
+- Volume visual no celular (backlog).
+- Feed definitivo e mídia própria/licenciada no lugar do `mux-smoke`.
+
+## Tag
+
+- [ ] `git tag -a v0.2.0` no commit do marco e envio da tag (após
+      confirmação).
