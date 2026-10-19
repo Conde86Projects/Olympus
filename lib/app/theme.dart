@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:player/app/tv_layout.dart';
 
 /// Tema inicial (spec 3.3): fundo quase preto, texto branco suave, cantos
 /// arredondados. A cor de destaque da marca ainda nao foi definida (item 3
@@ -32,6 +33,113 @@ abstract final class PlayerTheme {
         indent: 16,
         endIndent: 16,
       ),
+    );
+  }
+
+  /// Densidade das telas de menu na TV (inicio, configuracoes, fontes,
+  /// diagnostico...): aplicada pelo [AppShell] so no modo TV. A TCL
+  /// 1080p em 320 dpi mostra 960x540 logicos; com as metricas padrao
+  /// do Material (linhas de 56-72, appbar 72, icones 32, titulos 22)
+  /// os menus estouravam. Mesma linguagem do player aprovado: icones
+  /// 20-24, texto de linha 14-17, linhas ~40. O player nao usa o
+  /// AppShell e segue intacto; desktop nunca passa por aqui.
+  static ThemeData tvMenus(ThemeData base, TvWidthClass widthClass) {
+    double pick(double compact, double normal, double big) =>
+        switch (widthClass) {
+          TvWidthClass.compact => compact,
+          TvWidthClass.normal => normal,
+          TvWidthClass.big => big,
+        };
+    final icon = pick(20, 22, 24);
+    final text = base.textTheme;
+    TextStyle? sized(TextStyle? style, double size) =>
+        (style ?? const TextStyle()).copyWith(fontSize: size);
+    return base.copyWith(
+      iconTheme: base.iconTheme.copyWith(size: icon),
+      appBarTheme: base.appBarTheme.copyWith(
+        toolbarHeight: pick(48, 52, 60),
+        iconTheme: IconThemeData(size: icon, color: primaryText),
+        actionsIconTheme: IconThemeData(size: icon, color: primaryText),
+        // Derivados do textTheme (inherit: false): a troca animada
+        // de tema ao alternar o modo TV so interpola estilos iguais.
+        titleTextStyle: sized(text.titleLarge, pick(18, 19, 21))
+            ?.copyWith(fontWeight: FontWeight.w500, color: primaryText),
+      ),
+      textTheme: text.copyWith(
+        titleLarge: sized(text.titleLarge, pick(18, 20, 22)),
+        titleMedium: sized(text.titleMedium, pick(14, 15, 17)),
+        titleSmall: sized(text.titleSmall, pick(13, 13, 15)),
+        bodyLarge: sized(text.bodyLarge, pick(14, 15, 16)),
+        bodyMedium: sized(text.bodyMedium, pick(12, 13, 14)),
+        bodySmall: sized(text.bodySmall, pick(11, 12, 13)),
+        labelLarge: sized(text.labelLarge, pick(13, 14, 15)),
+      ),
+      listTileTheme: base.listTileTheme.copyWith(
+        visualDensity: const VisualDensity(vertical: -4),
+        contentPadding: EdgeInsets.symmetric(horizontal: pick(12, 16, 20)),
+        minVerticalPadding: pick(0, 0, 2),
+        horizontalTitleGap: 12,
+        minLeadingWidth: 32,
+        iconColor: secondaryText,
+        titleTextStyle: sized(text.bodyLarge, pick(13, 14, 16))
+            ?.copyWith(color: primaryText),
+        subtitleTextStyle: sized(text.bodyMedium, pick(12, 12, 14))
+            ?.copyWith(color: secondaryText),
+        leadingAndTrailingTextStyle: sized(text.labelSmall, pick(12, 13, 14))
+            ?.copyWith(color: secondaryText),
+      ),
+      switchTheme: base.switchTheme.copyWith(
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      // Mesmo trilho fino aprovado na barra do player.
+      sliderTheme: base.sliderTheme.copyWith(
+        trackHeight: 3,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+      ),
+      dividerTheme: base.dividerTheme.copyWith(
+        space: 8,
+        color: Colors.white.withValues(alpha: 0.1),
+      ),
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(isDense: true),
+    );
+  }
+
+  /// Interruptor discreto na TV: o Switch do Material 3 tem 52x32
+  /// fixos (sem parametro de tamanho) e, com trilho azul cheio,
+  /// chamava mais atencao que o texto. Na TV usamos o desenho
+  /// classico (trilho 33x14, dedao 20) com cores neutras; aplicado so
+  /// ao redor dos interruptores via [TvSwitchTheme].
+  static ThemeData tvSwitch(ThemeData base) => base.copyWith(
+        // So o desenho do Switch muda; sem alternativa nao depreciada.
+        // ignore: deprecated_member_use
+        useMaterial3: false,
+        switchTheme: SwitchThemeData(
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          thumbColor: WidgetStateProperty.resolveWith(
+            (states) =>
+                states.contains(WidgetState.selected) ? accent : secondaryText,
+          ),
+          trackColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? accent.withValues(alpha: 0.4)
+                : Colors.white.withValues(alpha: 0.15),
+          ),
+        ),
+      );
+
+  /// Dialogos na TV: titulo e corpo no tamanho dos menus compactos
+  /// (o dialogo nasce no Navigator raiz, fora do [AppShell]).
+  static DialogThemeData tvDialogs(TvWidthClass widthClass) {
+    final big = widthClass == TvWidthClass.big;
+    return DialogThemeData(
+      titleTextStyle: TextStyle(
+        fontSize: big ? 20 : 18,
+        fontWeight: FontWeight.w500,
+        color: primaryText,
+      ),
+      contentTextStyle:
+          TextStyle(fontSize: big ? 16 : 14, color: secondaryText),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 48, vertical: 24),
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/routes.dart';
+import 'package:player/app/tv_mode.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/utils/language_names.dart';
 import 'package:player/features/settings/language_picker_page.dart';
@@ -10,6 +11,7 @@ import 'package:player/services/tv_info_service.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/exit_slider.dart';
 import 'package:player/widgets/slider_focus_ring.dart';
+import 'package:player/widgets/tv_switch_theme.dart';
 
 /// Configuracoes do aplicativo (spec 16): aparencia, reproducao, legendas,
 /// audio, janela, atalhos, armazenamento e sobre. Todas ligadas ao
@@ -90,24 +92,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle:
                       const Text('Controles e textos maiores para a sala'),
                   value: current.tvMode,
-                  onChanged: (v) => prefs.update(
-                      current.copyWith(tvMode: v, tvModeAuto: false)),
+                  onChanged: (v) => prefs
+                      .update(current.copyWith(tvMode: v, tvModeAuto: false)),
                 ),
                 SwitchListTile(
                   title: const Text('Detectar TV automaticamente'),
-                  subtitle: const Text(
-                      'Liga o modo TV sozinho em aparelho Leanback'),
+                  subtitle:
+                      const Text('Liga o modo TV sozinho em aparelho Leanback'),
                   value: current.tvModeAuto,
                   onChanged: (v) async {
                     if (!v) {
-                      await prefs.update(
-                          current.copyWith(tvModeAuto: false));
+                      await prefs.update(current.copyWith(tvModeAuto: false));
                       return;
                     }
                     final isTv = await const TvInfoService().isTv;
                     if (!mounted) return;
-                    await prefs.update(current.copyWith(
-                        tvModeAuto: true, tvMode: isTv));
+                    await prefs.update(
+                        current.copyWith(tvModeAuto: true, tvMode: isTv));
                   },
                 ),
               ]),
@@ -370,10 +371,19 @@ class _Section extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+          // Na TV, cabecalho mais justo (menus compactos, spec 27.7).
+          padding: TvMode.of(context)
+              ? const EdgeInsets.fromLTRB(16, 10, 16, 2)
+              : const EdgeInsets.fromLTRB(16, 16, 16, 4),
           child: Text(title, style: Theme.of(context).textTheme.titleMedium),
         ),
-        ...children,
+        // Interruptores discretos na TV (o Switch M3 roubava a cena).
+        for (final child in children)
+          if (child is SwitchListTile ||
+              (child is ListTile && child.trailing is Switch))
+            TvSwitchTheme(child: child)
+          else
+            child,
         const Divider(),
       ],
     );

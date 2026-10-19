@@ -767,3 +767,72 @@ Suíte 254/254 + analyze limpo. Correções em
 - **CONCLUSAO.** O escurecimento anterior era estado de build/cache,
   nao codigo/tema. Nada a alterar no tema. Ganchos revertidos;
   447/447 testes + analyze limpo apos reversao.
+
+### Menus compactos (574/574) -- 18/10/2026
+
+- **MOTIVO.** Usuario: player confortavel, mas menus/configuracoes
+  ainda "estourados" na TCL (tema 10-foot generico: appbar 72,
+  icones 32, linhas Material de 56-72, titulos 22).
+- **FIX (so TV, so telas do AppShell).** `PlayerTheme.tvMenus` por
+  classe: appbar 48/52/60 (titulo 18/19/21), icones 20/22/24,
+  ListTile densidade -4 com titulo 13/14/16 e subtitulo 12/12/14,
+  titleLarge 18/20/22, titleMedium 14/15/17, slider 3/8 (igual a
+  barra aprovada), divisor branco 10%; dialogos 18/14; respiro
+  vertical do AppShell 8; cabecalhos de secao mais justos.
+  Interruptores: `TvSwitchTheme` troca o Switch M3 (52x32 fixo,
+  trilho azul cheio) pelo desenho compacto 33x14 em cores neutras.
+  Player e painel de Opcoes intactos (nao usam o AppShell);
+  desktop pixel a pixel.
+- **PROVA (TCL, IP agora 192.168.1.4).** Linhas de configuracoes
+  caíram de ~64 para ~56 logicos; letras aprovadas pelo usuario;
+  switches compactos pendentes de veredito.
+
+### Saida direta MediaCodec: 1080p a 1x -- TCL 50" (574/574) -- 18/10/2026
+
+- **SINTOMA.** Usuario: Big Buck Bunny trava na TV, roda no PC.
+  (O link do bucket Google do feed de exemplo hoje responde 403;
+  o feed do sandbox Manus esta fora do ar. Reproduzido com o clipe
+  oficial de teste `test-videos.co.uk` 1080p60 e com a variante
+  1080p do Mux.)
+- **MEDIDO ANTES.** Bunny 1080p60 (10 s): 0:04,7 apos 113 s de
+  relogio (~0,04x); `screencap` levava ~20 s (TV saturada).
+  Mesma causa do HLS 1080p (0,14x): `vo=gpu` + `mediacodec-copy`
+  copia cada quadro para a CPU e redesenha com shaders no
+  Mali-470/GLES2.
+- **FIX.** Android usa `MediaKitPlayerService.androidDirectOutput`
+  (`vo=mediacodec_embed`, `hwdec=mediacodec`): o decodificador
+  desenha direto na superficie. Desktop no padrao do media_kit.
+  Legendas (SubtitleView) e Girar (RotatedBox) sao do Flutter e
+  nao dependem da saida.
+- **FALLBACK.** Codec sem decodificador de hardware (provado com
+  Theora gerado no PC) dava audio com tela preta. O servico ouve o
+  erro `autoconvert: Failed to create HW uploader` (nivel error,
+  chega em release), troca para `vo=gpu` + `mediacodec-copy` no
+  mesmo arquivo e reseleciona a trilha (`vid` no -> auto); o
+  proximo `open` restaura a saida direta.
+- **PROVA (TCL, logcat + capturas).** Bunny 1080p60: 10 s em
+  10,07 s de relogio (`VO: [mediacodec_embed]`). Mux 1080p direto
+  (6,2 Mbps, com audio): posicao 71,0 s apos 70,9 s de
+  reproducao (1,00x; antes 0,14x). Theora: imagem visivel no modo
+  compativel; Bunny em seguida voltou a saida direta (1,0x).
+- **NOTA.** `NativePlayer.setProperty` e publico no media_kit 1.2.6
+  (o BACKLOG dizia o contrario): estilo de legenda via `sub-*`
+  pode ser viavel sem ponte nativa.
+- **NAO VERIFICADO NA TV.** Legenda externa com a saida direta e
+  troca de faixa de video em arquivo multi-video.
+
+### Escapes da saida direta (584/584) -- 18/10/2026
+
+- **PREFERENCIA.** Configuracoes > Reproducao > "Modo de video
+  compativel" (so Android; vale ao reabrir). Provado na TCL: ligada
+  -> `VO: [gpu]`; desligada -> `VO: [mediacodec_embed]`.
+- **GUARDA POR APARELHO.** `VideoOutputGuard` (arquivo
+  `video_output_guard.json`): marca so enquanto o video toca com a
+  saida direta; 2 quedas nativas seguidas com a marca ligada ligam o
+  modo compativel de vez naquele aparelho (a opcao mostra "Ligado
+  sozinho apos falhas"; desligar zera). Provado na TCL: tocando ->
+  `playing:true`; Home -> `onStop` desmarca e o app pausa; BACK do
+  player (que so pausa) -> desmarcado. 10 testes novos
+  (`test/video_output_guard_test.dart`).
+- **ROTEIRO.** `docs/VALIDACAO_APARELHOS.md`: matriz de codecs e de
+  telas para Google TV, Fire TV/Mi Box, celular e Windows.

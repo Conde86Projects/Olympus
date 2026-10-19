@@ -230,6 +230,21 @@ void main() {
       );
       expect(theme.listTileTheme.minVerticalPadding, 10);
     });
+
+    test('menus da TV (AppShell) ficam compactos na classe normal', () {
+      final theme = PlayerTheme.tvMenus(
+          PlayerTheme.dark(tvMode: true), TvWidthClass.normal);
+      expect(theme.iconTheme.size, 22);
+      expect(theme.appBarTheme.toolbarHeight, 52);
+      expect(theme.appBarTheme.titleTextStyle!.fontSize, 19);
+      expect(theme.listTileTheme.titleTextStyle!.fontSize, 14);
+      expect(theme.listTileTheme.subtitleTextStyle!.fontSize, 12);
+      expect(
+          theme.listTileTheme.visualDensity, const VisualDensity(vertical: -4));
+      expect(theme.textTheme.titleLarge!.fontSize, 20);
+      expect(theme.textTheme.titleMedium!.fontSize, 15);
+      expect(theme.sliderTheme.trackHeight, 3);
+    });
   });
 
   group('TvPlayerControls (spec 27.6)', () {
@@ -423,8 +438,7 @@ void main() {
           ],
         );
 
-    testWidgets('linhas de 34, painel cabe no teto da TCL',
-        (tester) async {
+    testWidgets('linhas de 34, painel cabe no teto da TCL', (tester) async {
       await pumpPanel(tester, session: fullSession(), maxHeight: 384);
       for (final label in [
         'Idioma',
