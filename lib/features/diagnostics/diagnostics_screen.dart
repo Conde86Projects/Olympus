@@ -10,6 +10,7 @@ import 'package:player/services/diagnostics_service.dart';
 import 'package:player/services/tv_info_service.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/focusable_button.dart';
+import 'package:player/widgets/app_toast.dart';
 
 /// Diagnostico e recuperacao (spec 6.1): estado dos componentes, modo
 /// seguro manual e acoes de reparo. Nenhuma acao toca midias. A mensagem
@@ -325,8 +326,7 @@ class _RecoveryCard extends StatelessWidget {
       final message = await action();
       onDone();
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(message)));
+        showAppToast(context, message);
       }
     } finally {
       if (context.mounted) onBusy(false);

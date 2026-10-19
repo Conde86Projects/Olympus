@@ -9,6 +9,7 @@ import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/dpad_field_exit.dart';
 import 'package:player/widgets/empty_state.dart';
 import 'package:player/widgets/focusable_button.dart';
+import 'package:player/widgets/app_toast.dart';
 
 /// Detalhes de um add-on (spec 6.1, 6.1.1): identificacao, estado,
 /// permissoes e acoes ativar/desativar/editar/atualizar/remover.
@@ -227,10 +228,9 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
       '${value.month.toString().padLeft(2, '0')}/'
       '${value.year}';
 
-  void _say(String message) {
+  void _say(String message, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    showAppToast(context, message, error: error);
   }
 
   Future<void> _approve(AddonInfo info) async {
@@ -240,7 +240,7 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
           .approveSource(info.manifest.id);
       _say('Origem aprovada. Ative a fonte para usar.');
     } on AddonError catch (error) {
-      _say(error.message);
+      _say(error.message, error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -255,7 +255,7 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
           ? 'Catálogo atualizado: 1 item.'
           : 'Catálogo atualizado: $count itens.');
     } on AddonError catch (error) {
-      _say(error.message);
+      _say(error.message, error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

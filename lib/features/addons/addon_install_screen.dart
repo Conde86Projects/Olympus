@@ -13,6 +13,7 @@ import 'package:player/services/addon_service.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/dpad_field_exit.dart';
 import 'package:player/widgets/focusable_button.dart';
+import 'package:player/widgets/app_toast.dart';
 
 /// Origem do manifesto na tela de instalacao.
 enum AddonInstallSource { file, paste, link }
@@ -592,9 +593,7 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
           .install(manifest, originTrusted: _originTrusted);
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add-on instalado desativado.')),
-      );
+      showAppToast(context, 'Add-on instalado desativado.');
     } on AddonError catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
