@@ -453,80 +453,110 @@ class _ItemSheetState extends State<_ItemSheet> {
   Widget build(BuildContext context) {
     final item = widget.item;
     final duration = item.duration;
+    final hasThumb =
+        item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty;
+    final thumbnail = hasThumb
+        ? ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: widget.thumbnailBuilder != null
+                  ? widget.thumbnailBuilder!(item.thumbnailUrl!)
+                  : Image.network(
+                      item.thumbnailUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stack) => const Center(
+                          child: Icon(Icons.play_arrow, size: 40)),
+                    ),
+            ),
+          )
+        : null;
+    final details = <Widget>[
+      Text(
+        item.title,
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+      if (item.subtitle != null && item.subtitle!.isNotEmpty) ...[
+        const SizedBox(height: 4),
+        Text(
+          item.subtitle!,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ],
+      if (duration != null) ...[
+        const SizedBox(height: 4),
+        Text(
+          'Duração: ${formatTimestamp(duration)}',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ],
+      if (item.qualities.isNotEmpty) ...[
+        const SizedBox(height: 4),
+        Text(
+          'Qualidades: ${item.qualities.map((q) => q.label).join(', ')}',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ],
+      if (_error != null) ...[
+        const SizedBox(height: 8),
+        Text(
+          _error!,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+        ),
+      ],
+      const SizedBox(height: 12),
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          autofocus: true,
+          icon: _opening
+              ? const SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.play_arrow),
+          label: const Text('Reproduzir'),
+          onPressed: _opening ? null : _play,
+        ),
+      ),
+    ];
+    // Tela deitada (TV, desktop, celular em paisagem): miniatura ao
+    // lado. A folha tem teto de 9/16 da altura e a miniatura 16:9 na
+    // largura toda empurrava o Reproduzir para fora da tela.
+    final size = MediaQuery.sizeOf(context);
+    final landscape = size.width > size.height;
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: widget.thumbnailBuilder != null
-                      ? widget.thumbnailBuilder!(item.thumbnailUrl!)
-                      : Image.network(
-                          item.thumbnailUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stack) => const Center(
-                              child: Icon(Icons.play_arrow, size: 40)),
-                        ),
-                ),
-              ),
-            const SizedBox(height: 12),
-            Text(
-              item.title,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            if (item.subtitle != null && item.subtitle!.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                item.subtitle!,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-            if (duration != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Duração: ${formatTimestamp(duration)}',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-            if (item.qualities.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Qualidades: ${item.qualities.map((q) => q.label).join(', ')}',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _error!,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
+        child: landscape && thumbnail != null
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 5, child: thumbnail),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 6,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: details,
                     ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (thumbnail != null) ...[
+                    thumbnail,
+                    const SizedBox(height: 12),
+                  ],
+                  ...details,
+                ],
               ),
-            ],
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                autofocus: true,
-                icon: _opening
-                    ? const SizedBox.square(
-                        dimension: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.play_arrow),
-                label: const Text('Reproduzir'),
-                onPressed: _opening ? null : _play,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

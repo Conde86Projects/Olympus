@@ -214,6 +214,18 @@ void main() {
       expect(theme.listTileTheme.minVerticalPadding, 4);
     });
 
+    test('icone focado na TV ganha anel visivel; desktop intacto', () {
+      // O estado padrao do M3 (branco ~10%) sumia no fundo da TV: o foco
+      // subia para a AppBar e parecia ter desaparecido.
+      final tv = PlayerTheme.dark(tvMode: true).iconButtonTheme.style!;
+      final ring = tv.side!.resolve({WidgetState.focused})!;
+      expect(ring.color, PlayerTheme.accent);
+      expect(ring.width, 2);
+      expect(tv.side!.resolve(<WidgetState>{}), isNull);
+      expect(tv.overlayColor!.resolve({WidgetState.focused}), isNotNull);
+      expect(PlayerTheme.dark().iconButtonTheme.style, isNull);
+    });
+
     test('tvMode e a base da classe normal', () {
       final theme = PlayerTheme.dark(tvMode: true);
       expect(theme.iconTheme.size, 24);

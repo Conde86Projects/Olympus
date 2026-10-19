@@ -120,8 +120,9 @@ class _Harness {
         guard: guard,
       );
 
-  Future<void> pump(WidgetTester tester) async {
-    await tester.binding.setSurfaceSize(const Size(900, 1400));
+  Future<void> pump(WidgetTester tester,
+      {Size size = const Size(900, 1400)}) async {
+    await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(PlayerApp(
       preferencesService: preferences,
@@ -180,6 +181,38 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SourceCatalogScreen), findsOneWidget);
       expect(find.text('Item Um'), findsOneWidget);
+    });
+
+    testWidgets('detalhe com miniatura cabe na tela deitada (TV 960x540)',
+        (tester) async {
+      // Folha comum tem teto de 9/16 da altura: a miniatura 16:9 na
+      // largura toda passava do teto e o Reproduzir saia da tela.
+      final harness = _Harness(bodies: {
+        catalogFeedUrl: catalogFeed(catalog: [
+          {
+            'id': 's1',
+            'title': 'Item Um',
+            'stream': 'https://cdn.opened.invalid/s1.mp4',
+            'subtitle': 'Desc Um',
+            'poster': 'https://cdn.opened.invalid/s1.jpg',
+            'duration': 60,
+          },
+        ]),
+      });
+      final preview = await harness.addons.previewSource(catalogFeedUrl);
+      await harness.addons.install(preview.manifest, originTrusted: false);
+      await harness.addons.enable('owned.test');
+      await harness.pump(tester, size: const Size(960, 540));
+      await harness.openCatalog(tester);
+
+      await tester.tap(find.text('Item Um'));
+      await tester.pumpAndSettle();
+      final play = find.text('Reproduzir');
+      expect(play, findsOneWidget);
+      final rect = tester.getRect(play);
+      expect(rect.bottom, lessThanOrEqualTo(540));
+      expect(rect.top, greaterThanOrEqualTo(0));
+      expect(find.text('Duração: 1:00'), findsOneWidget);
     });
 
     testWidgets('feed vazio informa estado vazio', (tester) async {
