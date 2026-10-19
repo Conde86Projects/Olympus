@@ -102,9 +102,16 @@ class WindowManagerService with WindowListener implements WindowService {
   @override
   void onWindowClose() => unawaited(_close());
 
-  /// Roda as tarefas (com teto) e so entao destroi a janela. Erro ou
-  /// demora numa tarefa nunca impede o fechamento.
+  /// Esconde a janela na hora, roda as tarefas (com teto) e so entao
+  /// destroi a janela. Erro ou demora numa tarefa nunca impede o
+  /// fechamento. Sem o hide, com HLS tocando a janela ficava ~7 s na
+  /// tela depois do X (gravar + desligar o motor), parecendo travada.
   Future<void> _close() async {
+    try {
+      await windowManager.hide();
+    } catch (_) {
+      // Sem esconder, ainda grava e fecha.
+    }
     try {
       await Future.wait([
         for (final task in List.of(_beforeClose))
