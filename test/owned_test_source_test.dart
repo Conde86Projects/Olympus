@@ -111,6 +111,15 @@ String smokeBody(List<Object?> items) =>
 const smokeFeedBody =
     '{"page":1,"pages":1,"items":[{"id":"mux-smoke","title":"Teste HLS — Mux x36xhzz","description":"Stream público de demonstração usado temporariamente para validar o player Olympus.","url":"https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8","duration":634,"thumbnail":null,"qualities":[]}]}';
 
+const definitiveFeedUrl =
+    'https://conde86projects.github.io/olympus-catalog/feed.json';
+const definitiveSmokeFeedUrl =
+    'https://conde86projects.github.io/olympus-catalog/feed-smoke.json';
+
+// Mesmo conteudo do `feed.json` publicado no olympus-catalog.
+const definitiveFeedBody =
+    '{"page":1,"pages":1,"items":[{"id":"big-buck-bunny","title":"Big Buck Bunny","description":"Open Movie da Blender Foundation (2008), licença CC-BY 3.0.","url":"https://conde86projects.github.io/olympus-catalog/media/big-buck-bunny.mp4","thumbnail":"https://conde86projects.github.io/olympus-catalog/images/big-buck-bunny.jpg","duration":596,"qualities":[]}]}';
+
 void main() {
   group('formato publicado (smoke)', () {
     const adapter = OwnedTestSourceAdapter();
@@ -188,6 +197,57 @@ void main() {
       final catalog = await service.getCatalog('owned.test');
       expect(catalog.single.sourceUrl,
           'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8');
+    });
+  });
+
+  group('feed definitivo (GitHub Pages)', () {
+    const adapter = OwnedTestSourceAdapter();
+
+    test('casa so o repositorio olympus-catalog em https', () {
+      const adapters = [OwnedTestSourceAdapter()];
+      for (final url in [definitiveFeedUrl, definitiveSmokeFeedUrl]) {
+        expect(SourceAdapters.forUrl(url, adapters),
+            isA<OwnedTestSourceAdapter>(),
+            reason: url);
+      }
+      for (final url in [
+        'https://conde86projects.github.io/outro-repo/feed.json',
+        'https://conde86projects.github.io/olympus-catalog-falso/feed.json',
+        'https://conde86projects.github.io/feed.json',
+        'http://conde86projects.github.io/olympus-catalog/feed.json',
+        'https://outro.github.io/olympus-catalog/feed.json',
+      ]) {
+        expect(SourceAdapters.forUrl(url, adapters), isNull, reason: url);
+      }
+    });
+
+    test('corpo publicado mapeia Big Buck Bunny', () {
+      final page = adapter.parseCatalog(definitiveFeedBody);
+      expect(page.hasMore, isFalse);
+      final item = page.items.single;
+      expect(item.id, 'big-buck-bunny');
+      expect(item.title, 'Big Buck Bunny');
+      expect(item.subtitle,
+          'Open Movie da Blender Foundation (2008), licença CC-BY 3.0.');
+      expect(item.sourceUrl,
+          'https://conde86projects.github.io/olympus-catalog/media/big-buck-bunny.mp4');
+      expect(item.thumbnailUrl,
+          'https://conde86projects.github.io/olympus-catalog/images/big-buck-bunny.jpg');
+      expect(item.duration, const Duration(seconds: 596));
+      expect(item.qualities, isEmpty);
+    });
+
+    test('feed definitivo nao tem mux-smoke', () {
+      final page = adapter.parseCatalog(definitiveFeedBody);
+      expect(page.items.map((e) => e.id), isNot(contains('mux-smoke')));
+      expect(definitiveFeedBody, isNot(contains('mux.dev')));
+    });
+
+    test('previa do feed definitivo instala como fonte propria', () async {
+      final service = ownedService({definitiveFeedUrl: definitiveFeedBody});
+      final preview = await service.previewSource(definitiveFeedUrl);
+      expect(preview.manifest.id, 'owned.test');
+      expect(preview.feedSample, ['Big Buck Bunny']);
     });
   });
 

@@ -37,6 +37,14 @@ class OwnedTestSourceAdapter extends SourceAdapter {
   static const smokeHost =
       '8080-i3z7luqmkzuzszqjs7uy1-59e363bb.us4.manus.computer';
 
+  /// Feed definitivo (Fase 0.3): GitHub Pages do repositorio
+  /// `olympus-catalog`. O host e compartilhado por todos os
+  /// repositorios do usuario, entao casa tambem o prefixo do caminho:
+  /// so `feed.json` e `feed-smoke.json` desse repositorio sao fonte
+  /// propria.
+  static const feedHost = 'conde86projects.github.io';
+  static const feedPathPrefix = '/olympus-catalog/';
+
   @override
   String get id => 'owned.test';
 
@@ -44,6 +52,9 @@ class OwnedTestSourceAdapter extends SourceAdapter {
   bool canHandle(Uri uri) {
     final host = uri.host.toLowerCase();
     if (host == testHost || host.endsWith('.$testHost')) return true;
+    if (host == feedHost) {
+      return uri.scheme == 'https' && uri.path.startsWith(feedPathPrefix);
+    }
     return host == smokeHost;
   }
 
