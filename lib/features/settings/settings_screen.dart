@@ -11,7 +11,7 @@ import 'package:player/services/tv_info_service.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/exit_slider.dart';
 import 'package:player/widgets/slider_focus_ring.dart';
-import 'package:player/widgets/tv_switch_theme.dart';
+import 'package:player/widgets/app_switch_theme.dart';
 
 /// Configuracoes do aplicativo (spec 16): aparencia, reproducao, legendas,
 /// audio, janela, atalhos, armazenamento e sobre. Todas ligadas ao
@@ -377,11 +377,12 @@ class _Section extends StatelessWidget {
               : const EdgeInsets.fromLTRB(16, 16, 16, 4),
           child: Text(title, style: Theme.of(context).textTheme.titleMedium),
         ),
-        // Interruptores discretos na TV (o Switch M3 roubava a cena).
+        // Interruptor padrao do app em todas as plataformas (o Switch
+        // M3 roubava a cena); ver docs/PADROES_VISUAIS.md.
         for (final child in children)
           if (child is SwitchListTile ||
               (child is ListTile && child.trailing is Switch))
-            TvSwitchTheme(child: child)
+            AppSwitchTheme(child: child)
           else
             child,
         const Divider(),

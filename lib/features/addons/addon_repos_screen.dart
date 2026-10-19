@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:player/widgets/tv_switch_theme.dart';
+import 'package:player/widgets/app_switch_theme.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/app/routes.dart';
@@ -160,7 +160,7 @@ class _AddonReposScreenState extends State<AddonReposScreen> {
                 onSubmitted: (_) => _addRepo(),
               ),
             ),
-            TvSwitchTheme(
+            AppSwitchTheme(
               child: SwitchListTile(
                 title: const Text('Confiável'),
                 subtitle:
