@@ -60,5 +60,6 @@ TV e padrão visual único (`docs/PADROES_VISUAIS.md`). Commit do marco:
 
 ## Tag
 
-- [ ] `git tag -a v0.2.0` no commit do marco e envio da tag (após
-      confirmação).
+- [x] Tag anotada `v0.2.0` em `4259d48` (objeto da tag
+      `9e2ad47`), enviada ao `origin` em 19/10/2026 com a
+      confirmação do usuário. `v0.1.0` intacta em `bd3270a`.
