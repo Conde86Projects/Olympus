@@ -19,6 +19,7 @@ class UserPreferences {
     this.language = 'pt-BR',
     this.tvMode = false,
     this.tvModeAuto = true,
+    this.compatibleVideoOutput = false,
     this.windowX,
     this.windowY,
     this.windowWidth,
@@ -69,6 +70,11 @@ class UserPreferences {
   /// a escolha do usuário valer.
   final bool tvModeAuto;
 
+  /// Android: desliga a saida direta do decodificador (MediaCodec) e usa
+  /// o caminho compativel do media_kit (`vo=gpu`). Escape para TVs com
+  /// decodificador defeituoso; vale ao reabrir o app.
+  final bool compatibleVideoOutput;
+
   /// Geometria salva da janela (spec 14.1). Null = primeira execucao.
   final double? windowX;
   final double? windowY;
@@ -94,6 +100,7 @@ class UserPreferences {
     String? language,
     bool? tvMode,
     bool? tvModeAuto,
+    bool? compatibleVideoOutput,
     double? Function()? windowX,
     double? Function()? windowY,
     double? Function()? windowWidth,
@@ -120,6 +127,8 @@ class UserPreferences {
       language: language ?? this.language,
       tvMode: tvMode ?? this.tvMode,
       tvModeAuto: tvModeAuto ?? this.tvModeAuto,
+      compatibleVideoOutput:
+          compatibleVideoOutput ?? this.compatibleVideoOutput,
       windowX: windowX != null ? windowX() : this.windowX,
       windowY: windowY != null ? windowY() : this.windowY,
       windowWidth:
@@ -148,6 +157,7 @@ class UserPreferences {
         'language': language,
         'tvMode': tvMode,
         'tvModeAuto': tvModeAuto,
+        'compatibleVideoOutput': compatibleVideoOutput,
         'windowX': windowX,
         'windowY': windowY,
         'windowWidth': windowWidth,
@@ -174,6 +184,8 @@ class UserPreferences {
       language: (map['language'] ?? 'pt-BR') as String,
       tvMode: (map['tvMode'] ?? false) as bool,
       tvModeAuto: (map['tvModeAuto'] ?? true) as bool,
+      compatibleVideoOutput:
+          (map['compatibleVideoOutput'] ?? false) as bool,
       windowX: (map['windowX'] as num?)?.toDouble(),
       windowY: (map['windowY'] as num?)?.toDouble(),
       windowWidth: (map['windowWidth'] as num?)?.toDouble(),

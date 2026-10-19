@@ -7,21 +7,43 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_player_service.dart';
+import 'package:player/services/video_output_guard.dart';
 
 /// Implementacao real do contrato de reproducao sobre media_kit/libmpv
 /// (Fase 2). Exige [MediaKit.ensureInitialized] antes de instanciar (feito
 /// no `main`). Nao usar em `flutter test`: o mpv nativo nao existe no
 /// testador — os testes usam [NoOpMediaPlayerService].
+///
+/// [androidDirectOutput] e a configuracao de video para Android: o
+/// decodificador de hardware (MediaCodec) desenha direto na superficie
+/// (`vo=mediacodec_embed`). O padrao do media_kit (`vo=gpu` com
+/// `mediacodec-copy`) copia cada quadro para a CPU e o redesenha com
+/// shaders; na TCL 50" (Mali-470, GLES 2) isso derrubava 1080p60 para
+/// ~4% da velocidade (Bunny 1080p60: 0:04,7 em 113 s).
 class MediaKitPlayerService implements MediaPlayerService {
-  MediaKitPlayerService() {
-    _videoController = VideoController(_player);
+  MediaKitPlayerService({
+    VideoControllerConfiguration videoConfiguration =
+        const VideoControllerConfiguration(),
+    VideoOutputGuard? directOutputGuard,
+  })  : _directOutput = videoConfiguration.vo == 'mediacodec_embed',
+        _guard = directOutputGuard {
+    _videoController =
+        VideoController(_player, configuration: videoConfiguration);
     _subscriptions.addAll([
       _player.stream.playing.listen((playing) {
         _playing = playing;
+        // A guarda marca so o tempo tocando de fato: sair do player
+        // apenas pausa, e uma queda fora do video nao e do decodificador.
+        if (_directOutput) {
+          unawaited(playing
+              ? _guard?.playbackStarted()
+              : _guard?.playbackStopped());
+        }
         _emit();
       }),
       _player.stream.completed.listen((completed) {
         _completed = completed;
+        if (completed) unawaited(_guard?.playbackStopped());
         _emit();
       }),
       _player.stream.position.listen((position) {
@@ -62,6 +84,17 @@ class MediaKitPlayerService implements MediaPlayerService {
         _emit();
       }),
       _player.stream.log.listen((entry) {
+        // Saida direta so exibe quadros do MediaCodec: codec sem
+        // decodificador de hardware (Theora, VC-1, HEVC 10-bit em TV
+        // fraca...) cai no software e o mpv nao consegue subir o quadro
+        // para a superficie (tela preta com audio). Nivel `error`: chega
+        // tambem em release.
+        if (_directOutput &&
+            !_compatOutput &&
+            entry.prefix == 'autoconvert' &&
+            entry.text.contains('HW uploader')) {
+          unawaited(_fallbackToCompatOutput());
+        }
         // Log interno do libmpv (debug): mostra a causa (TLS, DNS,
         // demuxer) que o `error` resume como "Failed to open".
         assert(() {
@@ -86,6 +119,12 @@ class MediaKitPlayerService implements MediaPlayerService {
     ]);
   }
 
+  /// Saida direta do MediaCodec (ver doc da classe).
+  static const androidDirectOutput = VideoControllerConfiguration(
+    vo: 'mediacodec_embed',
+    hwdec: 'mediacodec',
+  );
+
   // Em debug, verbose expõe a causa de "Failed to open" (TLS, DNS,
   // HTTP); em release, error (padrao).
   final Player _player = Player(
@@ -94,6 +133,46 @@ class MediaKitPlayerService implements MediaPlayerService {
     ),
   );
   late final VideoController _videoController;
+
+  /// Configurado com [androidDirectOutput].
+  final bool _directOutput;
+
+  /// Marca reproducoes com saida direta (quedas nativas por aparelho).
+  final VideoOutputGuard? _guard;
+
+  /// Arquivo atual caiu no modo compativel (`vo=gpu`); o proximo
+  /// [open] volta para a saida direta.
+  bool _compatOutput = false;
+
+  NativePlayer get _native => _player.platform as NativePlayer;
+
+  /// Troca a saida para o padrao do media_kit (`vo=gpu`) no arquivo
+  /// atual, na mesma superficie, preservando a posicao. Mesma ordem
+  /// do AndroidVideoController: `vo=null` antes de reconfigurar.
+  Future<void> _fallbackToCompatOutput() async {
+    _compatOutput = true;
+    final position = _position;
+    assert(() {
+      debugPrint('[player-diag] saida direta sem hardware: modo compativel');
+      return true;
+    }());
+    await _native.setProperty('vo', 'null');
+    await _native.setProperty('hwdec', 'mediacodec-copy');
+    await _native.setProperty('vo', 'gpu');
+    // A falha de conversao desliga a trilha de video: reselecionar
+    // (no -> auto) reabre o decodificador na saida nova.
+    await _native.setProperty('vid', 'no');
+    await _native.setProperty('vid', 'auto');
+    if (position > Duration.zero) await _player.seek(position);
+  }
+
+  /// Restaura a saida direta antes de abrir outro arquivo.
+  Future<void> _restoreDirectOutput() async {
+    _compatOutput = false;
+    await _native.setProperty('vo', 'null');
+    await _native.setProperty('hwdec', androidDirectOutput.hwdec!);
+    await _native.setProperty('vo', androidDirectOutput.vo!);
+  }
   final _sessionController = StreamController<PlaybackSession>.broadcast();
   final _subscriptions = <StreamSubscription>[];
 
@@ -146,6 +225,7 @@ class MediaKitPlayerService implements MediaPlayerService {
     _duration = Duration.zero;
     _tracks = const Tracks();
     _emit(statusOverride: PlaybackStatus.loading);
+    if (_compatOutput) await _restoreDirectOutput();
     final uri = item.sourceType == MediaSourceType.local
         ? Uri.file(item.source).toString()
         : item.source;
@@ -169,6 +249,7 @@ class MediaKitPlayerService implements MediaPlayerService {
     _duration = Duration.zero;
     _tracks = const Tracks();
     _errorMessage = null;
+    await _guard?.playbackStopped();
     await _player.stop();
     _emit();
   }
@@ -264,6 +345,7 @@ class MediaKitPlayerService implements MediaPlayerService {
     }
     _subscriptions.clear();
     await _sessionController.close();
+    await _guard?.playbackStopped();
     await _player.dispose();
   }
 
