@@ -1,8 +1,8 @@
 # Resultados — pacote de testes finais (0.2.0, sem tag)
 
 Execução de `docs/TESTES_FINAIS_0.2.0.md` em 18/10/2026. **Rodada
-incompleta**: faltam o celular físico (nenhum conectado) e todo o
-catálogo (o feed temporário caiu). Sem tag `v0.2.0`; `v0.1.0`
+incompleta**: falta todo o catálogo (o feed temporário caiu) e, na
+TCL, qualidade manual e rede fria. Celular físico executado (seção 1). Sem tag `v0.2.0`; `v0.1.0`
 intacta em `bd3270a`.
 
 ## Versão testada
@@ -18,6 +18,7 @@ intacta em `bd3270a`.
 | `flutter test` | 614/614 |
 | APK (debug) SHA-256 | `d9026589172c9f55573c941e5a42dd32ef732df9e143ea7428f295e4d54311e3` |
 | Windows | build release do mesmo commit |
+| Celular | APK debug de `08b6633` + correção do painel (problema 5, depois commitada em `75a02f9`) |
 
 ## Gates
 
@@ -53,12 +54,39 @@ intacta em `bd3270a`.
    average 21) e com pop-ups do sistema. Repetir com o controle
    remoto antes de concluir. Captura:
    `testes-0.2.0/tcl-painel-repetir-sem-foco.png`.
+5. **Celular (e janela baixa do Windows): painel de configurações
+   saía pelo topo.** Em paisagem no celular, Idioma/Legendas ficavam
+   acima da tela e Repetir cortado: fora da TV o painel não tinha
+   teto. **Corrigido**: com menos de 480 de espaço acima da
+   engrenagem, o painel ganha teto e rola; com espaço de sobra nada
+   muda. Testes novos no celular deitado e na janela 464x231 (falham
+   sem a correção). Capturas: `testes-0.2.0/celular-painel-paisagem-
+   antes.jpg` e `...-depois.png`.
 
-## 1. Celular físico
+## 1. Celular físico (Xiaomi 24069PC21G, Android 16)
 
-Não executado: nenhum celular conectado (`adb devices` só lista a
-TCL). A composição mobile foi verificada no emulador (Pixel 7) na
-rodada técnica, mas isso não substitui o aparelho físico.
+Tela 1220x2712 a 480 dpi (~406x904 dp), navegação de 3 botões. APK
+debug de `08b6633` + correção do painel (problema 5). A HyperOS
+bloqueou toques por adb (`INJECT_EVENTS`); o usuário tocou e a
+conferência foi por captura de tela e log (`[player-diag]`,
+`[hls-resume]`, `history.json`, `startup_guard.json`).
+
+| Caso | Resultado |
+|---|---|
+| Retrato e paisagem (abas) | OK (relato + captura) |
+| Toque mínimo de 48 dp | OK (cantos e card; coberto também por teste) |
+| Navegação inferior, voltar de Ajustes → Início, sem seta | OK |
+| Catálogo | BLOQUEADO (feed 502); mux-smoke aberto por link |
+| Reprodução | OK: HLS 1080p, `mediacodec-copy`, `VO: [gpu]` |
+| Pausa/play | OK (`pause=true/false`) |
+| Seek ±10 s, toque duplo, arrastar a barra | OK (seeks no log nos alvos esperados) |
+| Mudo | OK (`volume=0` / `volume=100`) |
+| Tela cheia (paisagem) | OK; painel de configurações cortado → **corrigido** (problema 5) |
+| Voltar | OK (posição gravada: 9:02) |
+| Retomada | OK (`[hls-resume] targetMs=297950`, retomou em 4:57) |
+| Tela acesa durante o vídeo | OK (`KEEP_SCREEN_ON` + wake lock; acesa por 26 s+ com apagar em 15 s) |
+| Modo seguro | OK pelo relato; ao fim `manualSafeMode=false`, sem queda no arranque |
+| Diagnóstico / Exportar relatório | OK pelo relato |
 
 ## 2. Windows (125%, 3440x1440, build release de `a1f6de6`)
 
@@ -101,7 +129,7 @@ para a rodada completa com o celular físico).
 
 - [ ] Religar o feed temporário (ou publicar o definitivo) e repetir o
       catálogo nas três plataformas.
-- [ ] Conectar um celular físico (depuração USB) e executar a seção 1.
+- [x] Celular físico executado (seção 1); falta só o catálogo nele.
 - [ ] TCL com o controle remoto: qualidade manual, rede fria e foco
       no painel.
 - [ ] Só com tudo verde: bump para 0.2.0, checklist de release e tag.
