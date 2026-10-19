@@ -52,8 +52,7 @@ rodada; o caso "fonte fora do ar" ficou coberto ali). Sem tag
    depois.
 4. **TCL: painel do player, qualidade manual — não conclusivo por
    automação** (resolvido na rodada final com o controle: ver seção 3).
-   Registro original:
-   automação.** Pelo `adb input`, o D-pad entrou em "Repetir" em vez
+   Registro original: pelo `adb input`, o D-pad entrou em "Repetir" em vez
    de "Qualidade", nenhuma opção mostrava foco visível, e o BACK
    fechou o painel inteiro. A TCL estava muito carregada (load
    average 21) e com pop-ups do sistema. Repetir com o controle
