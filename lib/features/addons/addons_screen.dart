@@ -133,7 +133,7 @@ class _AddonTile extends StatelessWidget {
                   size: TvLayout.isTv(context)
                       ? TvLayout.tokensOf(context).iconPrimary
                       : 28,
-                  color: addonStateColor(context, info.state) ?? stateColor),
+                  color: addonStateColor(context, info.state)),
               SizedBox(width: TvLayout.spacing(context, 12)),
               Expanded(
                 child: Column(

@@ -50,8 +50,7 @@ void main() {
   });
 
   group('estado do add-on', () {
-    testWidgets('ativo usa o verde; inativo mantem a cor do texto',
-        (tester) async {
+    testWidgets('ativo verde; inativo e erro vermelhos', (tester) async {
       late BuildContext context;
       await tester.pumpWidget(MaterialApp(
         home: Builder(builder: (c) {
@@ -60,7 +59,9 @@ void main() {
         }),
       ));
       expect(addonStateColor(context, AddonState.active), PlayerTheme.success);
-      expect(addonStateColor(context, AddonState.inactive), isNull);
+      final red = Theme.of(context).colorScheme.error;
+      expect(addonStateColor(context, AddonState.inactive), red);
+      expect(addonStateColor(context, AddonState.error), red);
     });
   });
 }
