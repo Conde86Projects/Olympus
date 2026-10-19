@@ -816,6 +816,43 @@ void main() {
       expect(_focusInControlsScope(), isTrue);
     });
 
+    // Pedido do usuario (TCL, 19/10): com a barra visivel, o primeiro
+    // BACK so a esconde; o segundo sai salvando.
+    testWidgets('BACK na TV: primeiro esconde a barra, segundo sai',
+        (tester) async {
+      final harness = await _openPlayer(tester, tvMode: true);
+      expect(find.byTooltip('Configurações'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Configurações'), findsNothing);
+      expect(harness.history.entries, isEmpty);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Continuar assistindo'), findsOneWidget);
+      expect(harness.history.entries, hasLength(1));
+    });
+
+    testWidgets('X na TV sai direto, mesmo com a barra visivel',
+        (tester) async {
+      final harness = await _openPlayer(tester, tvMode: true);
+      await tester.tap(find.byTooltip('Fechar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Continuar assistindo'), findsOneWidget);
+      expect(harness.history.entries, hasLength(1));
+    });
+
+    testWidgets('desktop: BACK sai direto (sem o passo da TV)',
+        (tester) async {
+      final harness = await _openPlayer(tester);
+      expect(find.byTooltip('Configurações'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Continuar assistindo'), findsOneWidget);
+      expect(harness.history.entries, hasLength(1));
+    });
+
     testWidgets('subir da fileira pula o slider até os cantos',
         (tester) async {
       await _openPlayer(tester);
