@@ -175,6 +175,43 @@ void main() {
       expect(harness.history.latestFor('hls')!.position, _at);
     });
 
+    // Relato na TCL (19/10): na troca de qualidade o início do vídeo
+    // (título) aparecia antes do ponto salvo. A cobertura fica até o
+    // vídeo andar a partir do ponto restaurado.
+    testWidgets('troca cobre o vídeo até andar do ponto salvo',
+        (tester) async {
+      HlsVariants.debugFetchOverride = (_) async => _master;
+      final harness = await _openPlayer(tester);
+      await harness.player.nudge(_at);
+
+      await tester.tap(find.byTooltip('Configurações'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Qualidade'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('720p'));
+      // Passos curtos até o seek restaurar a posição (sem ultrapassar
+      // o teto da cobertura).
+      for (var i = 0; i < 60 && harness.player.seeks.isEmpty; i++) {
+        await tester.pump(const Duration(milliseconds: 250));
+      }
+      expect(harness.player.seeks, [_at]);
+      expect(find.text('Ajustando a posição…'), findsOneWidget);
+
+      // Andou a partir do ponto salvo: descobre logo depois.
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 250));
+      }
+      // Verificação concluída, mas o vídeo não andou: segue coberto
+      // (antes descobria aqui e o quadro antigo aparecia).
+      expect(find.text('Ajustando a posição…'), findsOneWidget);
+      await harness.player.nudge(_at + const Duration(seconds: 1));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('Ajustando a posição…'), findsNothing);
+      await tester.pump(const Duration(seconds: 14));
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('mpv frio (primeiro seek morre): correção recupera',
         (tester) async {
       HlsVariants.debugFetchOverride = (_) async => _master;

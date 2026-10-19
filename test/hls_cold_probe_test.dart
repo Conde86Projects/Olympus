@@ -135,6 +135,14 @@ Future<_Harness> _openPlayer(
   return harness;
 }
 
+
+/// A barra some parada, inclusive na TV (spec 12.2); reexibe antes de
+/// tocar nela, como o usuario faz com uma tecla ou toque.
+Future<void> _revealControls(WidgetTester tester) async {
+  await tester.tapAt(const Offset(400, 150));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   group('HlsColdProbe.probe (unidade)', () {
     test('rede pronta: uma tentativa, sem retry', () async {
@@ -300,6 +308,7 @@ void main() {
       expect(harness.library.findById('hls')!.source, _masterUrl);
       expect(harness.history.entries, isEmpty);
       // A lista aqueceu: o seletor passa a oferecer qualidade.
+      await _revealControls(tester);
       await tester.tap(find.byTooltip('Configurações'));
       await tester.pumpAndSettle();
       expect(find.text('Qualidade'), findsOneWidget);
@@ -329,6 +338,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(calls, 2);
       expect(harness.player.opened, hasLength(1));
+      await _revealControls(tester);
       await tester.tap(find.byTooltip('Configurações'));
       await tester.pumpAndSettle();
       expect(find.text('Qualidade'), findsNothing);
