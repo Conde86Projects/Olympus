@@ -2256,12 +2256,19 @@ class _VideoArea extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const CircularProgressIndicator(),
-                const SizedBox(height: 16),
-                FocusableButton(
-                  label: 'Cancelar',
-                  icon: Icons.close,
-                  onPressed: onCancel,
-                ),
+                // Cancelar so na abertura: no meio do video (seek,
+                // pausa) o buffering e passageiro e o botao parava a
+                // reproducao; travamento longo vira erro pelo
+                // supervisor, com "Tentar novamente".
+                if (session.status == PlaybackStatus.loading ||
+                    session.position <= Duration.zero) ...[
+                  const SizedBox(height: 16),
+                  FocusableButton(
+                    label: 'Cancelar',
+                    icon: Icons.close,
+                    onPressed: onCancel,
+                  ),
+                ],
               ],
             ),
           ),
