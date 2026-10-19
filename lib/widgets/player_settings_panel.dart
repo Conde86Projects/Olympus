@@ -166,9 +166,19 @@ class PlayerSettingsPanel extends StatefulWidget {
         // Teto na TV: acima da ancora cabem os cantos (40) + a margem
         // segura (~27) + folga; o resto e do painel. Na TCL (ancora em
         // ~456) = ~384. No desktop, null (sem mudanca).
+        // Fora da TV, so em tela baixa (celular deitado, janela pequena
+        // do Windows): o painel crescia para cima da engrenagem e saia
+        // pelo topo, cortando Idioma/Legendas. Com teto, rola. Com
+        // espaco de sobra (>= 480 acima da engrenagem), null como antes.
+        final room = anchorTop -
+            gap -
+            MediaQuery.paddingOf(dialogContext).top -
+            margin;
         final cap = TvLayout.isTv(context) && anchored
             ? (anchorTop - 72.0).clamp(200.0, 600.0).toDouble()
-            : null;
+            : (anchored && room < shortRoom
+                ? math.max(room, 120.0)
+                : null);
         return Stack(
           children: [
             Positioned(
@@ -219,6 +229,10 @@ class PlayerSettingsPanel extends StatefulWidget {
       },
     );
   }
+
+  /// Espaco acima da engrenagem abaixo do qual o painel ganha teto e
+  /// rola (fora da TV). O painel principal tem ~385 de altura.
+  static const shortRoom = 480.0;
 
   @override
   State<PlayerSettingsPanel> createState() => _PlayerSettingsPanelState();

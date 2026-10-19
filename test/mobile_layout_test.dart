@@ -364,6 +364,43 @@ void main() {
       });
     }
 
+    // Regressao (celular fisico, Xiaomi deitado): o painel crescia
+    // para cima da engrenagem e Idioma/Legendas saiam pelo topo.
+    testWidgets('painel de configuracoes cabe em paisagem e rola',
+        (tester) async {
+      await openPlayer(tester, _landscape);
+      await tester.tap(find.byTooltip('Configurações'));
+      await tester.pumpAndSettle();
+      final idioma = tester.getRect(find.text('Idioma'));
+      expect(idioma.top, greaterThanOrEqualTo(0));
+      expect(
+          find.ancestor(
+              of: find.text('Idioma'),
+              matching: find.byType(SingleChildScrollView)),
+          findsOneWidget);
+      // O fim do painel continua alcancavel rolando.
+      await tester.scrollUntilVisible(find.text('Fechar').last, 100,
+          scrollable: find
+              .ancestor(
+                  of: find.text('Idioma'),
+                  matching: find.byType(Scrollable))
+              .first);
+      expect(tester.getRect(find.text('Fechar').last).bottom,
+          lessThanOrEqualTo(_landscape.height));
+    });
+
+    testWidgets('desktop normal: painel sem teto nem rolagem',
+        (tester) async {
+      await openPlayer(tester, const Size(1280, 720), mobile: false);
+      await tester.tap(find.byTooltip('Configurações'));
+      await tester.pumpAndSettle();
+      expect(
+          find.ancestor(
+              of: find.text('Idioma'),
+              matching: find.byType(SingleChildScrollView)),
+          findsNothing);
+    });
+
     testWidgets('desktop: toque duplo nao busca e compacto continua',
         (tester) async {
       final harness =
