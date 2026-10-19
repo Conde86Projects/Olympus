@@ -1,10 +1,9 @@
 # Resultados — pacote de testes finais (0.2.0, sem tag)
 
 Execução de `docs/TESTES_FINAIS_0.2.0.md` em 18–19/10/2026.
-Celular físico, Windows e TCL executados. **Única pendência:** o
-catálogo na TCL (o feed temporário voltou a responder 502 no meio da
-rodada; o caso "fonte fora do ar" ficou coberto ali). Sem tag
-`v0.2.0`; `v0.1.0` intacta em `bd3270a`.
+Celular físico, Windows e TCL executados, **catálogo incluído nas
+três**. Pendência que não é de teste: decidir o BACK no player da TV.
+Sem tag `v0.2.0`; `v0.1.0` intacta em `bd3270a`.
 
 ## Versão testada
 
@@ -84,6 +83,11 @@ rodada; o caso "fonte fora do ar" ficou coberto ali). Sem tag
    a posição…" cobre do open até o vídeo andar a partir do ponto
    salvo. Conferido na TCL ("funcionou perfeitamente").
 
+9. **Aviso "Catálogo atualizado" datado** (faixa do SnackBar colada
+   no rodapé). **Trocado** em `16f20e8` por um aviso no topo que cai,
+   espera 4 s e sobe; vale para as 4 mensagens do app. Conferido na
+   TCL, no Windows e no celular.
+
 ## 1. Celular físico (Xiaomi 24069PC21G, Android 16)
 
 Tela 1220x2712 a 480 dpi (~406x904 dp), navegação de 3 botões. APK
@@ -133,7 +137,7 @@ release não grava `[player-diag]`).
 | Caso | Resultado |
 |---|---|
 | D-pad no Início e abrir o item | OK |
-| Catálogo | PENDENTE: feed 502 de novo durante a rodada |
+| Catálogo | OK (19/10): feed de volta; adicionar, aprovar, ativar, atualizar, abrir catálogo, mux-smoke, reproduzir com o controle |
 | Fonte fora do ar | OK: a fonte passa a "Erro" na lista e o app segue usável |
 | HLS | OK, liso: `VO: [mediacodec_embed]` (saída direta) |
 | Qualidade automática | OK: "Automática · 288p" (teto da TV fraca) |
@@ -153,7 +157,7 @@ para a rodada completa com o celular físico).
 ## Para fechar a rodada
 
 - [x] Catálogo no celular e no Windows (19/10).
-- [ ] Catálogo na TCL (feed temporário em 502; repetir quando voltar).
+- [x] Catálogo na TCL (19/10).
 - [x] Celular físico executado (seção 1).
 - [x] TCL com o controle remoto: qualidade manual, rede fria e foco
       no painel (19/10, release).
