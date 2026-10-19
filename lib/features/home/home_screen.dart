@@ -12,6 +12,7 @@ import 'package:player/widgets/empty_state.dart';
 import 'package:player/widgets/focusable_button.dart';
 import 'package:player/widgets/confirm_dialog.dart';
 import 'package:player/widgets/media_card.dart';
+import 'package:player/widgets/app_toast.dart';
 
 /// Tela inicial (spec 8): "Continuar assistindo", abrir arquivo/link e acesso
 /// a biblioteca, favoritos, historico e configuracoes.
@@ -318,12 +319,11 @@ class _SafeModeBannerState extends State<_SafeModeBanner> {
   Future<void> _disable(BuildContext context) async {
     final disabled = await widget.guard.disableLastChange();
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(disabled
-            ? 'Última alteração desativada. Reinicie para sair do modo seguro.'
-            : 'Nada a desativar.'),
-      ),
+    showAppToast(
+      context,
+      disabled
+          ? 'Última alteração desativada. Reinicie para sair do modo seguro.'
+          : 'Nada a desativar.',
     );
   }
 }
