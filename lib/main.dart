@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:player/app/app.dart';
 import 'package:player/core/storage/file_store.dart';
@@ -17,6 +18,7 @@ import 'package:player/services/sources/owned_test_source.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/services/supervised_player_service.dart';
 import 'package:player/services/tv_info_service.dart';
+import 'package:player/services/video_output_guard.dart';
 import 'package:player/services/window_service.dart';
 
 /// Ponto de entrada (Fase 2): implementacoes reais com as mesmas interfaces
@@ -84,7 +86,22 @@ Future<void> _boot(void Function(StartupGuard) onGuard) async {
 
   // Supervisor (spec 26): timeouts, pre-checagem, classificacao e log
   // em volta do motor real.
-  final player = SupervisedPlayerService(MediaKitPlayerService());
+  // Android (TV e celular): saida direta do decodificador de hardware;
+  // desktop segue no padrao do media_kit.
+  // Escapes: preferencia "modo de video compativel" e a guarda, que
+  // desliga a saida direta sozinha apos quedas nativas seguidas.
+  final videoGuard = VideoOutputGuard(store);
+  await videoGuard.load();
+  WidgetsBinding.instance.addObserver(videoGuard);
+  final directOutput = Platform.isAndroid &&
+      !preferences.current.compatibleVideoOutput &&
+      !videoGuard.autoCompatible;
+  final player = SupervisedPlayerService(MediaKitPlayerService(
+    videoConfiguration: directOutput
+        ? MediaKitPlayerService.androidDirectOutput
+        : const VideoControllerConfiguration(),
+    directOutputGuard: directOutput ? videoGuard : null,
+  ));
   final diagnostics = DiagnosticsService(
     store: store,
     preferences: preferences,
@@ -137,6 +154,7 @@ Future<void> _boot(void Function(StartupGuard) onGuard) async {
       addonService: addons,
       startupGuard: guard,
       diagnosticsService: diagnostics,
+      videoOutputGuard: videoGuard,
       mobilePlatform: Platform.isAndroid || Platform.isIOS,
     ),
   );

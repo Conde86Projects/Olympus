@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/routes.dart';
@@ -158,6 +159,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                   ),
                 ),
+                // Android: escape para decodificador de TV com defeito
+                // (a saida direta do MediaCodec e o padrao).
+                if (defaultTargetPlatform == TargetPlatform.android)
+                  SwitchListTile(
+                    title: const Text('Modo de vídeo compatível'),
+                    subtitle: Text(
+                      (widget.dependencies.videoOutputGuard?.autoCompatible ??
+                              false)
+                          ? 'Ligado sozinho após falhas no vídeo. '
+                              'Vale ao reabrir o app.'
+                          : 'Use se o vídeo travar ou aparecer com falhas. '
+                              'Vale ao reabrir o app.',
+                    ),
+                    value: current.compatibleVideoOutput ||
+                        (widget.dependencies.videoOutputGuard
+                                ?.autoCompatible ??
+                            false),
+                    onChanged: (v) async {
+                      if (!v) {
+                        await widget.dependencies.videoOutputGuard?.reset();
+                      }
+                      await prefs.update(
+                          current.copyWith(compatibleVideoOutput: v));
+                      if (mounted) setState(() {});
+                    },
+                  ),
               ]),
               _Section('Legendas', [
                 SwitchListTile(

@@ -14,6 +14,7 @@ import 'package:player/services/library_service.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
+import 'package:player/services/video_output_guard.dart';
 import 'package:player/services/window_service.dart';
 
 /// Raiz do aplicativo. Recebe os servicos por construtor para manter a UI
@@ -29,6 +30,7 @@ class PlayerApp extends StatelessWidget {
     required this.addonService,
     required this.startupGuard,
     required this.diagnosticsService,
+    this.videoOutputGuard,
     this.mobilePlatform = false,
   });
 
@@ -40,6 +42,9 @@ class PlayerApp extends StatelessWidget {
   final AddonService addonService;
   final StartupGuard startupGuard;
   final DiagnosticsService diagnosticsService;
+
+  /// Guarda da saida direta (Android); null fora dela.
+  final VideoOutputGuard? videoOutputGuard;
 
   /// Android/iOS. Com o modo TV desligado vira a composicao de
   /// celular ([MobileMode]); desktop e testes ficam no padrao (false).
@@ -101,6 +106,7 @@ class PlayerApp extends StatelessWidget {
               addonService: addonService,
               startupGuard: startupGuard,
               diagnosticsService: diagnosticsService,
+              videoOutputGuard: videoOutputGuard,
             ),
           ),
           ),
@@ -122,6 +128,7 @@ class AppDependencies {
     required this.addonService,
     required this.startupGuard,
     required this.diagnosticsService,
+    this.videoOutputGuard,
   });
 
   final PreferencesService preferencesService;
@@ -132,6 +139,9 @@ class AppDependencies {
   final AddonService addonService;
   final StartupGuard startupGuard;
   final DiagnosticsService diagnosticsService;
+
+  /// Guarda da saida direta (Android); null fora dela.
+  final VideoOutputGuard? videoOutputGuard;
 }
 
 /// Aplica as metricas da classe de largura sobre o tema (spec 27.4).
