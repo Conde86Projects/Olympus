@@ -161,6 +161,9 @@ void main() {
       await tester.tap(find.byTooltip('Configurações'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+      // O topo do painel fica dentro da janela (antes saia pelo topo).
+      expect(tester.getRect(find.text('Idioma')).top,
+          greaterThanOrEqualTo(0));
     });
 
     testWidgets('640x360 tambem usa a fileira unica', (tester) async {
