@@ -214,12 +214,24 @@ múltiplos itens, miniaturas, MP4, duração, seek, retomada,
 progresso, conclusão em 97%, "Ver de novo", histórico e erro
 de mídia — com o mux-smoke fora do feed público.
 
-## Adiado: hospedar mídia própria (18/10/2026)
+## Feed definitivo publicado (Fase 0.3, 19/10/2026)
 
-Baixar e hospedar os filmes completos (Big Buck Bunny, Sintel,
-Tears of Steel — centenas de MB cada) não cabe no PC de
-desenvolvimento por enquanto. Decisão: **pular este passo**. A
-validação segue com o feed de smoke (URLs públicas de streaming,
-sem download local) e com os arquivos pequenos de `test_assets/`.
-Nada no app depende do feed definitivo; retomar quando houver
-hospedagem/armazenamento.
+Retomado o passo adiado em 18/10, só com Big Buck Bunny (Sintel e
+Tears of Steel continuam fora por tamanho).
+
+- Repositório: `Conde86Projects/olympus-catalog` (GitHub Pages).
+- Catálogo: `https://conde86projects.github.io/olympus-catalog/feed.json`
+  (só Big Buck Bunny, sem mux-smoke).
+- Testes HLS: `https://conde86projects.github.io/olympus-catalog/feed-smoke.json`
+  (só o mux-smoke, separado do catálogo).
+- Mídia: `media/big-buck-bunny.mp4`, recodificado do original
+  oficial `big_buck_bunny_720p_h264.mov` (download.blender.org):
+  H.264 High 720p ~1 Mbps, keyframe a cada 2 s, AAC estéreo
+  128 kbps, `faststart`, 84,5 MB, 596 s. SHA-256
+  `f6dc1fc81c59f7a8babe6d9966ae2a89853cc116dc5460514d7be435d953164d`.
+- Miniatura: `images/big-buck-bunny.jpg`, quadro em 1:35, 640x360.
+- Créditos: `ATTRIBUTIONS.md` no próprio repositório do catálogo.
+- App: `OwnedTestSourceAdapter.feedHost` + `feedPathPrefix` casam
+  só `https://conde86projects.github.io/olympus-catalog/...`; outros
+  repositórios do mesmo usuário não viram fonte própria. O host de
+  smoke antigo (`smokeHost`) fica até a validação no Pages.
