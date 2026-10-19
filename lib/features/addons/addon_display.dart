@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:player/app/theme.dart';
 import 'package:player/models/addon_info.dart';
 
 /// Rotulo em pt-BR para cada estado. Estado se mostra com icone + texto,
@@ -14,6 +15,15 @@ IconData addonStateIcon(AddonState state) => switch (state) {
       AddonState.active => Icons.check_circle_outline,
       AddonState.inactive => Icons.radio_button_unchecked,
       AddonState.error => Icons.error_outline,
+    };
+
+/// Cor do icone de estado: verde no ativo (o padrao sumia no fundo
+/// escuro), vermelho no erro e a cor do texto no inativo.
+Color? addonStateColor(BuildContext context, AddonState state) =>
+    switch (state) {
+      AddonState.active => PlayerTheme.success,
+      AddonState.inactive => null,
+      AddonState.error => Theme.of(context).colorScheme.error,
     };
 
 /// Descricao de cada permissao, mostrada antes de instalar e nos

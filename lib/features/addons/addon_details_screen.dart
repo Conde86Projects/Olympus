@@ -63,8 +63,8 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
         // Erro tambem oferece desativar: silencia o defeito com um
         // toque (a reativacao revalida). So inativo/atualizacao
         // oferecem ativar.
-        final canDisable = info.state == AddonState.active ||
-            info.state == AddonState.error;
+        final canDisable =
+            info.state == AddonState.active || info.state == AddonState.error;
         final hasFeed = info.manifest.catalogUrl != null;
         return AppShell(
           title: info.manifest.name,
@@ -79,10 +79,10 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
               Row(
                 children: [
                   Icon(addonStateIcon(info.state),
-                      size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 18,
-                      color: info.state == AddonState.error
-                          ? Theme.of(context).colorScheme.error
-                          : null),
+                      size: TvLayout.isTv(context)
+                          ? TvLayout.tokensOf(context).iconSecondary
+                          : 18,
+                      color: addonStateColor(context, info.state)),
                   const SizedBox(width: 8),
                   Text(
                     addonStateLabel(info.state),
@@ -137,8 +137,7 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
                 children: [
                   FocusableButton(
                     label: canDisable ? 'Desativar' : 'Ativar',
-                    icon:
-                        canDisable ? Icons.toggle_off : Icons.toggle_on,
+                    icon: canDisable ? Icons.toggle_off : Icons.toggle_on,
                     primary: !canDisable,
                     autofocus: true,
                     onPressed: _busy
@@ -150,8 +149,7 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
                   FocusableButton(
                     label: 'Editar endereço',
                     icon: Icons.edit_outlined,
-                    onPressed:
-                        _busy ? null : () => _editSourceUrl(info),
+                    onPressed: _busy ? null : () => _editSourceUrl(info),
                   ),
                   if (hasFeed)
                     FocusableButton(
@@ -181,16 +179,14 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
               if (hasFeed && info.state != AddonState.active)
                 const Text('Ative a fonte para abrir o catálogo.'),
               const Divider(),
-              _Row(
-                  title: 'Descrição', value: info.manifest.description),
+              _Row(title: 'Descrição', value: info.manifest.description),
               _Row(
                 title: 'Origem',
                 value:
                     '${info.manifest.repository}${info.originTrusted ? '' : ' (não verificada)'}',
               ),
               if (hasFeed)
-                _Row(
-                    title: 'Feed', value: info.manifest.catalogUrl!),
+                _Row(title: 'Feed', value: info.manifest.catalogUrl!),
               _Row(
                 title: 'Permissões',
                 value: info.manifest.permissions.isEmpty
@@ -205,17 +201,11 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
               _Row(
                   title: 'Plataformas',
                   value: info.manifest.supportedPlatforms.join(', ')),
-              _Row(
-                  title: 'Instalado em',
-                  value: _date(info.installedAt)),
+              _Row(title: 'Instalado em', value: _date(info.installedAt)),
               if (info.updatedAt != null)
-                _Row(
-                    title: 'Atualizado em',
-                    value: _date(info.updatedAt!)),
+                _Row(title: 'Atualizado em', value: _date(info.updatedAt!)),
               _Row(title: 'Página', value: info.manifest.homepage),
-              _Row(
-                  title: 'Aviso legal',
-                  value: info.manifest.legalNotice),
+              _Row(title: 'Aviso legal', value: info.manifest.legalNotice),
             ],
           ),
         );
@@ -223,8 +213,7 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
     );
   }
 
-  String _date(DateTime value) =>
-      '${value.day.toString().padLeft(2, '0')}/'
+  String _date(DateTime value) => '${value.day.toString().padLeft(2, '0')}/'
       '${value.month.toString().padLeft(2, '0')}/'
       '${value.year}';
 
@@ -236,8 +225,7 @@ class _AddonDetailsScreenState extends State<AddonDetailsScreen> {
   Future<void> _approve(AddonInfo info) async {
     setState(() => _busy = true);
     try {
-      await widget.dependencies.addonService
-          .approveSource(info.manifest.id);
+      await widget.dependencies.addonService.approveSource(info.manifest.id);
       _say('Origem aprovada. Ative a fonte para usar.');
     } on AddonError catch (error) {
       _say(error.message, error: true);
@@ -359,16 +347,14 @@ class _EditSourceDialogState extends State<_EditSourceDialog> {
             const SizedBox(height: 8),
             Text(
               _errorText!,
-              style:
-                  TextStyle(color: Theme.of(context).colorScheme.error),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ],
         ],
       ),
       actions: [
         TextButton(
-          onPressed:
-              _saving ? null : () => Navigator.of(context).pop(false),
+          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
           child: const Text('Cancelar'),
         ),
         FilledButton(
@@ -432,7 +418,9 @@ class _ApprovalCard extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.help_outline,
-                  size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 20,
+                  size: TvLayout.isTv(context)
+                      ? TvLayout.tokensOf(context).iconSecondary
+                      : 20,
                   color: theme.colorScheme.error),
               const SizedBox(width: 8),
               Expanded(
