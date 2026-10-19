@@ -69,6 +69,9 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _panelOpen = false;
   bool _allowPop = false;
 
+  /// Saida intencional em curso (ver [_exitPlayer]).
+  bool _exitRequested = false;
+
   /// Oferta "Ver de novo" (spec 11, Fase 0.2.0): reabertura de item
   /// concluido comeca do inicio e mostra a acao; some ao usar,
   /// fechar, errar ou concluir de novo.
@@ -1228,6 +1231,13 @@ class _PlayerScreenState extends State<PlayerScreen>
           _toggleCinema();
           return;
         }
+        // TV: com a barra visivel, o primeiro BACK so a esconde; o
+        // segundo sai salvando. X/Fechar/Q saem direto (_exitPlayer).
+        if (_tvMode && _controlsVisible && !_overlayUp && !_exitRequested) {
+          _hideControls();
+          return;
+        }
+        _exitRequested = false;
         await _saveSession();
         if (!context.mounted) return;
         setState(() => _allowPop = true);
@@ -1282,8 +1292,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                         nextTitle: next?.title,
                         onPlayNext:
                             next == null ? null : () => _playNext(next),
-                        onClose: () =>
-                            Navigator.of(context).maybePop(),
+                        onClose: _exitPlayer,
                         onBackToAutomatic: _hlsVariants.isNotEmpty &&
                                 _hlsQuality.value !=
                                     HlsVariants.autoQualityId
@@ -1385,8 +1394,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                         size: _cornerSize,
                                         padding: _cornerPadding,
                                         overVideo: true,
-                                        onPressed: () =>
-                                            Navigator.of(context).maybePop(),
+                                        onPressed: _exitPlayer,
                                       ),
                                     ],
                                   ),
@@ -1558,7 +1566,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       const SingleActivator(LogicalKeyboardKey.escape): _onBack,
       const SingleActivator(LogicalKeyboardKey.keyQ): () {
         // A saida passa pelo PopScope, que salva a sessao antes de fechar.
-        if (!_panelOpen) Navigator.of(context).maybePop();
+        if (!_panelOpen) _exitPlayer();
       },
     };
   }
@@ -1580,21 +1588,32 @@ class _PlayerScreenState extends State<PlayerScreen>
       // foco na barra (spec 12.2). "Navegando" = teclas chegando: cada
       // tecla rearma este timer (_handleHiddenKeys). Antes, na TV, o foco
       // na barra a segurava para sempre, mesmo parado.
-      if (mounted && !_panelOpen && !_overlayUp) {
-        setState(() => _controlsVisible = false);
-        final current = FocusManager.instance.primaryFocus;
-        // focusedChild e grudento (ultimo, nao atual): so guarda com o
-        // foco DENTRO da barra; fora dela, null pede o proximo da ordem.
-        _lastControlFocus = current != null &&
-                current.ancestors.contains(_controlsScope)
-            ? current
-            : null;
-        // Ancorar no no da tela: sem isso o foco cai no escopo da rota
-        // e a primeira seta do D-pad se perde. Com overlay modal, nao
-        // rouba: o autofocus do botao primario vale (F2, Fase 4b).
-        if (!_overlayUp) _screenFocus.requestFocus();
-      }
+      if (mounted && !_panelOpen && !_overlayUp) _hideControls();
     });
+  }
+
+  /// Esconde a barra e os cantos (auto-hide e primeiro BACK na TV).
+  void _hideControls() {
+    _hideTimer?.cancel();
+    setState(() => _controlsVisible = false);
+    final current = FocusManager.instance.primaryFocus;
+    // focusedChild e grudento (ultimo, nao atual): so guarda com o
+    // foco DENTRO da barra; fora dela, null pede o proximo da ordem.
+    _lastControlFocus = current != null &&
+            current.ancestors.contains(_controlsScope)
+        ? current
+        : null;
+    // Ancorar no no da tela: sem isso o foco cai no escopo da rota
+    // e a primeira seta do D-pad se perde. Com overlay modal, nao
+    // rouba: o autofocus do botao primario vale (F2, Fase 4b).
+    if (!_overlayUp) _screenFocus.requestFocus();
+  }
+
+  /// Saida pedida de proposito (X, Fechar do overlay, Q): sai salvando
+  /// direto, sem o passo "BACK esconde a barra" da TV.
+  void _exitPlayer() {
+    _exitRequested = true;
+    Navigator.of(context).maybePop();
   }
 
   /// Devolve o foco a um controle quando ele se perdeu (card ocultado

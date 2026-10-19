@@ -825,6 +825,7 @@ A barra deve conter, no mínimo:
 - A barra de progresso deve aceitar clique, arraste e foco por teclado.
 - Na TV, os controles não devem desaparecer enquanto o usuário estiver navegando neles.
 - Ao pressionar “voltar” na TV, primeiro fechar menus; somente depois sair do player.
+- Na TV, com a barra de controles visível, o primeiro “voltar” só esconde a barra; o seguinte sai do player salvando a posição. O botão Fechar (X) sai direto (decisão de 19/10/2026, validada na TCL).
 
 ### 12.3 Atalhos sugeridos
 
@@ -1082,7 +1083,9 @@ flowchart TD
     B -->|Sim| C[Fechar menu]
     B -->|Não| D{Está em tela cheia?}
     D -->|Sim| E[Sair da tela cheia]
-    D -->|Não| F{Está no player?}
+    D -->|Não| T{TV com a barra de controles visível?}
+    T -->|Sim| U[Esconder a barra]
+    T -->|Não| F{Está no player?}
     F -->|Sim| G[Salvar posição e voltar à tela anterior]
     F -->|Não| H[Voltar para tela inicial]
 ```
