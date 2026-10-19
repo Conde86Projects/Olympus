@@ -45,9 +45,11 @@ class MediaCard extends StatelessWidget {
   static Widget defaultThumbnailImage(String path) => Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stack) => Icon(            Icons.play_arrow,
+        errorBuilder: (context, error, stack) => Icon(Icons.play_arrow,
             color: PlayerTheme.secondaryText,
-            size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconPrimary : 28),
+            size: TvLayout.isTv(context)
+                ? TvLayout.tokensOf(context).iconPrimary
+                : 28),
       );
 
   /// Pôster remoto padrão: carrega com o placeholder visível e cai
@@ -59,90 +61,107 @@ class MediaCard extends StatelessWidget {
         loadingBuilder: (context, child, progress) => progress == null
             ? child
             : Icon(Icons.play_arrow,
-                color: PlayerTheme.secondaryText, size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconPrimary : 28),
-        errorBuilder: (context, error, stack) => Icon(            Icons.play_arrow,
+                color: PlayerTheme.secondaryText,
+                size: TvLayout.isTv(context)
+                    ? TvLayout.tokensOf(context).iconPrimary
+                    : 28),
+        errorBuilder: (context, error, stack) => Icon(Icons.play_arrow,
             color: PlayerTheme.secondaryText,
-            size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconPrimary : 28),
+            size: TvLayout.isTv(context)
+                ? TvLayout.tokensOf(context).iconPrimary
+                : 28),
       );
 
   @override
   Widget build(BuildContext context) {
     final progress = item.progress;
-    return Card(
-      color: const Color(0xFF1C1C1E),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: EdgeInsets.all(TvLayout.spacing(context, 12)),
-        child: Row(
-          children: [
-            Expanded(
-              // Corpo focavel separado do menu (F7, Fase 4b): com o
-              // Opcoes dentro do InkWell, o RIGHT partia do cartao
-              // inteiro e pulava o botao para a barra superior.
-              child: InkWell(
-                autofocus: autofocus,
-                onTap: onTap,
-                child: Row(
-                  children: [
-                    _Thumbnail(
-                      item: item,
-                      builder: thumbnailBuilder,
-                      networkBuilder: networkThumbnailBuilder,
-                    ),
-                    SizedBox(width: TvLayout.spacing(context, 12)),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            item.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          SizedBox(height: TvLayout.spacing(context, 4)),
-                          Text(
-                            _detailsLine(),
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          if (progress != null && progress > 0) ...[
-                            SizedBox(height: TvLayout.spacing(context, 8)),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
-                              child: LinearProgressIndicator(
-                                value: progress,
-                                minHeight:
-                                    TvLayout.isTv(context) ? 6 : 4,
-                                backgroundColor:
-                                    Colors.white.withValues(alpha: 0.12),
-                                valueColor: const AlwaysStoppedAnimation(
-                                    PlayerTheme.accent),
-                              ),
+    // Destaque do cartao inteiro, como em Add-ons: o foco de qualquer
+    // parte (corpo ou menu) pinta o cartao todo, com os cantos
+    // arredondados. Antes o foco ficava so no corpo: faixa cortada.
+    return _FocusCard(
+      builder: (focused) => Card(
+        color: focused
+            ? Color.alphaBlend(
+                PlayerTheme.accent.withValues(alpha: 0.25), _cardColor)
+            : _cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: EdgeInsets.all(TvLayout.spacing(context, 12)),
+          child: Row(
+            children: [
+              Expanded(
+                // Corpo focavel separado do menu (F7, Fase 4b): com o
+                // Opcoes dentro do InkWell, o RIGHT partia do cartao
+                // inteiro e pulava o botao para a barra superior.
+                child: InkWell(
+                  autofocus: autofocus,
+                  onTap: onTap,
+                  // O destaque e do cartao todo (_FocusCard); sem o foco
+                  // retangular do proprio corpo.
+                  focusColor: Colors.transparent,
+                  child: Row(
+                    children: [
+                      _Thumbnail(
+                        item: item,
+                        builder: thumbnailBuilder,
+                        networkBuilder: networkThumbnailBuilder,
+                      ),
+                      SizedBox(width: TvLayout.spacing(context, 12)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              item.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
+                            SizedBox(height: TvLayout.spacing(context, 4)),
+                            Text(
+                              _detailsLine(),
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            if (progress != null && progress > 0) ...[
+                              SizedBox(height: TvLayout.spacing(context, 8)),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(2),
+                                child: LinearProgressIndicator(
+                                  value: progress,
+                                  minHeight: TvLayout.isTv(context) ? 6 : 4,
+                                  backgroundColor:
+                                      Colors.white.withValues(alpha: 0.12),
+                                  valueColor: const AlwaysStoppedAnimation(
+                                      PlayerTheme.accent),
+                                ),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                    if (item.isFavorite)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: Icon(Icons.favorite,
-                            size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconSecondary : 18,
-                            color: PlayerTheme.accent),
-                      ),
-                  ],
+                      if (item.isFavorite)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Icon(Icons.favorite,
+                              size: TvLayout.isTv(context)
+                                  ? TvLayout.tokensOf(context).iconSecondary
+                                  : 18,
+                              color: PlayerTheme.accent),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            _OverflowMenu(
-              item: item,
-              onToggleFavorite: onToggleFavorite,
-              onRemove: onRemove,
-              onRestart: onRestart,
-            ),
-          ],
+              _OverflowMenu(
+                item: item,
+                onToggleFavorite: onToggleFavorite,
+                onRemove: onRemove,
+                onRestart: onRestart,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -173,15 +192,16 @@ class _Thumbnail extends StatelessWidget {
     final poster = item.metadata['posterUrl'];
     Widget? image;
     if (thumb != null) {
-      image = builder?.call(thumb) ??
-          MediaCard.defaultThumbnailImage(thumb);
+      image = builder?.call(thumb) ?? MediaCard.defaultThumbnailImage(thumb);
     } else if (poster != null && poster.isNotEmpty) {
       image = networkBuilder?.call(poster) ??
           MediaCard.defaultNetworkThumbnailImage(poster);
     }
     return Container(
-      width: TvLayout.isTv(context) ? TvLayout.tokensOf(context).thumbWidth : 96,
-      height: TvLayout.isTv(context) ? TvLayout.tokensOf(context).thumbHeight : 56,
+      width:
+          TvLayout.isTv(context) ? TvLayout.tokensOf(context).thumbWidth : 96,
+      height:
+          TvLayout.isTv(context) ? TvLayout.tokensOf(context).thumbHeight : 56,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(8),
@@ -189,7 +209,10 @@ class _Thumbnail extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: image ??
           Icon(Icons.play_arrow,
-              color: PlayerTheme.secondaryText, size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconPrimary : 28),
+              color: PlayerTheme.secondaryText,
+              size: TvLayout.isTv(context)
+                  ? TvLayout.tokensOf(context).iconPrimary
+                  : 28),
     );
   }
 }
@@ -241,4 +264,39 @@ class _OverflowMenu extends StatelessWidget {
       ],
     );
   }
+}
+
+const _cardColor = Color(0xFF1C1C1E);
+
+/// Detecta foco em qualquer descendente (corpo ou menu) e repassa ao
+/// [builder]. O proprio nó nao recebe foco nem entra na navegacao.
+class _FocusCard extends StatefulWidget {
+  const _FocusCard({required this.builder});
+
+  final Widget Function(bool focused) builder;
+
+  @override
+  State<_FocusCard> createState() => _FocusCardState();
+}
+
+class _FocusCardState extends State<_FocusCard> {
+  final _node = FocusNode(canRequestFocus: false, skipTraversal: true);
+  bool _focused = false;
+
+  @override
+  void dispose() {
+    _node.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Focus(
+        focusNode: _node,
+        canRequestFocus: false,
+        skipTraversal: true,
+        onFocusChange: (value) {
+          if (value != _focused) setState(() => _focused = value);
+        },
+        child: widget.builder(_focused),
+      );
 }

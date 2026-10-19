@@ -46,8 +46,7 @@ class AddonsScreen extends StatelessWidget {
             return const EmptyState(
               icon: Icons.extension_outlined,
               title: 'Nenhum add-on instalado',
-              message:
-                  'Add-ons adicionam catálogos e fontes de mídia. '
+              message: 'Add-ons adicionam catálogos e fontes de mídia. '
                   'Instale a partir de um repositório ou manifesto.',
             );
           }
@@ -84,8 +83,7 @@ class _UpdatesAction extends StatelessWidget {
     return AnimatedBuilder(
       animation: addons,
       builder: (context, _) {
-        final hasPending =
-            addons.addons.any((info) => info.updateAvailable);
+        final hasPending = addons.addons.any((info) => info.updateAvailable);
         return Badge(
           isLabelVisible: hasPending,
           child: IconButton(
@@ -132,8 +130,10 @@ class _AddonTile extends StatelessWidget {
           child: Row(
             children: [
               Icon(addonStateIcon(info.state),
-                  size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconPrimary : 28,
-                  color: stateColor),
+                  size: TvLayout.isTv(context)
+                      ? TvLayout.tokensOf(context).iconPrimary
+                      : 28,
+                  color: addonStateColor(context, info.state) ?? stateColor),
               SizedBox(width: TvLayout.spacing(context, 12)),
               Expanded(
                 child: Column(
@@ -165,8 +165,7 @@ class _AddonTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right,
-                  color: Colors.white54),
+              const Icon(Icons.chevron_right, color: Colors.white54),
             ],
           ),
         ),
