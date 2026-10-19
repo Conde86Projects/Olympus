@@ -451,6 +451,38 @@ void main() {
       expect(harness.player.session.status, PlaybackStatus.idle);
     });
 
+    testWidgets('buffering no meio do video nao mostra Cancelar',
+        (tester) async {
+      // Seek/pausa no meio do video passam por buffering: so o
+      // indicador, sem o "Cancelar" da abertura (ele parava o video).
+      final harness = _WidgetHarness();
+      await harness.player.stop();
+      await harness.pump(tester);
+      await harness.openPlayer(tester, urlItem());
+
+      await harness.player.seek(const Duration(seconds: 30));
+      harness.player.simulateStatus(PlaybackStatus.buffering);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Cancelar'), findsNothing);
+    });
+
+    testWidgets('buffering na abertura ainda oferece Cancelar',
+        (tester) async {
+      final harness = _WidgetHarness();
+      await harness.player.stop();
+      await harness.pump(tester);
+      await harness.openPlayer(tester, urlItem());
+
+      await harness.player.seek(Duration.zero);
+      harness.player.simulateStatus(PlaybackStatus.buffering);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Cancelar'), findsOneWidget);
+    });
+
     testWidgets('erro de rede mostra mensagem de conexao', (tester) async {
       final harness = _WidgetHarness();
       await harness.player.stop();
