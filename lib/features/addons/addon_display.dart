@@ -17,13 +17,14 @@ IconData addonStateIcon(AddonState state) => switch (state) {
       AddonState.error => Icons.error_outline,
     };
 
-/// Cor do icone de estado: verde no ativo (o padrao sumia no fundo
-/// escuro), vermelho no erro e a cor do texto no inativo.
-Color? addonStateColor(BuildContext context, AddonState state) =>
+/// Cor do icone de estado: verde no ativo, vermelho no inativo e no
+/// erro (o padrao do texto sumia no fundo escuro).
+Color addonStateColor(BuildContext context, AddonState state) =>
     switch (state) {
       AddonState.active => PlayerTheme.success,
-      AddonState.inactive => null,
-      AddonState.error => Theme.of(context).colorScheme.error,
+      AddonState.inactive ||
+      AddonState.error =>
+        Theme.of(context).colorScheme.error,
     };
 
 /// Descricao de cada permissao, mostrada antes de instalar e nos
