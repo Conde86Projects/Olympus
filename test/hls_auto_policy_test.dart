@@ -167,6 +167,14 @@ Future<void> _observeWindow(
   await tester.pumpAndSettle();
 }
 
+
+/// A barra some parada, inclusive na TV (spec 12.2); reexibe antes de
+/// tocar nela, como o usuario faz com uma tecla ou toque.
+Future<void> _revealControls(WidgetTester tester) async {
+  await tester.tapAt(const Offset(400, 150));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   group('perfil automático (unidade)', () {
     test('TCL/perfil fraco (TV compacta): teto atual preservado', () {
@@ -343,6 +351,7 @@ void main() {
       final harness = await _openPlayer(tester,
           tvMode: true, surface: const Size(640, 540));
       expect(harness.player.opened.single.source, contains('url_4'));
+      await _revealControls(tester);
       await tester.tap(find.byTooltip('Configurações'));
       await tester.pumpAndSettle();
       expect(find.text('Automática · 288p'), findsOneWidget);
@@ -372,6 +381,7 @@ void main() {
       expect(harness.player.opened.last.id, 'hls');
 
       // Efetiva visível e seleção continua Automática.
+      await _revealControls(tester);
       await tester.tap(find.byTooltip('Configurações'));
       await tester.pumpAndSettle();
       expect(find.text('Automática · 720p'), findsOneWidget);
@@ -424,6 +434,7 @@ void main() {
           surface: const Size(1920, 1080),
           clock: clock);
       // Manual: 1080p pelo painel.
+      await _revealControls(tester);
       await tester.tap(find.byTooltip('Configurações'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Qualidade'));
@@ -452,6 +463,7 @@ void main() {
           wall: const Duration(seconds: 5),
           position: const Duration(seconds: 2));
       expect(harness.player.opened, hasLength(1));
+      await _revealControls(tester);
       await tester.tap(find.byTooltip('Configurações'));
       await tester.pumpAndSettle();
       expect(find.text('Qualidade'), findsNothing);
@@ -472,6 +484,7 @@ void main() {
       expect(harness.player.opened.single.source,
           'https://midia.test/v.mp4');
       expect(called, isFalse);
+      await _revealControls(tester);
       await tester.tap(find.byTooltip('Configurações'));
       await tester.pumpAndSettle();
       expect(find.text('Qualidade'), findsNothing);
@@ -484,6 +497,7 @@ void main() {
       final harness = await _openPlayer(tester, tvMode: true);
       expect(harness.player.opened.single.source, _masterUrl);
       // Sem variantes detectadas, nada de qualidade inventada.
+      await _revealControls(tester);
       await tester.tap(find.byTooltip('Configurações'));
       await tester.pumpAndSettle();
       expect(find.text('Qualidade'), findsNothing);

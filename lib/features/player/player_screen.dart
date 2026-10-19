@@ -122,6 +122,14 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// Leituras da sonda de retomada HLS (só leitura, sem seeks).
   Timer? _resumeProbeTimer;
 
+  /// Cobertura do vídeo enquanto a retomada/troca de qualidade HLS
+  /// leva a imagem ao ponto salvo. O gate de prontidão (validado na
+  /// TCL) exige o primeiro avanço real antes do seek, então o início
+  /// do vídeo chegava a aparecer (título) antes de pular. Só visual:
+  /// nada aqui chama o player, a lógica de posição não muda.
+  bool _repositioning = false;
+  Timer? _repositionTimer;
+
   /// Faixas preferidas ja aplicadas nesta abertura. Audio e legenda
   /// chegam em momentos distintos no inicio da midia: um flag so
   /// perderia a segunda leva.
@@ -343,6 +351,11 @@ class _PlayerScreenState extends State<PlayerScreen>
       openItem = _baseItem.copyWith(source: target);
       _currentItem = openItem;
     }
+    final coverResume = widget.dependencies.preferencesService.current
+            .resumeAutomatically &&
+        _isM3u8Url(_baseItem.source) &&
+        (_currentItem.lastPosition ?? Duration.zero) > Duration.zero;
+    if (coverResume) _beginReposition(player);
     await player.open(openItem);
     // Aplica preferencias de reproducao apos abrir (spec 16).
     final prefs = widget.dependencies.preferencesService.current;
@@ -528,6 +541,34 @@ class _PlayerScreenState extends State<PlayerScreen>
         ? 'downgrade'
         : 'switch';
     final next = _baseItem.copyWith(source: target);
+    if (position > Duration.zero) _beginReposition(player);
+    try {
+      await _reopenHlsTargetCovered(
+          player, next, prevItem, prevSelection, selectionId, position,
+          wasPlaying, probe);
+    } finally {
+      // Mesma regra da retomada: só descobre depois de o vídeo andar a
+      // partir do ponto salvo (a TV mostra o quadro antigo por um
+      // instante). Sem posição a restaurar, descobre já.
+      if (position > Duration.zero) {
+        unawaited(_endRepositionWhenLanded(player, position));
+      } else {
+        _endReposition(player);
+      }
+    }
+  }
+
+  Future<void> _reopenHlsTargetCovered(
+    MediaPlayerService player,
+    MediaItem next,
+    MediaItem prevItem,
+    String prevSelection,
+    String selectionId,
+    Duration position,
+    bool wasPlaying,
+    String probe,
+  ) async {
+    final target = next.source;
     try {
       await player.open(next);
     } catch (_) {
@@ -821,8 +862,61 @@ class _PlayerScreenState extends State<PlayerScreen>
     return false;
   }
 
+  /// Liga a cobertura do vídeo.
+  void _beginReposition(MediaPlayerService player) {
+    if (_repositioning) return;
+    setState(() => _repositioning = true);
+  }
+
+  /// Desliga a cobertura quando a imagem chega perto de [target] (ou
+  /// no teto do pouso, ou em erro/fim). Só lê a sessão.
+  Future<void> _endRepositionWhenLanded(
+      MediaPlayerService player, Duration target) async {
+    Duration? landedAt;
+    // Teto por contagem (não relógio de parede): verificação + pouso.
+    final limit = (HlsVariants.hlsVerifyDelay +
+                HlsVariants.hlsCorrectionSettle)
+            .inMilliseconds ~/
+        HlsVariants.hlsReadyPoll.inMilliseconds;
+    var ticks = 0;
+    _repositionTimer?.cancel();
+    _repositionTimer = Timer.periodic(HlsVariants.hlsReadyPoll, (timer) {
+      ticks++;
+      if (!mounted || !_repositioning) {
+        timer.cancel();
+        return;
+      }
+      final session = player.session;
+      var done = ticks > limit ||
+          session.status == PlaybackStatus.error ||
+          session.status == PlaybackStatus.completed;
+      final settled = session.status != PlaybackStatus.loading &&
+          session.status != PlaybackStatus.buffering;
+      final near =
+          !HlsVariants.resumeNeedsCorrection(session.position, target);
+      // A posição informada pula para o alvo na hora do seek, mas a TV
+      // ainda mostra o quadro antigo (título) por um instante: só sai
+      // depois de o vídeo ANDAR a partir do ponto salvo.
+      if (settled && near) {
+        if (landedAt != null && session.position != landedAt) done = true;
+        landedAt ??= session.position;
+      } else {
+        landedAt = null;
+      }
+      if (done) _endReposition(player);
+    });
+  }
+
+  void _endReposition(MediaPlayerService player) {
+    _repositionTimer?.cancel();
+    _repositionTimer = null;
+    if (!_repositioning) return;
+    if (mounted) setState(() => _repositioning = false);
+  }
+
   Future<void> _resumeHlsMaster(
       MediaPlayerService player, Duration target) async {
+    _beginReposition(player);
     final before = player.session;
     _probeHlsResume(player, 'start',
         'id=${_currentItem.id} targetMs=${target.inMilliseconds} '
@@ -850,6 +944,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         'status=${afterSeek.status.name} '
         'loading=${_isLoadingStatus(afterSeek.status)}');
     if (!mounted) return;
+    unawaited(_endRepositionWhenLanded(player, target));
     _scheduleResumeProbeReadings(player);
     _resumeTimer?.cancel();
     _resumeTimer = Timer(HlsVariants.hlsVerifyDelay, () async {
@@ -1055,6 +1150,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     WidgetsBinding.instance.removeObserver(this);
     _minimizedSub?.cancel();
     _seekFlashTimer?.cancel();
+    _repositionTimer?.cancel();
     // Saiu do player em tela cheia no celular: devolve barras e giro.
     if (_mobile && _fullscreen) unawaited(_applyMobileFullscreen(false));
     widget.dependencies.windowService.removeBeforeClose(_saveOnWindowClose);
@@ -1206,6 +1302,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                             setState(() => _replayOffer = false),
                       ),
                       ),
+                      if (_repositioning) const _RepositionCover(),
                       if (_seekFlash != null)
                         _SeekFlash(
                             label: _seekFlash!, left: _seekFlashLeft),
@@ -1374,6 +1471,15 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// tecla executa uma unica vez.
   bool _handleHiddenKeys(KeyEvent event) {
     if (event is! KeyDownEvent || !mounted) return false;
+    if (_controlsVisible && !_panelOpen && !_overlayUp) {
+      // Navegando na barra visivel (controle remoto ou teclado): a tecla
+      // segue para o foco normal e so rearma o auto-hide (spec 12.2).
+      final current = _screenFocus.context;
+      if (current != null && ModalRoute.of(current)?.isCurrent == true) {
+        _scheduleHide();
+      }
+      return false;
+    }
     if (_controlsVisible || _panelOpen || _overlayUp) return false;
     final context = _screenFocus.context;
     if (context == null || ModalRoute.of(context)?.isCurrent != true) {
@@ -1470,9 +1576,11 @@ class _PlayerScreenState extends State<PlayerScreen>
   void _scheduleHide() {
     _hideTimer?.cancel();
     _hideTimer = Timer(AppConstants.controlsAutoHide, () {
-      // No modo TV a barra persiste navegando nela (spec 12.2); fora
-      // dele, esconde mesmo com foco (comportamento desktop).
-      if (mounted && !_panelOpen && !_overlayUp && !(_tvMode && _controlsScope.hasFocus)) {
+      // Some apos alguns segundos sem interacao, inclusive na TV com o
+      // foco na barra (spec 12.2). "Navegando" = teclas chegando: cada
+      // tecla rearma este timer (_handleHiddenKeys). Antes, na TV, o foco
+      // na barra a segurava para sempre, mesmo parado.
+      if (mounted && !_panelOpen && !_overlayUp) {
         setState(() => _controlsVisible = false);
         final current = FocusManager.instance.primaryFocus;
         // focusedChild e grudento (ultimo, nao atual): so guarda com o
@@ -2372,6 +2480,37 @@ class _SeekFlash extends StatelessWidget {
               label,
               style: Theme.of(context).textTheme.titleMedium,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Cobre o vídeo enquanto a retomada/troca de qualidade leva a imagem
+/// ao ponto salvo (o início do vídeo não aparece). Não recebe toques:
+/// os controles continuam por cima.
+class _RepositionCover extends StatelessWidget {
+  const _RepositionCover();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Sem animação de propósito: a cobertura dura ~1-3 s e um
+              // indicador animado não deixaria a tela "assentar".
+              const Icon(Icons.update, size: 32),
+              const SizedBox(height: 12),
+              Text(
+                'Ajustando a posição…',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
           ),
         ),
       ),

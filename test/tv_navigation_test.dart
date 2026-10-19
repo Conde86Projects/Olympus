@@ -785,14 +785,35 @@ void main() {
       );
     });
 
-    testWidgets('barra persiste navegando no modo TV', (tester) async {
+    // Spec 12.2: na TV a barra fica enquanto o usuario navega (teclas
+    // chegando) e some depois de alguns segundos parado, mesmo com o
+    // foco nela. Antes ela ficava para sempre (relato na TCL, 18/10).
+    testWidgets('barra persiste navegando e some parada no modo TV',
+        (tester) async {
       await _openPlayer(tester, tvMode: true);
       expect(_focusedTooltip(), 'Reproduzir');
 
+      // Navegando: uma tecla a cada 3 s por 9 s, mais que o auto-hide.
+      final step = AppConstants.controlsAutoHide - const Duration(seconds: 1);
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(step);
+        await tester.sendKeyEvent(
+            i.isEven ? LogicalKeyboardKey.arrowRight : LogicalKeyboardKey.arrowLeft);
+        await tester.pump();
+        expect(find.byTooltip('Configurações'), findsOneWidget, reason: '$i');
+      }
+
+      // Parado: some.
       await tester
           .pump(AppConstants.controlsAutoHide + const Duration(seconds: 1));
       await tester.pumpAndSettle();
-      expect(find.byTooltip('Reproduzir'), findsOneWidget);
+      expect(find.byTooltip('Configurações'), findsNothing);
+
+      // OK reexibe e o foco volta a um controle da barra.
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Configurações'), findsOneWidget);
+      expect(_focusInControlsScope(), isTrue);
     });
 
     testWidgets('subir da fileira pula o slider até os cantos',

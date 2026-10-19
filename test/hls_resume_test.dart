@@ -162,6 +162,14 @@ Future<void> _driveVerify(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+
+/// A barra some parada, inclusive na TV (spec 12.2); reexibe antes de
+/// tocar nela, como o usuario faz com uma tecla ou toque.
+Future<void> _revealControls(WidgetTester tester) async {
+  await tester.tapAt(const Offset(400, 150));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   group('tolerância da retomada HLS (unidade)', () {
     test('desvio dentro da tolerância não corrige', () {
@@ -272,6 +280,7 @@ void main() {
       expect(harness.player.seeks, [_resume, _resume]);
       expect(harness.player.session.position, _resume);
       expect(find.text('Não foi possível reproduzir'), findsNothing);
+      await _revealControls(tester);
       expect(find.byTooltip('Fechar'), findsWidgets);
     });
 

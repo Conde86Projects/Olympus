@@ -144,6 +144,14 @@ String _detailOf(SupervisedPlayerService player, String stage) => player
     .map((e) => e.outcome ?? '')
     .join(' ');
 
+
+/// A barra some parada, inclusive na TV (spec 12.2); reexibe antes de
+/// tocar nela, como o usuario faz com uma tecla ou toque.
+Future<void> _revealControls(WidgetTester tester) async {
+  await tester.tapAt(const Offset(400, 150));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   group('prontidão do seek inicial', () {
     testWidgets('seek em buffering espera a saída do buffering',
@@ -183,6 +191,31 @@ void main() {
       await tester.pumpAndSettle();
       expect(harness.inner.seeks, [_resume]);
       expect(harness.player.session.position, _resume);
+    });
+
+    // Relato na TCL (18/10): até o seek, o início do vídeo (título)
+    // aparecia. A cobertura esconde o vídeo do open até o pouso.
+    testWidgets('cobre o vídeo até pousar no ponto salvo', (tester) async {
+      HlsVariants.debugFetchOverride = (_) async => _master;
+      final harness = await _openPlayer(tester);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(harness.inner.seeks, isEmpty);
+      expect(find.text('Ajustando a posição…'), findsOneWidget);
+
+      await harness.inner.nudge(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(harness.inner.seeks, [_resume]);
+      // Posição já no alvo, mas o vídeo ainda não andou dali: a TV
+      // pode estar mostrando o quadro antigo, então segue coberto.
+      expect(find.text('Ajustando a posição…'), findsOneWidget);
+
+      // Andou a partir do ponto salvo: libera.
+      await harness.inner.nudge(_resume + const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(find.text('Ajustando a posição…'), findsNothing);
     });
 
     testWidgets('timeout de prontidão: seek sai mesmo assim',
@@ -270,6 +303,7 @@ void main() {
           contains('reason=landing-unverified'));
 
       // Saída não marca concluído nem grava o ponto errado.
+      await _revealControls(tester);
       await tester.tap(find.byTooltip('Fechar').first);
       await tester.pumpAndSettle();
       final entry = harness.history.latestFor('hls');
