@@ -20,6 +20,10 @@ Motivo: o media_kit 1.2.6 não expõe propriedades do mpv (`sub-font-size`,
 uma ponte própria com o mpv nativo (platform channel ou fork da camada
 de plataforma), fora do escopo da fase atual.
 
+Atualizacao 18/10/2026: `NativePlayer.setProperty` (media_kit
+1.2.6) e publico e ja e usado pela saida direta MediaCodec; os
+`sub-*` podem ser aplicados por ele. Reavaliar esta pendencia.
+
 ## Fora da fase atual (confirmado)
 
 - Qualidade dinâmica e retomada HLS (§13): seleção manual,

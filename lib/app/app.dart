@@ -198,6 +198,7 @@ class _TvClassTheme extends StatelessWidget {
           contentPadding: EdgeInsets.symmetric(horizontal: listH),
           minVerticalPadding: listV,
         ),
+        dialogTheme: PlayerTheme.tvDialogs(widthClass),
       ),
       child: child,
     );

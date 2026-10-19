@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:player/widgets/tv_switch_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/tv_layout.dart';
@@ -75,8 +76,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 _RecoveryCard(
                   dependencies: widget.dependencies,
                   busy: _busy,
-                  onBusy: (value) =>
-                      setState(() => _busy = value),
+                  onBusy: (value) => setState(() => _busy = value),
                   onDone: _refresh,
                 ),
               ],
@@ -192,18 +192,19 @@ class _SafeModeCard extends StatelessWidget {
             Text('Modo seguro', style: theme.textTheme.titleMedium),
             AnimatedBuilder(
               animation: guard,
-              builder: (context, _) => SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Ativar modo seguro'),
-                subtitle: const Text(
-                    'Vale a partir do próximo arranque.'),
-                value: guard.manualSafeMode,
-                onChanged: busy
-                    ? null
-                    : (value) async {
-                        await guard.setManualSafeMode(value);
-                        onChanged();
-                      },
+              builder: (context, _) => TvSwitchTheme(
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Ativar modo seguro'),
+                  subtitle: const Text('Vale a partir do próximo arranque.'),
+                  value: guard.manualSafeMode,
+                  onChanged: busy
+                      ? null
+                      : (value) async {
+                          await guard.setManualSafeMode(value);
+                          onChanged();
+                        },
+                ),
               ),
             ),
             Text(
@@ -283,8 +284,7 @@ class _RecoveryCard extends StatelessWidget {
             FocusableButton(
               label: 'Limpar dados do app',
               icon: Icons.delete_forever,
-              onPressed:
-                  busy ? null : () => _confirmWipe(context),
+              onPressed: busy ? null : () => _confirmWipe(context),
             ),
             const SizedBox(height: 4),
             Text(
@@ -418,9 +418,8 @@ class _DisplayCard extends StatelessWidget {
               future: const TvInfoService().isTv,
               builder: (context, snapshot) => _Row(
                 title: 'Leanback',
-                value: snapshot.hasData
-                    ? (snapshot.data! ? 'sim' : 'não')
-                    : '…',
+                value:
+                    snapshot.hasData ? (snapshot.data! ? 'sim' : 'não') : '…',
               ),
             ),
             ValueListenableBuilder<TvPanelMetricsData?>(

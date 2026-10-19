@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:player/widgets/tv_switch_theme.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/app/routes.dart';
@@ -159,13 +160,15 @@ class _AddonReposScreenState extends State<AddonReposScreen> {
                 onSubmitted: (_) => _addRepo(),
               ),
             ),
-            SwitchListTile(
-              title: const Text('Confiável'),
-              subtitle:
-                  const Text('Marque somente origens que você reconhece.'),
-              value: _trusted,
-              onChanged:
-                  _busy ? null : (value) => setState(() => _trusted = value),
+            TvSwitchTheme(
+              child: SwitchListTile(
+                title: const Text('Confiável'),
+                subtitle:
+                    const Text('Marque somente origens que você reconhece.'),
+                value: _trusted,
+                onChanged:
+                    _busy ? null : (value) => setState(() => _trusted = value),
+              ),
             ),
             const SizedBox(height: 8),
             FocusableButton(
@@ -353,7 +356,9 @@ class _RepoTile extends StatelessWidget {
             children: [
               Icon(
                 repo.trusted ? Icons.verified_outlined : Icons.help_outline,
-                size: TvLayout.isTv(context) ? TvLayout.tokensOf(context).iconPrimary : 28,
+                size: TvLayout.isTv(context)
+                    ? TvLayout.tokensOf(context).iconPrimary
+                    : 28,
               ),
               SizedBox(width: TvLayout.spacing(context, 12)),
               Expanded(
