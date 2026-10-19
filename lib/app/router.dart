@@ -3,6 +3,7 @@ import 'package:player/app/app.dart';
 import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/features/addons/addon_details_screen.dart';
+import 'package:player/features/addons/source_catalog_screen.dart';
 import 'package:player/features/addons/addon_install_screen.dart';
 import 'package:player/features/addons/addon_repos_screen.dart';
 import 'package:player/features/addons/addon_updates_screen.dart';
@@ -78,6 +79,14 @@ abstract final class AppRouter {
       case AppRoutes.addons:
         return MaterialPageRoute(
           builder: (_) => AddonsScreen(dependencies: dependencies),
+          settings: settings,
+        );
+      case AppRoutes.sourceCatalog:
+        return MaterialPageRoute(
+          builder: (_) => SourceCatalogScreen(
+            dependencies: dependencies,
+            addonId: settings.arguments as String? ?? '',
+          ),
           settings: settings,
         );
       case AppRoutes.addonDetails:

@@ -10,6 +10,7 @@ lib/services/sources/
   source_adapter.dart       contrato + registro (NÃO muda por fonte)
   source_credentials.dart   segredos: contrato + memória + keychain
   demo_source_adapter.dart  fonte demo realista (só testes)
+  owned_test_source.dart    fonte própria de teste (ver FONTE_PROPRIA_TESTE.md)
   <fonte>_source.dart       UMA fonte real (futuro, um arquivo cada)
 ```
 

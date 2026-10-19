@@ -11,6 +11,7 @@ abstract final class AppRoutes {
   static const onboarding = '/onboarding';
   static const addons = '/addons';
   static const addonDetails = '/addons/details';
+  static const sourceCatalog = '/addons/catalog';
   static const addonInstall = '/addons/install';
   static const addonRepos = '/addons/repos';
   static const addonUpdates = '/addons/updates';
