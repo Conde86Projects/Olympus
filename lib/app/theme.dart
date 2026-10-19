@@ -186,6 +186,23 @@ abstract final class PlayerTheme {
         elevation: 0,
         toolbarHeight: tvMode ? 72 : null,
       ),
+      // Foco de icone na TV: o estado padrao do M3 (branco ~10%) sumia no
+      // fundo escuro e o foco na AppBar parecia ter desaparecido. Anel de
+      // destaque so no modo TV; desktop e celular seguem o padrao.
+      iconButtonTheme: tvMode
+          ? IconButtonThemeData(
+              style: ButtonStyle(
+                side: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.focused)
+                        ? const BorderSide(color: accent, width: 2)
+                        : null),
+                overlayColor: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.focused)
+                        ? accent.withValues(alpha: 0.30)
+                        : null),
+              ),
+            )
+          : null,
       sliderTheme: SliderThemeData(
         trackHeight: tvMode ? 6 : 4,
         thumbShape: RoundSliderThumbShape(
