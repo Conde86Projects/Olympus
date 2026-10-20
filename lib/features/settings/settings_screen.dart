@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/app/tv_mode.dart';
 import 'package:player/core/constants/app_constants.dart';
@@ -207,22 +208,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ]),
               _Section('Áudio', [
-                ListTile(
-                  title: const Text('Volume inicial'),
-                  subtitle: Text('${(current.initialVolume * 100).round()}%'),
-                ),
-                SliderFocusRing(
-                  child: ExitSlider(
-                    // F11 (TV fisica): sem saida, o D-pad prendia aqui -
-                    // o Slider consome as quatro setas. OK desce a lista.
-                    exit: TraversalDirection.down,
-                    child: Slider(
-                      value: current.initialVolume,
-                      onChanged: (v) =>
-                          prefs.update(current.copyWith(initialVolume: v)),
+                // Volume interno (initialVolume) só vale no desktop/Windows.
+                // No celular e na TV vale o volume do aparelho (botões
+                // físicos / VOL+/VOL− do controle) e o app oferece só o
+                // mudo: sem trilho nessas plataformas.
+                if (TvMode.of(context) || MobileMode.of(context))
+                  const ListTile(
+                    title: Text('Volume inicial'),
+                    subtitle: Text(
+                        'Usa o volume do aparelho (só o mudo no app)'),
+                  )
+                else ...[
+                  ListTile(
+                    title: const Text('Volume inicial'),
+                    subtitle:
+                        Text('${(current.initialVolume * 100).round()}%'),
+                  ),
+                  SliderFocusRing(
+                    child: ExitSlider(
+                      // F11 (TV fisica): sem saida, o D-pad prendia aqui -
+                      // o Slider consome as quatro setas. OK desce a lista.
+                      exit: TraversalDirection.down,
+                      child: Slider(
+                        value: current.initialVolume,
+                        onChanged: (v) =>
+                            prefs.update(current.copyWith(initialVolume: v)),
+                      ),
                     ),
                   ),
-                ),
+                ],
                 ListTile(
                   title: const Text('Idioma preferido'),
                   subtitle: Text(_languageLabel(current.defaultAudio)),
@@ -269,7 +283,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _ShortcutRow(
                     keys: '←  →', action: 'Navegar (buscar 10 s, se ocultos)'),
                 _ShortcutRow(
-                    keys: '↑  ↓', action: 'Navegar (volume, se ocultos)'),
+                    keys: '↑  ↓',
+                    action:
+                        'Navegar (só reexibe na TV; volume no desktop, se ocultos)'),
                 _ShortcutRow(keys: 'M', action: 'Mudo'),
                 _ShortcutRow(keys: 'F', action: 'Tela cheia'),
                 _ShortcutRow(keys: 'I', action: 'Informações do vídeo'),

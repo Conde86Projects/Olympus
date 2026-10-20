@@ -77,7 +77,7 @@ O adaptador demo é usado para validar o fluxo de fontes sem depender de um serv
 - reproduzir e pausar;
 - avançar e retroceder;
 - seek na timeline;
-- controle de volume dentro do app (celular, TV e desktop), sempre lembrado entre aberturas (ver "Volume" abaixo);
+- controle de volume dentro do app no desktop (trilho independente, lembrado entre aberturas); no celular e na TV, só o mudo (ver "Volume" abaixo);
 - seleção de áudio;
 - seleção de legendas;
 - velocidade de reprodução;
@@ -90,15 +90,25 @@ O adaptador demo é usado para validar o fluxo de fontes sem depender de um serv
 
 ### Volume
 
-- Celular e TV: o volume é controlado pelos botões físicos do aparelho,
-  como sempre. O app mostra só o ícone de mudo, sem barra nem botões
-  de + e −.
-- Desktop: trilho de volume dentro do app, independente do volume do
-  Windows (o aparelho e o Windows mantêm o próprio volume).
-- O ajuste feito no trilho do desktop e nas setas da TV é salvo como o
-  volume inicial (`initialVolume`) e restaurado na próxima abertura.
+Decisão de produto (20/10/2026): volume simples no celular e na TV,
+completo só no desktop. Sem barra, sem botões de + e − e sem gesto
+vertical nessas plataformas.
+
+- Celular: o volume sai nos botões físicos do aparelho (volume do
+  sistema). O app mostra só o botão de mudo.
+- TV: o volume sai nos botões físicos VOL+/VOL− do controle remoto
+  (volume da TV, fora do app). O app mostra só o botão de mudo. O
+  D-pad não altera o volume: fica reservado para navegação, foco e
+  progresso.
+- Desktop (Windows): trilho de volume dentro do app, independente do
+  volume do sistema, com mudo e persistência, como no YouTube.
+- Só o ajuste do trilho no desktop é salvo como o volume inicial
+  (`initialVolume`) e restaurado na próxima abertura. No celular e na
+  TV, o app respeita o volume do sistema/aparelho: não aplica nem
+  salva volume interno.
 - Mudo preserva o volume anterior; desmutar restaura o mesmo nível.
-- Passo das setas e do trilho: 0,05, entre 0,0 e 1,0.
+  O mudo é o único controle de áudio dentro do app no celular e na TV.
+- Passo do trilho no desktop: 0,05, entre 0,0 e 1,0.
 
 ### Biblioteca
 

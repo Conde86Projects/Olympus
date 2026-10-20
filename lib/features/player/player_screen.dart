@@ -175,6 +175,14 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   bool get _tvMode => widget.dependencies.preferencesService.current.tvMode;
 
+  /// Android/iOS (celular e TV física): o volume é do sistema/aparelho.
+  /// Nomes espelham [PlayerApp.mobilePlatform] (produção), mas aqui a
+  /// abertura roda no initState, sem inherited widget: vale a
+  /// plataforma-alvo direta.
+  bool get _isMobileOs =>
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
+
   /// Janela baixa no desktop (compacto 480x270, janela pequena): card
   /// de uma fileira e cantos de 36. Recalculado a cada build; acima do
   /// limite o desenho do desktop segue pixel a pixel.
@@ -364,7 +372,13 @@ class _PlayerScreenState extends State<PlayerScreen>
     // Aplica preferencias de reproducao apos abrir (spec 16).
     final prefs = widget.dependencies.preferencesService.current;
     await player.setSpeed(prefs.defaultSpeed);
-    await player.setVolume(prefs.initialVolume);
+    // Volume interno (initialVolume) só no desktop/Windows. No celular
+    // vale o volume do sistema e na TV o da TV (VOL+/VOL− do controle
+    // remoto, fora do app): nessas plataformas o Olympus oferece só o
+    // mudo e nunca impõe nem salva volume interno.
+    if (!_tvMode && !_isMobileOs) {
+      await player.setVolume(prefs.initialVolume);
+    }
     // As faixas costumam chegar depois: vale o que existir agora e o
     // restante e aplicado pelo listener quando chegar.
     await _applyPreferredAudio(player.session);
@@ -1516,11 +1530,16 @@ class _PlayerScreenState extends State<PlayerScreen>
         _poke();
         return true;
       case LogicalKeyboardKey.arrowUp:
-        _stepVolume(1);
-        _poke();
-        return true;
       case LogicalKeyboardKey.arrowDown:
-        _stepVolume(-1);
+        // Volume interno só no desktop/Windows: no celular vale o
+        // volume do sistema e na TV o da TV (VOL+/VOL− do controle
+        // remoto, fora do app). Nessas plataformas as setas só
+        // reexibem; busca segue nas laterais e o foco e a navegação
+        // valem com a barra visível. No desktop, a seta oculta
+        // ajusta o volume interno e persiste como inicial.
+        if (!_tvMode && !_isMobileOs) {
+          _stepVolume(event.logicalKey == LogicalKeyboardKey.arrowUp ? 1 : -1);
+        }
         _poke();
         return true;
       case LogicalKeyboardKey.enter:
@@ -1649,22 +1668,23 @@ class _PlayerScreenState extends State<PlayerScreen>
     });
   }
 
-  /// Toque no video (celular): oculta se visivel, reexibe se oculto.
-  /// Volume ajustado no celular vira o volume inicial da preferencia: o
-  /// proximo player abre com ele (sem preferencia separada para mobile).
+  /// Trilho no desktop/Windows: o volume escolhido vira o volume
+  /// inicial da preferencia e o proximo player abre com ele. No
+  /// celular e na TV não há trilho: vale o volume do sistema/aparelho.
   void _persistVolume(double volume) {
     final prefs = widget.dependencies.preferencesService;
     unawaited(prefs.update(prefs.current.copyWith(initialVolume: volume)));
   }
 
-  /// Setas da TV: passo de 0,05, salvo como volume inicial (mesma regra
-  /// do celular e do desktop).
+  /// Setas com controles ocultos no desktop/Windows: passo de 0,05,
+  /// salvo como volume inicial. No celular e na TV nunca chega aqui.
   void _stepVolume(int direction) {
     final next = steppedVolume(_session.volume, direction);
     widget.dependencies.playerService.setVolume(next);
     _persistVolume(next);
   }
 
+  /// Toque no video (celular): oculta se visivel, reexibe se oculto.
   void _toggleControlsByTouch() {
     if (_controlsVisible && !_panelOpen && !_overlayUp) {
       _hideTimer?.cancel();

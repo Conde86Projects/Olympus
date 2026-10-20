@@ -261,20 +261,24 @@ Honestas e registradas, sem bloquear a revisão:
   (`test/hls_switch_position_test.dart`). Suíte 512/512 e
   `dart analyze` limpo.
 
-## Melhorias futuras (mobile, 18/10/2026)
+## Volume no mobile/TV — decisão de produto (20/10/2026, sem volta)
 
-- Mobile: controle visual de volume ou gesto vertical.
-  Status: melhoria futura. Não bloqueia a versão atual.
-  Hoje no celular: botão de mudo no card e botões físicos do
-  aparelho (aceito para a primeira versão mobile). Em retrato o
-  card não tem espaço para a barra de volume; entrar sem mexer no
-  layout aprovado (ex.: gesto vertical na metade direita do vídeo
-  ou barra no painel de configurações).
+NÃO implementar barra, botões de +/− ou gesto vertical de volume no
+celular e na TV. Os dois itens abaixo estão CANCELADOS e não voltam
+ao backlog como melhoria futura:
 
-## Gesto vertical de volume no celular (0.3.x / 0.4.0)
+- ~~Mobile: controle visual de volume ou gesto vertical~~ (cancelado).
+- ~~Gesto vertical de volume no celular (0.3.x / 0.4.0)~~ (cancelado).
 
-- Arrasto vertical no lado direito do video ajusta o volume, com os
-  botoes de mudo, menos e mais continuando como caminho principal.
-- Fica para depois: nesta versao o controle usa so botoes e barra,
-  mais previsivel e acessivel, sem conflito com rolagem e gestos.
-- Pre-requisito: o controle de volume mobile (0.3.0+17) validado.
+Regra vigente, travada em testes (`test/volume_platform_test.dart`,
+`test/mobile_volume_test.dart`, `test/tv_layout_test.dart`):
+
+- Celular: botões físicos do aparelho (volume do sistema); no app,
+  só o mudo.
+- TV: VOL+/VOL− do controle remoto (volume da TV, fora do app); no
+  app, só o mudo. O D-pad não altera o volume (navegação, foco e
+  progresso).
+- Windows: trilho interno independente do sistema, com mudo e
+  persistência (`initialVolume` só salvo/restaurado no desktop).
+- Validar em aparelho: botões físicos no celular, VOL+/VOL− na TCL,
+  mudo nas duas plataformas e trilho completo no Windows.

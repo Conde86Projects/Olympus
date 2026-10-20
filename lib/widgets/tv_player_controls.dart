@@ -256,9 +256,9 @@ class _TvTimeLabel extends StatelessWidget {
   }
 }
 
-/// Mudo do perfil compacto: so o icone, sem trilho. O volume ajusta
-/// com cima/baixo quando a barra esta oculta (atalhos da tela); com a
-/// barra visivel, as setas navegam.
+/// Mudo do perfil compacto: so o icone, sem trilho. O D-pad nunca
+/// altera o volume: ele sai nos botoes VOL+/VOL− do controle remoto
+/// (volume da TV, fora do app); as setas navegam, buscam e reexibem.
 class _TvVolumeControl extends StatelessWidget {
   const _TvVolumeControl({
     required this.player,
