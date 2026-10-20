@@ -836,3 +836,14 @@ Suíte 254/254 + analyze limpo. Correções em
   (`test/video_output_guard_test.dart`).
 - **ROTEIRO.** `docs/VALIDACAO_APARELHOS.md`: matriz de codecs e de
   telas para Google TV, Fire TV/Mi Box, celular e Windows.
+
+## Trilho do player: cima e baixo saem dele (0.3.0+20)
+
+- Achado do usuário na TCL: com o foco no trilho de progresso, a seta
+  para baixo (a caminho de Pausar, voltar ou menu) fazia o vídeo voltar,
+  e a seta para cima o fazia avançar. O `Slider` do Flutter, no modo de
+  navegação tradicional, usa as quatro setas para ajustar.
+- Correção: na TV, o `ExitSlider` coloca o trilho em
+  `NavigationMode.directional`. Só esquerda e direita avançam e voltam;
+  cima e baixo saem do trilho. OK continua levando para os botões.
+- Desktop e celular sem mudança. Teste: `test/tv_slider_exit_test.dart`.

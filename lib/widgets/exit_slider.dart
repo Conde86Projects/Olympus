@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:player/app/tv_mode.dart';
 
 /// Saida de teclado/D-pad do slider (Fase 4): o Slider consome as
 /// quatro setas para ajustar, e sem isso quem foca nele nao sai mais.
@@ -7,6 +8,11 @@ import 'package:flutter/material.dart';
 /// antes de qualquer [Shortcuts] ao redor, mas a ativacao passa por
 /// aqui. O OK (select) e obrigatorio: no controle remoto o DPAD_CENTER
 /// chega como select, nao como enter.
+///
+/// Na TV o trilho usa a navegacao direcional do Flutter: so esquerda e
+/// direita ajustam; cima e baixo saem do trilho para os botoes. Sem isso
+/// o Slider tratava a seta para baixo como "voltar" e o video andava
+/// quando o foco so passava por ele. Desktop e celular nao mudam.
 class ExitSlider extends StatelessWidget {
   const ExitSlider({super.key, required this.exit, required this.child});
 
@@ -15,6 +21,13 @@ class ExitSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final slider = TvMode.of(context)
+        ? MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(navigationMode: NavigationMode.directional),
+            child: child,
+          )
+        : child;
     return Actions(
       actions: {
         ActivateIntent: CallbackAction<ActivateIntent>(
@@ -24,7 +37,7 @@ class ExitSlider extends StatelessWidget {
           },
         ),
       },
-      child: child,
+      child: slider,
     );
   }
 }
