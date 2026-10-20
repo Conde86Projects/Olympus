@@ -77,7 +77,7 @@ O adaptador demo é usado para validar o fluxo de fontes sem depender de um serv
 - reproduzir e pausar;
 - avançar e retroceder;
 - seek na timeline;
-- controle de volume;
+- controle de volume dentro do app (celular, TV e desktop), sempre lembrado entre aberturas (ver "Volume" abaixo);
 - seleção de áudio;
 - seleção de legendas;
 - velocidade de reprodução;
@@ -87,6 +87,20 @@ O adaptador demo é usado para validar o fluxo de fontes sem depender de um serv
 - modo compacto;
 - modo sempre no topo no desktop, quando suportado;
 - retomada da última posição.
+
+### Volume
+
+- O volume é do app, não do sistema: o aparelho e o Windows mantêm o
+  próprio volume, e o Olympus ajusta o nível dentro da reprodução.
+- Em todas as plataformas, o volume ajustado é salvo como o volume
+  inicial (`initialVolume`) e restaurado na próxima abertura do player.
+- Celular: botões mudo, `−`, `+` e barra. Passo de 0,05.
+- Desktop: trilho de volume. Mesma regra de salvamento.
+- TV: ícone de mudo e setas do controle. Passo de 0,05.
+- Mudo preserva o volume anterior; desmutar restaura o mesmo nível.
+- Sem faixa de áudio: controles desabilitados, com a mensagem
+  "Sem áudio nesta mídia" (depois que a mídia carrega).
+- Gesto vertical no celular e barra visual na TV ficam para o backlog.
 
 ### Biblioteca
 

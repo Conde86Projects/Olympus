@@ -153,6 +153,7 @@ class PlayerControls extends StatelessWidget {
                                   player: player,
                                   session: session,
                                   showSlider: !narrow,
+                                  onVolumeCommitted: onVolumeCommitted,
                                 ),
                               Expanded(
                                 child: Row(
@@ -314,6 +315,7 @@ class _VolumeControl extends StatelessWidget {
     required this.player,
     required this.session,
     this.showSlider = true,
+    this.onVolumeCommitted,
   });
 
   final MediaPlayerService player;
@@ -321,6 +323,9 @@ class _VolumeControl extends StatelessWidget {
 
   /// Falso em janela estreita: so o mudo (sem estouro).
   final bool showSlider;
+
+  /// Recebe o volume escolhido no trilho (0.0–1.0): vira o volume inicial.
+  final ValueChanged<double>? onVolumeCommitted;
 
   @override
   Widget build(BuildContext context) {
@@ -346,6 +351,7 @@ class _VolumeControl extends StatelessWidget {
                   onChanged: (v) {
                     player.setVolume(v);
                     if (v > 0 && session.isMuted) player.setMuted(false);
+                    onVolumeCommitted?.call(v);
                   },
                 ),
               ),
