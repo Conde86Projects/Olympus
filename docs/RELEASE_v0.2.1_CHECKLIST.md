@@ -44,3 +44,12 @@ depois destes gates.
 
 - Controle visual de volume no celular (melhoria futura).
 - Sintel e Tears of Steel (dependem de hospedagem).
+
+## Smoke test do artefato final (APK 0.2.1+16)
+
+- [x] TCL: instalado por atualização, versionName 0.2.1, versionCode 16;
+      histórico preservado (Big Buck Bunny, "parou em 8:34").
+- [x] Celular: smoke test concluído pelo usuário.
+- [x] Windows: build 0.2.1+16 do `8c1707b`, abre com o histórico.
+- [x] Usuário confirmou os três aparelhos (catálogo, reprodução e
+      histórico conferidos com o controle/toque).
