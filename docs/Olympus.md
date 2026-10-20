@@ -90,17 +90,15 @@ O adaptador demo é usado para validar o fluxo de fontes sem depender de um serv
 
 ### Volume
 
-- O volume é do app, não do sistema: o aparelho e o Windows mantêm o
-  próprio volume, e o Olympus ajusta o nível dentro da reprodução.
-- Em todas as plataformas, o volume ajustado é salvo como o volume
-  inicial (`initialVolume`) e restaurado na próxima abertura do player.
-- Celular: botões mudo, `−`, `+` e barra. Passo de 0,05.
-- Desktop: trilho de volume. Mesma regra de salvamento.
-- TV: ícone de mudo e setas do controle. Passo de 0,05.
+- Celular e TV: o volume é controlado pelos botões físicos do aparelho,
+  como sempre. O app mostra só o ícone de mudo, sem barra nem botões
+  de + e −.
+- Desktop: trilho de volume dentro do app, independente do volume do
+  Windows (o aparelho e o Windows mantêm o próprio volume).
+- O ajuste feito no trilho do desktop e nas setas da TV é salvo como o
+  volume inicial (`initialVolume`) e restaurado na próxima abertura.
 - Mudo preserva o volume anterior; desmutar restaura o mesmo nível.
-- Sem faixa de áudio: controles desabilitados, com a mensagem
-  "Sem áudio nesta mídia" (depois que a mídia carrega).
-- Gesto vertical no celular e barra visual na TV ficam para o backlog.
+- Passo das setas e do trilho: 0,05, entre 0,0 e 1,0.
 
 ### Biblioteca
 
