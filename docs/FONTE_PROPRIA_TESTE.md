@@ -123,14 +123,13 @@ conversao e so renomeacao de chaves, sem logica nova. Qualidades
 publicadas seguem `[{"quality","url"}]`; outro formato e pulado
 como item invalido, nunca meio item.
 
-## Ativacao de smoke (registrada)
+## Ativacao de smoke (removida na 0.2.1)
 
-- Host: `8080-i3z7luqmkzuzszqjs7uy1-59e363bb.us4.manus.computer`
-  (const `smokeHost`, só o host exato do feed).
-- Registro em `lib/main.dart`: `adapters: const
-  [OwnedTestSourceAdapter()]` (só atua nesse host).
-- `test-streams.mux.dev` NÃO é reconhecido como fonte: segue
-  sendo só dado (URL de mídia) dentro do feed.
+O host temporario do Manus (`*.us4.manus.computer`) deixou de ser
+reconhecido pelo app na 0.2.1. O feed de smoke agora e so
+`https://conde86projects.github.io/olympus-catalog/feed-smoke.json`,
+casado pelo mesmo prefixo do feed definitivo. `test-streams.mux.dev`
+continua sendo so um dado (URL de midia) dentro dele.
 
 ## Hospedagem (quando quiser validar no aparelho)
 
