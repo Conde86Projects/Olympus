@@ -27,7 +27,7 @@ import 'package:player/services/thumbnail_service.dart';
 import 'package:player/widgets/confirm_dialog.dart';
 import 'package:player/widgets/empty_state.dart';
 import 'package:player/widgets/focusable_button.dart';
-import 'package:player/widgets/mobile_volume_control.dart';
+import 'package:player/core/utils/volume_step.dart';
 import 'package:player/widgets/player_controls.dart';
 import 'package:player/widgets/player_settings_panel.dart';
 import 'package:player/widgets/tv_player_controls.dart';

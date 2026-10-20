@@ -10,7 +10,6 @@ import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/widgets/exit_slider.dart';
 import 'package:player/widgets/focusable_button.dart';
-import 'package:player/widgets/mobile_volume_control.dart';
 import 'package:player/widgets/slider_focus_ring.dart';
 
 /// Card de controles flutuante sobre o video (spec 12.1, espirito
@@ -132,14 +131,6 @@ class PlayerControls extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      if (MobileMode.of(context)) ...[
-                        MobileVolumeControl(
-                          player: player,
-                          session: session,
-                          onVolumeCommitted: onVolumeCommitted,
-                        ),
-                        const SizedBox(height: 4),
-                      ],
                       LayoutBuilder(
                         builder: (context, constraints) {
                           // Janela estreita (compacto/retrato): some o trilho
@@ -148,13 +139,12 @@ class PlayerControls extends StatelessWidget {
                           final narrow = constraints.maxWidth < 460;
                           return Row(
                             children: [
-                              if (!MobileMode.of(context))
-                                _VolumeControl(
-                                  player: player,
-                                  session: session,
-                                  showSlider: !narrow,
-                                  onVolumeCommitted: onVolumeCommitted,
-                                ),
+                              _VolumeControl(
+                                player: player,
+                                session: session,
+                                showSlider: !narrow && !MobileMode.of(context),
+                                onVolumeCommitted: onVolumeCommitted,
+                              ),
                               Expanded(
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -218,21 +208,13 @@ class PlayerControls extends StatelessWidget {
     final muted = session.isMuted || session.volume <= 0;
     return Row(
       children: [
-        if (touch)
-          MobileVolumeControl(
-            player: player,
-            session: session,
-            onVolumeCommitted: onVolumeCommitted,
-            compact: true,
-          )
-        else
-          RoundPlayerButton(
-            tooltip: muted ? 'Ativar som' : 'Silenciar',
-            icon: muted ? Icons.volume_off : Icons.volume_up,
-            size: size,
-            padding: padding,
-            onPressed: () => player.setMuted(!session.isMuted),
-          ),
+        RoundPlayerButton(
+          tooltip: muted ? 'Ativar som' : 'Silenciar',
+          icon: muted ? Icons.volume_off : Icons.volume_up,
+          size: size,
+          padding: padding,
+          onPressed: () => player.setMuted(!session.isMuted),
+        ),
         RoundPlayerButton(
           tooltip: 'Retroceder 10 segundos',
           icon: Icons.replay_10,
