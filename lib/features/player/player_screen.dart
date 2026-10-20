@@ -109,6 +109,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// posicao/relogio nos primeiros segundos e desce um degrau
   /// uma unica vez por abertura se ficar abaixo do limiar.
   Timer? _hlsObserveTimer;
+
   /// Redetecção fria (uma única tentativa posterior, limitada): só
   /// aquece [_hlsVariants] para o seletor; nunca reabre nem troca.
   Timer? _hlsColdTimer;
@@ -153,25 +154,25 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// Escopo dos cantos: alvo de quem sobe do card (a faixa do
   /// slider, de largura total, capturaria o raio para cima).
   final _cornerScope = FocusScopeNode(debugLabel: 'corners');
+
   /// No do botao primario do overlay (erro/concluido, F2 Fase 4b):
   /// autofocus sozinho nao transfere o foco quando ele esta no no
   /// da tela; este no e reivindicado explicito pos-frame.
   final _overlayPrimaryFocus = FocusNode(debugLabel: 'overlay-primary');
   bool _wasOverlayUp = false;
+
   /// Ultimo controle focado antes do hide (F5, Fase 4b): o poke
   /// restaura nele, nao no primeiro da ordem (cantos).
   FocusNode? _lastControlFocus;
 
   /// Politica direcional do player (Fase 4). Instancia estavel com os
   /// escopos acima; instalada no [FocusTraversalGroup] da tela.
-  late final _PlayerTraversalPolicy _traversalPolicy =
-      _PlayerTraversalPolicy(
-        controlsScope: _controlsScope,
-        cornerScope: _cornerScope,
-      );
+  late final _PlayerTraversalPolicy _traversalPolicy = _PlayerTraversalPolicy(
+    controlsScope: _controlsScope,
+    cornerScope: _cornerScope,
+  );
 
-  bool get _tvMode =>
-      widget.dependencies.preferencesService.current.tvMode;
+  bool get _tvMode => widget.dependencies.preferencesService.current.tvMode;
 
   /// Janela baixa no desktop (compacto 480x270, janela pequena): card
   /// de uma fileira e cantos de 36. Recalculado a cada build; acima do
@@ -325,8 +326,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         _isM3u8Url(_baseItem.source)) {
       // Classe com teto: busca as variantes reais uma vez e abre
       // pela selecao (Automatica = teto atual, sem mudanca).
-      final variants =
-          await HlsVariants.fetchVariants(_baseItem.source);
+      final variants = await HlsVariants.fetchVariants(_baseItem.source);
       _hlsVariants = variants;
       if (_hlsVariants.isEmpty) {
         // Rede fria: abre o master agora (fallback abaixo) e agenda
@@ -354,10 +354,10 @@ class _PlayerScreenState extends State<PlayerScreen>
       openItem = _baseItem.copyWith(source: target);
       _currentItem = openItem;
     }
-    final coverResume = widget.dependencies.preferencesService.current
-            .resumeAutomatically &&
-        _isM3u8Url(_baseItem.source) &&
-        (_currentItem.lastPosition ?? Duration.zero) > Duration.zero;
+    final coverResume =
+        widget.dependencies.preferencesService.current.resumeAutomatically &&
+            _isM3u8Url(_baseItem.source) &&
+            (_currentItem.lastPosition ?? Duration.zero) > Duration.zero;
     if (coverResume) _beginReposition(player);
     await player.open(openItem);
     // Aplica preferencias de reproducao apos abrir (spec 16).
@@ -381,9 +381,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       });
     }
     final resume = wasCompleted ? null : _currentItem.lastPosition;
-    if (prefs.resumeAutomatically &&
-        resume != null &&
-        resume > Duration.zero) {
+    if (prefs.resumeAutomatically && resume != null && resume > Duration.zero) {
       // TV-RESUME (TV fisica, mpv frio): seek disparado antes de o mpv
       // conhecer o arquivo e descartado em silencio -- a retomada so
       // vale depois da duracao chegar (com timeout para nao travar
@@ -423,8 +421,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   double? get _logicalWidth {
     final views = WidgetsBinding.instance.platformDispatcher.views;
     if (views.isEmpty) return null;
-    return views.first.physicalSize.width /
-        views.first.devicePixelRatio;
+    return views.first.physicalSize.width / views.first.devicePixelRatio;
   }
 
   /// Perfil automatico: plataforma + Leanback (dobrado em tvMode
@@ -437,8 +434,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   bool get _isCappedClass => _autoDecision.capped;
 
-  DateTime _now() =>
-      HlsVariants.debugNowOverride?.call() ?? DateTime.now();
+  DateTime _now() => HlsVariants.debugNowOverride?.call() ?? DateTime.now();
 
   /// Rotulo da variante efetivamente aberta (null = master).
   String? _effectiveLabelFor(String target) {
@@ -530,9 +526,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   Future<void> _reopenHlsTarget(String target, String selectionId) async {
     final player = widget.dependencies.playerService;
     final position = player.session.position;
-    final wasPlaying =
-        player.session.status == PlaybackStatus.playing ||
-            player.session.status == PlaybackStatus.buffering;
+    final wasPlaying = player.session.status == PlaybackStatus.playing ||
+        player.session.status == PlaybackStatus.buffering;
     final prevItem = _currentItem;
     final prevSelection = _hlsQuality.value;
     // A troca invalida qualquer verificação de retomada pendente:
@@ -546,9 +541,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     final next = _baseItem.copyWith(source: target);
     if (position > Duration.zero) _beginReposition(player);
     try {
-      await _reopenHlsTargetCovered(
-          player, next, prevItem, prevSelection, selectionId, position,
-          wasPlaying, probe);
+      await _reopenHlsTargetCovered(player, next, prevItem, prevSelection,
+          selectionId, position, wasPlaying, probe);
     } finally {
       // Mesma regra da retomada: só descobre depois de o vídeo andar a
       // partir do ponto salvo (a TV mostra o quadro antigo por um
@@ -639,10 +633,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     if (!mounted) return;
     _hlsPositionProtect = true;
-    _probeHlsResume(player, '$probe-fallback',
+    _probeHlsResume(
+        player,
+        '$probe-fallback',
         'reason=rollback-unverified '
-        'targetMs=${position.inMilliseconds} '
-        'prev=$prevSelection');
+            'targetMs=${position.inMilliseconds} '
+            'prev=$prevSelection');
   }
 
   /// Restaura [position] pelo gate de prontidão: aguarda o primeiro
@@ -663,10 +659,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     final ready = await _waitForHlsReady(player);
     if (!mounted) return false;
     final atReady = player.session;
-    _probeHlsResume(player, '$probe-readiness',
+    _probeHlsResume(
+        player,
+        '$probe-readiness',
         'ready=$ready status=${atReady.status.name} '
-        'posMs=${atReady.position.inMilliseconds} '
-        'loading=${_isLoadingStatus(atReady.status)}');
+            'posMs=${atReady.position.inMilliseconds} '
+            'loading=${_isLoadingStatus(atReady.status)}');
     final beforeMs = atReady.position.inMilliseconds;
     final seekAt = DateTime.now();
     try {
@@ -676,18 +674,22 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     if (!mounted) return false;
     final afterSeek = player.session;
-    _probeHlsResume(player, '$probe-seek',
+    _probeHlsResume(
+        player,
+        '$probe-seek',
         'at=${seekAt.toIso8601String()} beforeMs=$beforeMs '
-        'posAfterMs=${afterSeek.position.inMilliseconds} '
-        'status=${afterSeek.status.name} '
-        'loading=${_isLoadingStatus(afterSeek.status)}');
+            'posAfterMs=${afterSeek.position.inMilliseconds} '
+            'status=${afterSeek.status.name} '
+            'loading=${_isLoadingStatus(afterSeek.status)}');
     await Future.delayed(HlsVariants.hlsVerifyDelay);
     if (!mounted) return false;
     final actual = player.session;
-    _probeHlsResume(player, '$probe-verify',
+    _probeHlsResume(
+        player,
+        '$probe-verify',
         'posMs=${actual.position.inMilliseconds} '
-        'status=${actual.status.name} '
-        'loading=${_isLoadingStatus(actual.status)}');
+            'status=${actual.status.name} '
+            'loading=${_isLoadingStatus(actual.status)}');
     if (actual.status == PlaybackStatus.error ||
         actual.status == PlaybackStatus.completed) {
       _probeHlsResume(player, '$probe-correction', 'skipped=status');
@@ -707,13 +709,16 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     if (!mounted) return false;
     final corrected = player.session;
-    _probeHlsResume(player, '$probe-correction',
+    _probeHlsResume(
+        player,
+        '$probe-correction',
         'posMs=${corrected.position.inMilliseconds} '
-        'status=${corrected.status.name}');
+            'status=${corrected.status.name}');
     await Future.delayed(HlsVariants.hlsCorrectionSettle);
     if (!mounted) return false;
     final landed = player.session;
-    final within = !HlsVariants.resumeNeedsCorrection(landed.position, position);
+    final within =
+        !HlsVariants.resumeNeedsCorrection(landed.position, position);
     _probeHlsResume(player, '$probe-settle',
         'posMs=${landed.position.inMilliseconds} within=$within');
     return within;
@@ -789,8 +794,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     final wall = now.difference(startAt);
     if (wall < const Duration(seconds: 3)) return;
-    final ratio =
-        HlsVariants.playbackRatio(startPos, session.position, wall);
+    final ratio = HlsVariants.playbackRatio(startPos, session.position, wall);
     if (ratio == null) {
       _obsAt = null;
       _obsPos = null;
@@ -877,8 +881,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       MediaPlayerService player, Duration target) async {
     Duration? landedAt;
     // Teto por contagem (não relógio de parede): verificação + pouso.
-    final limit = (HlsVariants.hlsVerifyDelay +
-                HlsVariants.hlsCorrectionSettle)
+    final limit = (HlsVariants.hlsVerifyDelay + HlsVariants.hlsCorrectionSettle)
             .inMilliseconds ~/
         HlsVariants.hlsReadyPoll.inMilliseconds;
     var ticks = 0;
@@ -895,8 +898,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           session.status == PlaybackStatus.completed;
       final settled = session.status != PlaybackStatus.loading &&
           session.status != PlaybackStatus.buffering;
-      final near =
-          !HlsVariants.resumeNeedsCorrection(session.position, target);
+      final near = !HlsVariants.resumeNeedsCorrection(session.position, target);
       // A posição informada pula para o alvo na hora do seek, mas a TV
       // ainda mostra o quadro antigo (título) por um instante: só sai
       // depois de o vídeo ANDAR a partir do ponto salvo.
@@ -921,18 +923,22 @@ class _PlayerScreenState extends State<PlayerScreen>
       MediaPlayerService player, Duration target) async {
     _beginReposition(player);
     final before = player.session;
-    _probeHlsResume(player, 'start',
+    _probeHlsResume(
+        player,
+        'start',
         'id=${_currentItem.id} targetMs=${target.inMilliseconds} '
-        'durMs=${before.duration?.inMilliseconds ?? 'none'} '
-        'statusBefore=${before.status.name} '
-        'effective=${_hlsEffective.value ?? 'master'} '
-        'loading=${_isLoadingStatus(before.status)}');
+            'durMs=${before.duration?.inMilliseconds ?? 'none'} '
+            'statusBefore=${before.status.name} '
+            'effective=${_hlsEffective.value ?? 'master'} '
+            'loading=${_isLoadingStatus(before.status)}');
     final ready = await _waitForHlsReady(player);
     if (!mounted) return;
     final readySession = player.session;
-    _probeHlsResume(player, 'readiness',
+    _probeHlsResume(
+        player,
+        'readiness',
         'ready=$ready status=${readySession.status.name} '
-        'posMs=${readySession.position.inMilliseconds}');
+            'posMs=${readySession.position.inMilliseconds}');
     final beforeMs = player.session.position.inMilliseconds;
     final seekAt = _now();
     try {
@@ -941,11 +947,13 @@ class _PlayerScreenState extends State<PlayerScreen>
       // Seek recusado: a verificacao abaixo e a correcao unica.
     }
     final afterSeek = player.session;
-    _probeHlsResume(player, 'seek',
+    _probeHlsResume(
+        player,
+        'seek',
         'at=${seekAt.toIso8601String()} beforeMs=$beforeMs '
-        'posAfterMs=${afterSeek.position.inMilliseconds} '
-        'status=${afterSeek.status.name} '
-        'loading=${_isLoadingStatus(afterSeek.status)}');
+            'posAfterMs=${afterSeek.position.inMilliseconds} '
+            'status=${afterSeek.status.name} '
+            'loading=${_isLoadingStatus(afterSeek.status)}');
     if (!mounted) return;
     unawaited(_endRepositionWhenLanded(player, target));
     _scheduleResumeProbeReadings(player);
@@ -954,10 +962,12 @@ class _PlayerScreenState extends State<PlayerScreen>
       _resumeTimer = null;
       if (!mounted) return;
       final session = player.session;
-      _probeHlsResume(player, 'verify',
+      _probeHlsResume(
+          player,
+          'verify',
           'posMs=${session.position.inMilliseconds} '
-          'status=${session.status.name} '
-          'loading=${_isLoadingStatus(session.status)}');
+              'status=${session.status.name} '
+              'loading=${_isLoadingStatus(session.status)}');
       if (session.status == PlaybackStatus.error ||
           session.status == PlaybackStatus.completed) {
         _probeHlsResume(player, 'correction', 'skipped=status');
@@ -969,8 +979,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         _probeHlsResume(player, 'correction', 'skipped=near-end');
         return;
       }
-      if (!HlsVariants.resumeNeedsCorrection(
-          session.position, target)) {
+      if (!HlsVariants.resumeNeedsCorrection(session.position, target)) {
         _probeHlsResume(player, 'correction', 'skipped=within-tolerance');
         return;
       }
@@ -982,18 +991,20 @@ class _PlayerScreenState extends State<PlayerScreen>
       } catch (_) {
         // Correcao recusada: segue do ponto real, sem loop.
       }
-      _probeHlsResume(player, 'correction',
+      _probeHlsResume(
+          player,
+          'correction',
           'beforeMs=$beforeMs '
-          'afterMs=${player.session.position.inMilliseconds} '
-          'status=${player.session.status.name}');
+              'afterMs=${player.session.position.inMilliseconds} '
+              'status=${player.session.status.name}');
       // A correção só vale dentro da tolerância: valida o pouso
       // após estabilizar. Pouso incorreto cai no fallback seguro
       // (pausa + histórico preservado), nunca num loop de seeks.
       await Future.delayed(HlsVariants.hlsCorrectionSettle);
       if (!mounted) return;
       final landed = player.session;
-      final within = !HlsVariants.resumeNeedsCorrection(
-          landed.position, target);
+      final within =
+          !HlsVariants.resumeNeedsCorrection(landed.position, target);
       _probeHlsResume(player, 'correction-settle',
           'posMs=${landed.position.inMilliseconds} within=$within');
       if (within) return;
@@ -1004,17 +1015,18 @@ class _PlayerScreenState extends State<PlayerScreen>
       }
       if (!mounted) return;
       _hlsPositionProtect = true;
-      _probeHlsResume(player, 'fallback',
+      _probeHlsResume(
+          player,
+          'fallback',
           'reason=landing-unverified '
-          'targetMs=${target.inMilliseconds} '
-          'posMs=${player.session.position.inMilliseconds} '
-          'effective=${_hlsEffective.value ?? 'master'}');
+              'targetMs=${target.inMilliseconds} '
+              'posMs=${player.session.position.inMilliseconds} '
+              'effective=${_hlsEffective.value ?? 'master'}');
     });
   }
 
   static bool _isLoadingStatus(PlaybackStatus status) =>
-      status == PlaybackStatus.loading ||
-      status == PlaybackStatus.buffering;
+      status == PlaybackStatus.loading || status == PlaybackStatus.buffering;
 
   /// Leituras agendadas da sonda (500 ms, 1 s, 1,5 s): só leem a
   /// sessão e registram; nunca disparam seeks.
@@ -1030,10 +1042,12 @@ class _PlayerScreenState extends State<PlayerScreen>
         return;
       }
       final session = player.session;
-      _probeHlsResume(player, 'reading',
+      _probeHlsResume(
+          player,
+          'reading',
           'atMs=${ticks * 500} posMs=${session.position.inMilliseconds} '
-          'status=${session.status.name} '
-          'loading=${_isLoadingStatus(session.status)}');
+              'status=${session.status.name} '
+              'loading=${_isLoadingStatus(session.status)}');
     });
   }
 
@@ -1044,10 +1058,8 @@ class _PlayerScreenState extends State<PlayerScreen>
       [String? detail]) {
     final inner = player is SupervisedPlayerService
         ? player
-        : widget.dependencies.playerService
-                is SupervisedPlayerService
-            ? widget.dependencies.playerService
-                as SupervisedPlayerService
+        : widget.dependencies.playerService is SupervisedPlayerService
+            ? widget.dependencies.playerService as SupervisedPlayerService
             : null;
     inner?.logResumeProbe(stage, detail: detail);
     assert(() {
@@ -1059,7 +1071,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// Espera a duracao chegar (mpv com arquivo conhecido) antes do seek
   /// de retomada. Retorna de imediato se ja houver duracao; timeout
   /// silencioso para nao travar arquivo quebrado.
-  Future<void> _waitForDuration(MediaPlayerService player, Duration timeout) async {
+  Future<void> _waitForDuration(
+      MediaPlayerService player, Duration timeout) async {
     // Le o motor, nao o espelho do widget: o evento de duracao pode ter
     // chegado entre o open e esta linha (o listener atualiza depois).
     if (player.session.duration != null) return;
@@ -1123,8 +1136,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           }
           justRetried = false;
           final hot = pos >= const Duration(seconds: 3) && pos > prev;
-          final pausedReady =
-              s.status == PlaybackStatus.paused && dur != null;
+          final pausedReady = s.status == PlaybackStatus.paused && dur != null;
           prev = pos;
           if (!hot && !pausedReady) return;
           // Espaca as tentativas: sem isso as 5 queimavam nos primeiros
@@ -1255,214 +1267,213 @@ class _PlayerScreenState extends State<PlayerScreen>
             policy: _traversalPolicy,
             child: Scaffold(
               backgroundColor: Colors.black,
-            body: Theme(
-              data: PlayerTheme.playerSurface(Theme.of(context)),
-              child: MouseRegion(
-                onHover: (_) => _poke(),
-                child: GestureDetector(
-                  // Celular: toque alterna os controles. Desktop segue
-                  // com o clique so reexibindo.
-                  onTap: _mobile ? _toggleControlsByTouch : _poke,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // Toque duplo (celular) so no video: nos botoes ele
-                      // seguraria cada toque 300 ms. Com aviso na tela
-                      // (erro, fim, Ver de novo) desliga pelo mesmo motivo.
-                      GestureDetector(
-                        onDoubleTapDown: _mobile && !modalUp
-                            ? (d) => _doubleTapAt = d.localPosition
-                            : null,
-                        onDoubleTap:
-                            _mobile && !modalUp ? _seekByDoubleTap : null,
-                        child: _VideoArea(
-                        player: widget.dependencies.playerService,
-                        session: _session,
-                        isLocal:
-                            _currentItem.sourceType == MediaSourceType.local,
-                        onRetry: _open,
-                        onCancel: () => widget.dependencies.playerService
-                            .stop(),
-                        onRelocate: _relocate,
-                        onRemoveFromLibrary: _removeFromLibrary,
-                        onEditLink: _editLink,
-                        onReplay: _replay,
-                        isFavorite: _isFavorite,
-                        onToggleFavorite: _toggleFavorite,
-                        nextTitle: next?.title,
-                        onPlayNext:
-                            next == null ? null : () => _playNext(next),
-                        onClose: _exitPlayer,
-                        onBackToAutomatic: _hlsVariants.isNotEmpty &&
-                                _hlsQuality.value !=
-                                    HlsVariants.autoQualityId
-                            ? () => _switchHlsQuality(
-                                HlsVariants.autoQualityId)
-                            : null,
-                        primaryFocus: _overlayPrimaryFocus,
-                        showReplayOffer: _replayOffer &&
-                            _session.status != PlaybackStatus.error &&
-                            _session.status != PlaybackStatus.completed,
-                        onWatchAgain: () {
-                          setState(() => _replayOffer = false);
-                          unawaited(_replay());
-                        },
-                        onDismissReplay: () =>
-                            setState(() => _replayOffer = false),
-                      ),
-                      ),
-                      if (_repositioning) const _RepositionCover(),
-                      if (_seekFlash != null)
-                        _SeekFlash(
-                            label: _seekFlash!, left: _seekFlashLeft),
-                      // Cantos flutuantes (Showtime): tela cheia a esquerda;
-                      // cinema, compacto, favorito e fechar a direita. Mesma
-                      // regra da AppBar antiga (escopo proprio, politica
-                      // direcional inalterada, visiveis sobre o overlay
-                      // para a fuga para cima e a saida), mas somem com
-                      // os controles e no cinema. Na tela cheia aparecem
-                      // no poke: a saida pelo botao mora aqui.
-                      Positioned(
-                        left: edge,
-                        right: edge,
-                        top: 0,
-                        child: SafeArea(
-                          bottom: false,
-                          child: Visibility(
-                            visible: _controlsVisible && !_cinema,
-                            maintainState: true,
-                            maintainAnimation: true,
-                            child: ExcludeFocus(
-                              excluding:
-                                  !_controlsVisible || _cinema,
-                              child: FocusScope(
-                                node: _cornerScope,
-                                child: _TvCornerIcons(
-                                  tvMode: _tvMode,
-                                  child: Row(
-                                    children: [
-                                      RoundPlayerButton(
-                                        tooltip: _fullscreen
-                                            ? 'Sair da tela cheia'
-                                            : 'Tela cheia',
-                                        icon: _fullscreen
-                                            ? Icons.fullscreen_exit
-                                            : Icons.fullscreen,
-                                        size: _cornerSize,
-                                        padding: _cornerPadding,
-                                        overVideo: true,
-                                        onPressed: _toggleFullscreen,
-                                      ),
-                                      const Spacer(),
-                                      RoundPlayerButton(
-                                        tooltip: 'Modo cinema',
-                                        icon: Icons.theaters_outlined,
-                                        size: _cornerSize,
-                                        padding: _cornerPadding,
-                                        overVideo: true,
-                                        onPressed: _toggleCinema,
-                                      ),
-                                      // Compacto e janela do desktop: no
-                                      // celular nao ha janela a encolher.
-                                      if (!_mobile)
-                                      RoundPlayerButton(
-                                        tooltip: _compact
-                                            ? 'Sair do modo compacto'
-                                            : 'Modo compacto',
-                                        icon: Icons
-                                            .picture_in_picture_alt_outlined,
-                                        size: _cornerSize,
-                                        padding: _cornerPadding,
-                                        overVideo: true,
-                                        onPressed: _toggleCompact,
-                                      ),
-                                      RoundPlayerButton(
-                                        tooltip: _isFavorite
-                                            ? 'Remover dos favoritos'
-                                            : 'Adicionar aos favoritos',
-                                        icon: _isFavorite
-                                            ? Icons.favorite
-                                            : Icons.favorite_outline,
-                                        size: _cornerSize,
-                                        padding: _cornerPadding,
-                                        overVideo: true,
-                                        onPressed: _toggleFavorite,
-                                      ),
-                                      RoundPlayerButton(
-                                        tooltip: 'Fechar',
-                                        icon: Icons.close,
-                                        size: _cornerSize,
-                                        padding: _cornerPadding,
-                                        overVideo: true,
-                                        onPressed: _exitPlayer,
-                                      ),
-                                    ],
+              body: Theme(
+                data: PlayerTheme.playerSurface(Theme.of(context)),
+                child: MouseRegion(
+                  onHover: (_) => _poke(),
+                  child: GestureDetector(
+                    // Celular: toque alterna os controles. Desktop segue
+                    // com o clique so reexibindo.
+                    onTap: _mobile ? _toggleControlsByTouch : _poke,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Toque duplo (celular) so no video: nos botoes ele
+                        // seguraria cada toque 300 ms. Com aviso na tela
+                        // (erro, fim, Ver de novo) desliga pelo mesmo motivo.
+                        GestureDetector(
+                          onDoubleTapDown: _mobile && !modalUp
+                              ? (d) => _doubleTapAt = d.localPosition
+                              : null,
+                          onDoubleTap:
+                              _mobile && !modalUp ? _seekByDoubleTap : null,
+                          child: _VideoArea(
+                            player: widget.dependencies.playerService,
+                            session: _session,
+                            isLocal: _currentItem.sourceType ==
+                                MediaSourceType.local,
+                            onRetry: _open,
+                            onCancel: () =>
+                                widget.dependencies.playerService.stop(),
+                            onRelocate: _relocate,
+                            onRemoveFromLibrary: _removeFromLibrary,
+                            onEditLink: _editLink,
+                            onReplay: _replay,
+                            isFavorite: _isFavorite,
+                            onToggleFavorite: _toggleFavorite,
+                            nextTitle: next?.title,
+                            onPlayNext:
+                                next == null ? null : () => _playNext(next),
+                            onClose: _exitPlayer,
+                            onBackToAutomatic: _hlsVariants.isNotEmpty &&
+                                    _hlsQuality.value !=
+                                        HlsVariants.autoQualityId
+                                ? () =>
+                                    _switchHlsQuality(HlsVariants.autoQualityId)
+                                : null,
+                            primaryFocus: _overlayPrimaryFocus,
+                            showReplayOffer: _replayOffer &&
+                                _session.status != PlaybackStatus.error &&
+                                _session.status != PlaybackStatus.completed,
+                            onWatchAgain: () {
+                              setState(() => _replayOffer = false);
+                              unawaited(_replay());
+                            },
+                            onDismissReplay: () =>
+                                setState(() => _replayOffer = false),
+                          ),
+                        ),
+                        if (_repositioning) const _RepositionCover(),
+                        if (_seekFlash != null)
+                          _SeekFlash(label: _seekFlash!, left: _seekFlashLeft),
+                        // Cantos flutuantes (Showtime): tela cheia a esquerda;
+                        // cinema, compacto, favorito e fechar a direita. Mesma
+                        // regra da AppBar antiga (escopo proprio, politica
+                        // direcional inalterada, visiveis sobre o overlay
+                        // para a fuga para cima e a saida), mas somem com
+                        // os controles e no cinema. Na tela cheia aparecem
+                        // no poke: a saida pelo botao mora aqui.
+                        Positioned(
+                          left: edge,
+                          right: edge,
+                          top: 0,
+                          child: SafeArea(
+                            bottom: false,
+                            child: Visibility(
+                              visible: _controlsVisible && !_cinema,
+                              maintainState: true,
+                              maintainAnimation: true,
+                              child: ExcludeFocus(
+                                excluding: !_controlsVisible || _cinema,
+                                child: FocusScope(
+                                  node: _cornerScope,
+                                  child: _TvCornerIcons(
+                                    tvMode: _tvMode,
+                                    child: Row(
+                                      children: [
+                                        RoundPlayerButton(
+                                          tooltip: _fullscreen
+                                              ? 'Sair da tela cheia'
+                                              : 'Tela cheia',
+                                          icon: _fullscreen
+                                              ? Icons.fullscreen_exit
+                                              : Icons.fullscreen,
+                                          size: _cornerSize,
+                                          padding: _cornerPadding,
+                                          overVideo: true,
+                                          onPressed: _toggleFullscreen,
+                                        ),
+                                        const Spacer(),
+                                        RoundPlayerButton(
+                                          tooltip: 'Modo cinema',
+                                          icon: Icons.theaters_outlined,
+                                          size: _cornerSize,
+                                          padding: _cornerPadding,
+                                          overVideo: true,
+                                          onPressed: _toggleCinema,
+                                        ),
+                                        // Compacto e janela do desktop: no
+                                        // celular nao ha janela a encolher.
+                                        if (!_mobile)
+                                          RoundPlayerButton(
+                                            tooltip: _compact
+                                                ? 'Sair do modo compacto'
+                                                : 'Modo compacto',
+                                            icon: Icons
+                                                .picture_in_picture_alt_outlined,
+                                            size: _cornerSize,
+                                            padding: _cornerPadding,
+                                            overVideo: true,
+                                            onPressed: _toggleCompact,
+                                          ),
+                                        RoundPlayerButton(
+                                          tooltip: _isFavorite
+                                              ? 'Remover dos favoritos'
+                                              : 'Adicionar aos favoritos',
+                                          icon: _isFavorite
+                                              ? Icons.favorite
+                                              : Icons.favorite_outline,
+                                          size: _cornerSize,
+                                          padding: _cornerPadding,
+                                          overVideo: true,
+                                          onPressed: _toggleFavorite,
+                                        ),
+                                        RoundPlayerButton(
+                                          tooltip: 'Fechar',
+                                          icon: Icons.close,
+                                          size: _cornerSize,
+                                          padding: _cornerPadding,
+                                          overVideo: true,
+                                          onPressed: _exitPlayer,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      // O card nunca desmonta (Fase 4): so oculta com estado.
-                      // Desmontar mataria o foco do controle atual e as
-                      // setas nao chegariam aos bindings (D-pad morto);
-                      // oculto, o foco sobrevive, setas buscam e o OK
-                      // continua alternando play/pause.
-                      Positioned(
-                        left: edge,
-                        right: edge,
-                        bottom: edge,
-                        child: SafeArea(
-                          top: false,
-                          child: Visibility(
-                            visible: _controlsVisible && !_overlayUp,
-                            maintainState: true,
-                            maintainAnimation: true,
-                            // F2 (Fase 4b): oculto, o card sai da travessia - sem
-                            // isso, com overlay no ar (onde o handler global se
-                            // cala), as setas alcancavam botoes invisiveis.
-                            child: ExcludeFocus(
-                              excluding: !_controlsVisible || _overlayUp,
-                              child: FocusScope(
-                              node: _controlsScope,
-                              child: Center(
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                      maxWidth: 880),
-                                  child: _tvMode
-                                      ? TvPlayerControls(
-                                          player: widget.dependencies
-                                              .playerService,
-                                          session: _session,
-                                          videoTitle: _currentItem.title,
-                                          settingsKey: _settingsKey,
-                                          onOpenPanel: (view, anchor) =>
-                                              _openSettings(anchor,
-                                                  view: view),
-                                        )
-                                      : PlayerControls(
-                                    player:
-                                        widget.dependencies.playerService,
-                                    session: _session,
-                                    onOpenSettings: _openSettings,
-                                    videoTitle: _currentItem.title,
-                                    settingsKey: _settingsKey,
-                                    dense: _dense,
+                        // O card nunca desmonta (Fase 4): so oculta com estado.
+                        // Desmontar mataria o foco do controle atual e as
+                        // setas nao chegariam aos bindings (D-pad morto);
+                        // oculto, o foco sobrevive, setas buscam e o OK
+                        // continua alternando play/pause.
+                        Positioned(
+                          left: edge,
+                          right: edge,
+                          bottom: edge,
+                          child: SafeArea(
+                            top: false,
+                            child: Visibility(
+                              visible: _controlsVisible && !_overlayUp,
+                              maintainState: true,
+                              maintainAnimation: true,
+                              // F2 (Fase 4b): oculto, o card sai da travessia - sem
+                              // isso, com overlay no ar (onde o handler global se
+                              // cala), as setas alcancavam botoes invisiveis.
+                              child: ExcludeFocus(
+                                excluding: !_controlsVisible || _overlayUp,
+                                child: FocusScope(
+                                  node: _controlsScope,
+                                  child: Center(
+                                    child: ConstrainedBox(
+                                      constraints:
+                                          const BoxConstraints(maxWidth: 880),
+                                      child: _tvMode
+                                          ? TvPlayerControls(
+                                              player: widget
+                                                  .dependencies.playerService,
+                                              session: _session,
+                                              videoTitle: _currentItem.title,
+                                              settingsKey: _settingsKey,
+                                              onOpenPanel: (view, anchor) =>
+                                                  _openSettings(anchor,
+                                                      view: view),
+                                            )
+                                          : PlayerControls(
+                                              player: widget
+                                                  .dependencies.playerService,
+                                              session: _session,
+                                              onOpenSettings: _openSettings,
+                                              videoTitle: _currentItem.title,
+                                              settingsKey: _settingsKey,
+                                              dense: _dense,
+                                              onVolumeCommitted: _persistVolume,
+                                            ),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
           ),
         ),
       ),
@@ -1526,6 +1537,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         return false;
     }
   }
+
   Map<ShortcutActivator, VoidCallback> _shortcuts() {
     final player = widget.dependencies.playerService;
     // Setas na TV (Fase 4, spec 18): com controles visiveis, as setas
@@ -1599,10 +1611,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     final current = FocusManager.instance.primaryFocus;
     // focusedChild e grudento (ultimo, nao atual): so guarda com o
     // foco DENTRO da barra; fora dela, null pede o proximo da ordem.
-    _lastControlFocus = current != null &&
-            current.ancestors.contains(_controlsScope)
-        ? current
-        : null;
+    _lastControlFocus =
+        current != null && current.ancestors.contains(_controlsScope)
+            ? current
+            : null;
     // Ancorar no no da tela: sem isso o foco cai no escopo da rota
     // e a primeira seta do D-pad se perde. Com overlay modal, nao
     // rouba: o autofocus do botao primario vale (F2, Fase 4b).
@@ -1622,9 +1634,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// valido. Pos-frame porque a arvore-alvo pode estar remontando.
   void _restoreFocusIfLost() {
     final current = FocusManager.instance.primaryFocus;
-    final lost = current == null ||
-        current == _screenFocus ||
-        current.context == null;
+    final lost =
+        current == null || current == _screenFocus || current.context == null;
     if (!lost || !mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -1638,6 +1649,13 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   /// Toque no video (celular): oculta se visivel, reexibe se oculto.
+  /// Volume ajustado no celular vira o volume inicial da preferencia: o
+  /// proximo player abre com ele (sem preferencia separada para mobile).
+  void _persistVolume(double volume) {
+    final prefs = widget.dependencies.preferencesService;
+    unawaited(prefs.update(prefs.current.copyWith(initialVolume: volume)));
+  }
+
   void _toggleControlsByTouch() {
     if (_controlsVisible && !_panelOpen && !_overlayUp) {
       _hideTimer?.cancel();
@@ -1741,8 +1759,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (_hlsVariants.isEmpty &&
         _currentItem.sourceType == MediaSourceType.url &&
         _isM3u8Url(_baseItem.source)) {
-      final variants =
-          await HlsVariants.fetchVariants(_baseItem.source);
+      final variants = await HlsVariants.fetchVariants(_baseItem.source);
       if (!mounted) return;
       if (variants.isNotEmpty) {
         setState(() => _hlsVariants = variants);
@@ -1765,8 +1782,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       preferredAudio: prefs.defaultAudio,
       preferredSubtitle: prefs.defaultSubtitle,
       sourceLabel: sourceLabelFor(_currentItem),
-      sourceQualities:
-          decodeSourceQualities(_baseItem.metadata['qualities']),
+      sourceQualities: decodeSourceQualities(_baseItem.metadata['qualities']),
       selectedSourceQualityId: _sourceQuality.value,
       sourceQualityListenable: _sourceQuality,
       onSelectSourceQuality: _switchSourceQuality,
@@ -1803,8 +1819,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// (null volta a URL padrao) preservando a posicao. O id segue o
   /// mesmo: historico e retomada nao se dividem por qualidade.
   Future<void> _switchSourceQuality(String? qualityId) async {
-    final qualities =
-        decodeSourceQualities(_baseItem.metadata['qualities']);
+    final qualities = decodeSourceQualities(_baseItem.metadata['qualities']);
     var source = _baseItem.source;
     if (qualityId != null) {
       var found = false;
@@ -1878,8 +1893,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   Future<void> _playNext(MediaItem next) async {
     await _saveSession();
     if (!mounted) return;
-    final entry =
-        widget.dependencies.historyService.latestFor(next.id);
+    final entry = widget.dependencies.historyService.latestFor(next.id);
     final target = entry == null
         ? next
         : next.copyWith(lastPosition: () => entry.position);
@@ -1896,8 +1910,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       _currentItem.isFavorite;
 
   Future<void> _toggleFavorite() async {
-    await widget.dependencies.libraryService
-        .toggleFavorite(_currentItem.id);
+    await widget.dependencies.libraryService.toggleFavorite(_currentItem.id);
     if (mounted) setState(() {});
   }
 
@@ -1962,7 +1975,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     final confirmed = await confirmDestructiveAction(
       context,
       title: "Remover da biblioteca?",
-      message: "'${_currentItem.title}' sai da biblioteca e do histórico. O arquivo original não é apagado.",
+      message:
+          "'${_currentItem.title}' sai da biblioteca e do histórico. O arquivo original não é apagado.",
     );
     if (!confirmed) return;
     await widget.dependencies.libraryService.remove(_currentItem.id);
@@ -1998,9 +2012,11 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (_hlsPositionProtect) {
       final kept =
           widget.dependencies.historyService.latestFor(_currentItem.id);
-      _probeHlsResume(widget.dependencies.playerService, 'history-protect',
+      _probeHlsResume(
+          widget.dependencies.playerService,
+          'history-protect',
           'keptMs=${kept?.position?.inMilliseconds ?? 'none'} '
-          'completed=${kept?.completed ?? 'none'}');
+              'completed=${kept?.completed ?? 'none'}');
       if (pause) await widget.dependencies.playerService.pause();
       return;
     }
@@ -2015,15 +2031,14 @@ class _PlayerScreenState extends State<PlayerScreen>
     // Replay de concluido: a base do progresso e o zero, nao o fim salvo.
     final base = _openedCompleted ? Duration.zero : prior;
     final hadResume = prior != null && prior > Duration.zero;
-    final hasProgress = position > Duration.zero ||
-        (duration != null && position != base);
+    final hasProgress =
+        position > Duration.zero || (duration != null && position != base);
     if (widget.dependencies.preferencesService.current.rememberPosition &&
         (hasProgress || !hadResume)) {
       final history = widget.dependencies.historyService;
       final library = widget.dependencies.libraryService;
       final completed = AppConstants.isCompletedPosition(
-          position: position,
-          duration: duration);
+          position: position, duration: duration);
       await history.record(HistoryEntry(
         mediaId: _currentItem.id,
         accessedAt: DateTime.now(),
@@ -2143,8 +2158,7 @@ class _VideoArea extends StatelessWidget {
                         color: PlayerTheme.secondaryText,
                         fontSize: tokens!.textCaption,
                       )
-                    : const TextStyle(
-                        color: PlayerTheme.secondaryText)),
+                    : const TextStyle(color: PlayerTheme.secondaryText)),
             SizedBox(height: isTv ? 8 : 12),
             Wrap(
               spacing: isTv ? 8 : 12,
@@ -2184,8 +2198,7 @@ class _VideoArea extends StatelessWidget {
       PlaybackErrorKind.source => isLocal
           ? const MediaError.missingFile().message
           : const NetworkError.unavailableLink().message,
-      PlaybackErrorKind.decoder =>
-        const MediaError.incompatible().message,
+      PlaybackErrorKind.decoder => const MediaError.incompatible().message,
       PlaybackErrorKind.timeout =>
         'A fonte demorou demais a responder. Tente de novo ou volte.',
       PlaybackErrorKind.unknown || null => isLocal
@@ -2272,9 +2285,7 @@ class _VideoArea extends StatelessWidget {
               ],
             ),
           ),
-        if (showReplayOffer &&
-            onWatchAgain != null &&
-            onDismissReplay != null)
+        if (showReplayOffer && onWatchAgain != null && onDismissReplay != null)
           _replayOfferCard(context),
         if (session.status == PlaybackStatus.completed)
           Builder(
@@ -2287,23 +2298,20 @@ class _VideoArea extends StatelessWidget {
               // FocusableButton. No desktop, so a cor muda: dimensoes
               // intactas, pixel a pixel.
               final isTv = TvLayout.isTv(context);
-              final tokens =
-                  isTv ? TvLayout.tokensOf(context) : null;
+              final tokens = isTv ? TvLayout.tokensOf(context) : null;
               return Center(
                 child: Container(
                   padding: isTv
-                      ? const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12)
+                      ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
                       : const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
                     color: PlayerSettingsPanel.panelColor,
-                    borderRadius: BorderRadius.circular(
-                        isTv ? tokens!.panelRadius : 12),
+                    borderRadius:
+                        BorderRadius.circular(isTv ? tokens!.panelRadius : 12),
                     border: isTv
                         ? Border.all(
-                            color:
-                                Colors.white.withValues(alpha: 0.08))
+                            color: Colors.white.withValues(alpha: 0.08))
                         : null,
                   ),
                   child: Column(
@@ -2432,7 +2440,8 @@ class _PlayerTraversalPolicy extends ReadingOrderTraversalPolicy {
 
   /// Vizinho focavel mais proximo de [current] dentro de [scope],
   /// acima ou abaixo dele. Escopos nunca sao alvo.
-  FocusNode? _nearestIn(FocusScopeNode scope, FocusNode current, {required bool above}) {
+  FocusNode? _nearestIn(FocusScopeNode scope, FocusNode current,
+      {required bool above}) {
     final origin = current.rect.center;
     FocusNode? best;
     var bestDistance = double.infinity;
