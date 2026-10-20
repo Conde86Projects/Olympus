@@ -27,6 +27,7 @@ import 'package:player/services/thumbnail_service.dart';
 import 'package:player/widgets/confirm_dialog.dart';
 import 'package:player/widgets/empty_state.dart';
 import 'package:player/widgets/focusable_button.dart';
+import 'package:player/widgets/mobile_volume_control.dart';
 import 'package:player/widgets/player_controls.dart';
 import 'package:player/widgets/player_settings_panel.dart';
 import 'package:player/widgets/tv_player_controls.dart';
@@ -1515,11 +1516,11 @@ class _PlayerScreenState extends State<PlayerScreen>
         _poke();
         return true;
       case LogicalKeyboardKey.arrowUp:
-        player.setVolume((_session.volume + 0.1).clamp(0.0, 1.0));
+        _stepVolume(1);
         _poke();
         return true;
       case LogicalKeyboardKey.arrowDown:
-        player.setVolume((_session.volume - 0.1).clamp(0.0, 1.0));
+        _stepVolume(-1);
         _poke();
         return true;
       case LogicalKeyboardKey.enter:
@@ -1654,6 +1655,14 @@ class _PlayerScreenState extends State<PlayerScreen>
   void _persistVolume(double volume) {
     final prefs = widget.dependencies.preferencesService;
     unawaited(prefs.update(prefs.current.copyWith(initialVolume: volume)));
+  }
+
+  /// Setas da TV: passo de 0,05, salvo como volume inicial (mesma regra
+  /// do celular e do desktop).
+  void _stepVolume(int direction) {
+    final next = steppedVolume(_session.volume, direction);
+    widget.dependencies.playerService.setVolume(next);
+    _persistVolume(next);
   }
 
   void _toggleControlsByTouch() {
