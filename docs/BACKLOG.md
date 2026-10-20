@@ -270,3 +270,11 @@ Honestas e registradas, sem bloquear a revisão:
   card não tem espaço para a barra de volume; entrar sem mexer no
   layout aprovado (ex.: gesto vertical na metade direita do vídeo
   ou barra no painel de configurações).
+
+## Gesto vertical de volume no celular (0.3.x / 0.4.0)
+
+- Arrasto vertical no lado direito do video ajusta o volume, com os
+  botoes de mudo, menos e mais continuando como caminho principal.
+- Fica para depois: nesta versao o controle usa so botoes e barra,
+  mais previsivel e acessivel, sem conflito com rolagem e gestos.
+- Pre-requisito: o controle de volume mobile (0.3.0+17) validado.
