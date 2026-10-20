@@ -189,6 +189,21 @@ void main() {
       expect(harness.preferences.current.defaultAudio, 'eng');
     });
 
+    testWidgets('TV: sem trilho de volume inicial (vale o volume da TV)',
+        (tester) async {
+      await _tallSurface(tester);
+      final harness = _Harness();
+      await harness.preferences.update(
+          harness.preferences.current.copyWith(tvMode: true));
+      await harness.pump(tester);
+      await tester.tap(find.byTooltip('Configurações'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Usa o volume do aparelho (só o mudo no app)'),
+          findsOneWidget);
+      expect(find.byType(Slider), findsNothing);
+    });
+
     testWidgets('seção de atalhos lista as teclas', (tester) async {
       await _tallSurface(tester);
       final harness = _Harness();

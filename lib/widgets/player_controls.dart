@@ -55,8 +55,9 @@ class PlayerControls extends StatelessWidget {
   /// card normal cobria metade do video e encostava nos cantos.
   final bool dense;
 
-  /// Volume ajustado pelo controle mobile (0.0–1.0). Nulo fora do celular:
-  /// desktop e TV nao persistem volume por aqui.
+  /// Volume ajustado pelo trilho no desktop (0.0–1.0): vira o volume
+  /// inicial. No celular e na TV nao ha trilho (so o mudo), entao o
+  /// callback nao dispara nessas plataformas.
   final ValueChanged<double>? onVolumeCommitted;
 
   @override
@@ -306,7 +307,8 @@ class _VolumeControl extends StatelessWidget {
   /// Falso em janela estreita: so o mudo (sem estouro).
   final bool showSlider;
 
-  /// Recebe o volume escolhido no trilho (0.0–1.0): vira o volume inicial.
+  /// Recebe o volume escolhido no trilho do desktop (0.0–1.0): vira o
+  /// volume inicial (só vale no Windows; no celular/TV não há trilho).
   final ValueChanged<double>? onVolumeCommitted;
 
   @override
