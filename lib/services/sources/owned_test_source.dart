@@ -30,13 +30,6 @@ class OwnedTestSourceAdapter extends SourceAdapter {
   /// ele for hospedado (ver `docs/FONTE_PROPRIA_TESTE.md`).
   static const testHost = 'owned.invalid';
 
-  /// Host da validacao de smoke (Fase 2): feed temporario sob controle
-  /// do dono. Nao e provider terceiro: e o proprio feed; o Mux segue
-  /// sendo so um DADO (URL de midia) dentro dele, nunca um host
-  /// reconhecido aqui.
-  static const smokeHost =
-      '8080-i3z7luqmkzuzszqjs7uy1-59e363bb.us4.manus.computer';
-
   /// Feed definitivo (Fase 0.3): GitHub Pages do repositorio
   /// `olympus-catalog`. O host e compartilhado por todos os
   /// repositorios do usuario, entao casa tambem o prefixo do caminho:
@@ -52,10 +45,9 @@ class OwnedTestSourceAdapter extends SourceAdapter {
   bool canHandle(Uri uri) {
     final host = uri.host.toLowerCase();
     if (host == testHost || host.endsWith('.$testHost')) return true;
-    if (host == feedHost) {
-      return uri.scheme == 'https' && uri.path.startsWith(feedPathPrefix);
-    }
-    return host == smokeHost;
+    return host == feedHost &&
+        uri.scheme == 'https' &&
+        uri.path.startsWith(feedPathPrefix);
   }
 
   @override

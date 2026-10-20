@@ -89,8 +89,7 @@ LocalAddonService ownedService(
       credentials: credentials,
     );
 
-const smokeFeedUrl =
-    'https://8080-i3z7luqmkzuzszqjs7uy1-59e363bb.us4.manus.computer/feed.json';
+const smokeFeedUrl = definitiveSmokeFeedUrl;
 
 Map<String, Object?> smokeEntry() => {
       'id': 'mux-smoke',
