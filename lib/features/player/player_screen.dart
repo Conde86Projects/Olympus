@@ -16,6 +16,7 @@ import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
 import 'package:player/core/utils/media_utils.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
+import 'package:player/features/player/hls_observer.dart';
 import 'package:player/features/player/hls_resume_probe.dart';
 import 'package:player/features/player/hls_session_state.dart';
 import 'package:player/features/player/player_widgets.dart';
@@ -815,31 +816,28 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     final player = widget.dependencies.playerService;
     final session = player.session;
-    if (session.status != PlaybackStatus.playing) {
-      _obsAt = null;
-      _obsPos = null;
-      return;
+    final step = stepHlsObserver(
+      status: session.status,
+      position: session.position,
+      now: _now(),
+      startAt: _obsAt,
+      startPosition: _obsPos,
+    );
+    _obsAt = step.startAt;
+    _obsPos = step.startPosition;
+    switch (step.outcome) {
+      case HlsObserverOutcome.notPlaying:
+      case HlsObserverOutcome.started:
+      case HlsObserverOutcome.waiting:
+      case HlsObserverOutcome.unmeasurable:
+        return;
+      case HlsObserverOutcome.healthy:
+        _hlsObserveTimer?.cancel();
+        return;
+      case HlsObserverOutcome.slow:
+        break;
     }
-    final now = _now();
-    final startAt = _obsAt;
-    final startPos = _obsPos;
-    if (startAt == null || startPos == null) {
-      _obsAt = now;
-      _obsPos = session.position;
-      return;
-    }
-    final wall = now.difference(startAt);
-    if (wall < const Duration(seconds: 3)) return;
-    final ratio = HlsVariants.playbackRatio(startPos, session.position, wall);
-    if (ratio == null) {
-      _obsAt = null;
-      _obsPos = null;
-      return;
-    }
-    if (ratio >= HlsVariants.observedRatioThreshold) {
-      _hlsObserveTimer?.cancel();
-      return;
-    }
+    final ratio = step.ratio!;
     var variants = _hlsVariants;
     if (variants.isEmpty) {
       variants = await HlsVariants.fetchVariants(_baseItem.source);
