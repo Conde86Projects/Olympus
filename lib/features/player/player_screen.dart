@@ -10,12 +10,13 @@ import 'package:player/app/routes.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/core/constants/app_constants.dart';
-import 'package:player/core/errors/app_error.dart';
 import 'package:player/core/utils/hls_cold_probe.dart';
 import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
 import 'package:player/core/utils/media_utils.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
+import 'package:player/features/player/player_widgets.dart';
+import 'package:player/features/player/video_area.dart';
 import 'package:player/models/addon_catalog_item.dart';
 import 'package:player/models/history_entry.dart';
 import 'package:player/models/media_item.dart';
@@ -28,7 +29,6 @@ import 'package:player/services/supervised_player_service.dart';
 import 'package:player/services/system_volume_service.dart';
 import 'package:player/services/thumbnail_service.dart';
 import 'package:player/widgets/confirm_dialog.dart';
-import 'package:player/widgets/empty_state.dart';
 import 'package:player/widgets/focusable_button.dart';
 import 'package:player/core/utils/volume_step.dart';
 import 'package:player/widgets/player_controls.dart';
@@ -184,7 +184,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// Politica direcional do player (Fase 4). Instancia estavel com os
   /// escopos acima; instalada no [FocusTraversalGroup] da tela.
-  late final _PlayerTraversalPolicy _traversalPolicy = _PlayerTraversalPolicy(
+  late final PlayerTraversalPolicy _traversalPolicy = PlayerTraversalPolicy(
     controlsScope: _controlsScope,
     cornerScope: _cornerScope,
   );
@@ -334,8 +334,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         if (!mounted) return;
         setState(() => _systemSilent = state.isSilent);
         if (!state.isSilent && _session.isMuted) {
-          unawaited(
-              widget.dependencies.playerService.setMuted(false));
+          unawaited(widget.dependencies.playerService.setMuted(false));
         }
       });
     }
@@ -1293,252 +1292,253 @@ class _PlayerScreenState extends State<PlayerScreen>
     return ListenableBuilder(
       listenable: _chrome,
       builder: (context, _) => PopScope(
-      canPop: _allowPop,
-      onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
-        // Mesma hierarquia do _onBack (spec 18): dialogo e tratado
-        // pela propria rota; tela cheia e cinema saem sem fechar.
-        if (_fullscreen) {
-          await _toggleFullscreen();
-          return;
-        }
-        if (_cinema) {
-          _toggleCinema();
-          return;
-        }
-        // TV: com a barra visivel, o primeiro BACK so a esconde; o
-        // segundo sai salvando. X/Fechar/Q saem direto (_exitPlayer).
-        if (_tvMode && _controlsVisible && !_overlayUp && !_exitRequested) {
-          _hideControls();
-          return;
-        }
-        _exitRequested = false;
-        await _saveSession();
-        if (!context.mounted) return;
-        setState(() => _allowPop = true);
-        Navigator.of(context).pop();
-      },
-      child: CallbackShortcuts(
-        bindings: _shortcuts(),
-        // Sem autofocus aqui de proposito (Fase 4): o foco inicial
-        // cai no primeiro controle (Reproduzir), de onde o D-pad
-        // navega; do no raiz as setas nao sairiam do lugar.
-        // Overlays modais tem autofocus proprio no botao primario.
-        child: Focus(
-          focusNode: _screenFocus,
-          child: FocusTraversalGroup(
-            policy: _traversalPolicy,
-            child: Scaffold(
-              backgroundColor: Colors.black,
-              body: Theme(
-                data: PlayerTheme.playerSurface(Theme.of(context)),
-                child: MouseRegion(
-                  onHover: (_) => _poke(),
-                  child: GestureDetector(
-                    // Celular: toque alterna os controles. Desktop segue
-                    // com o clique so reexibindo.
-                    onTap: _mobile ? _toggleControlsByTouch : _poke,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        // Toque duplo (celular) so no video: nos botoes ele
-                        // seguraria cada toque 300 ms. Com aviso na tela
-                        // (erro, fim, Ver de novo) desliga pelo mesmo motivo.
-                        GestureDetector(
-                          onDoubleTapDown: _mobile && !modalUp
-                              ? (d) => _doubleTapAt = d.localPosition
-                              : null,
-                          onDoubleTap:
-                              _mobile && !modalUp ? _seekByDoubleTap : null,
-                          child: _VideoArea(
-                            player: widget.dependencies.playerService,
-                            session: _session,
-                            isLocal: _currentItem.sourceType ==
-                                MediaSourceType.local,
-                            onRetry: _open,
-                            onCancel: () =>
-                                widget.dependencies.playerService.stop(),
-                            onRelocate: _relocate,
-                            onRemoveFromLibrary: _removeFromLibrary,
-                            onEditLink: _editLink,
-                            onReplay: _replay,
-                            isFavorite: _isFavorite,
-                            onToggleFavorite: _toggleFavorite,
-                            nextTitle: next?.title,
-                            onPlayNext:
-                                next == null ? null : () => _playNext(next),
-                            onClose: _exitPlayer,
-                            onBackToAutomatic: _hlsVariants.isNotEmpty &&
-                                    _hlsQuality.value !=
-                                        HlsVariants.autoQualityId
-                                ? () =>
-                                    _switchHlsQuality(HlsVariants.autoQualityId)
+        canPop: _allowPop,
+        onPopInvokedWithResult: (didPop, _) async {
+          if (didPop) return;
+          // Mesma hierarquia do _onBack (spec 18): dialogo e tratado
+          // pela propria rota; tela cheia e cinema saem sem fechar.
+          if (_fullscreen) {
+            await _toggleFullscreen();
+            return;
+          }
+          if (_cinema) {
+            _toggleCinema();
+            return;
+          }
+          // TV: com a barra visivel, o primeiro BACK so a esconde; o
+          // segundo sai salvando. X/Fechar/Q saem direto (_exitPlayer).
+          if (_tvMode && _controlsVisible && !_overlayUp && !_exitRequested) {
+            _hideControls();
+            return;
+          }
+          _exitRequested = false;
+          await _saveSession();
+          if (!context.mounted) return;
+          setState(() => _allowPop = true);
+          Navigator.of(context).pop();
+        },
+        child: CallbackShortcuts(
+          bindings: _shortcuts(),
+          // Sem autofocus aqui de proposito (Fase 4): o foco inicial
+          // cai no primeiro controle (Reproduzir), de onde o D-pad
+          // navega; do no raiz as setas nao sairiam do lugar.
+          // Overlays modais tem autofocus proprio no botao primario.
+          child: Focus(
+            focusNode: _screenFocus,
+            child: FocusTraversalGroup(
+              policy: _traversalPolicy,
+              child: Scaffold(
+                backgroundColor: Colors.black,
+                body: Theme(
+                  data: PlayerTheme.playerSurface(Theme.of(context)),
+                  child: MouseRegion(
+                    onHover: (_) => _poke(),
+                    child: GestureDetector(
+                      // Celular: toque alterna os controles. Desktop segue
+                      // com o clique so reexibindo.
+                      onTap: _mobile ? _toggleControlsByTouch : _poke,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // Toque duplo (celular) so no video: nos botoes ele
+                          // seguraria cada toque 300 ms. Com aviso na tela
+                          // (erro, fim, Ver de novo) desliga pelo mesmo motivo.
+                          GestureDetector(
+                            onDoubleTapDown: _mobile && !modalUp
+                                ? (d) => _doubleTapAt = d.localPosition
                                 : null,
-                            primaryFocus: _overlayPrimaryFocus,
-                            showReplayOffer: _replayOffer &&
-                                _session.status != PlaybackStatus.error &&
-                                _session.status != PlaybackStatus.completed,
-                            onWatchAgain: () {
-                              setState(() => _replayOffer = false);
-                              unawaited(_replay());
-                            },
-                            onDismissReplay: () =>
-                                setState(() => _replayOffer = false),
+                            onDoubleTap:
+                                _mobile && !modalUp ? _seekByDoubleTap : null,
+                            child: VideoArea(
+                              player: widget.dependencies.playerService,
+                              session: _session,
+                              isLocal: _currentItem.sourceType ==
+                                  MediaSourceType.local,
+                              onRetry: _open,
+                              onCancel: () =>
+                                  widget.dependencies.playerService.stop(),
+                              onRelocate: _relocate,
+                              onRemoveFromLibrary: _removeFromLibrary,
+                              onEditLink: _editLink,
+                              onReplay: _replay,
+                              isFavorite: _isFavorite,
+                              onToggleFavorite: _toggleFavorite,
+                              nextTitle: next?.title,
+                              onPlayNext:
+                                  next == null ? null : () => _playNext(next),
+                              onClose: _exitPlayer,
+                              onBackToAutomatic: _hlsVariants.isNotEmpty &&
+                                      _hlsQuality.value !=
+                                          HlsVariants.autoQualityId
+                                  ? () => _switchHlsQuality(
+                                      HlsVariants.autoQualityId)
+                                  : null,
+                              primaryFocus: _overlayPrimaryFocus,
+                              showReplayOffer: _replayOffer &&
+                                  _session.status != PlaybackStatus.error &&
+                                  _session.status != PlaybackStatus.completed,
+                              onWatchAgain: () {
+                                setState(() => _replayOffer = false);
+                                unawaited(_replay());
+                              },
+                              onDismissReplay: () =>
+                                  setState(() => _replayOffer = false),
+                            ),
                           ),
-                        ),
-                        if (_repositioning) const _RepositionCover(),
-                        if (_seekFlash != null)
-                          _SeekFlash(label: _seekFlash!, left: _seekFlashLeft),
-                        // Cantos flutuantes (Showtime): tela cheia a esquerda;
-                        // cinema, compacto, favorito e fechar a direita. Mesma
-                        // regra da AppBar antiga (escopo proprio, politica
-                        // direcional inalterada, visiveis sobre o overlay
-                        // para a fuga para cima e a saida), mas somem com
-                        // os controles e no cinema. Na tela cheia aparecem
-                        // no poke: a saida pelo botao mora aqui.
-                        Positioned(
-                          left: edge,
-                          right: edge,
-                          top: 0,
-                          child: SafeArea(
-                            bottom: false,
-                            child: Visibility(
-                              visible: _controlsVisible &&
-                                  (!_cinema || _mobile),
-                              maintainState: true,
-                              maintainAnimation: true,
-                              child: ExcludeFocus(
-                                excluding: !_controlsVisible ||
-                                    (_cinema && !_mobile),
-                                child: FocusScope(
-                                  node: _cornerScope,
-                                  child: _TvCornerIcons(
-                                    tvMode: _tvMode,
-                                    child: Row(
-                                      children: [
-                                        RoundPlayerButton(
-                                          tooltip: _fullscreen
-                                              ? 'Sair da tela cheia'
-                                              : 'Tela cheia',
-                                          icon: _fullscreen
-                                              ? Icons.fullscreen_exit
-                                              : Icons.fullscreen,
-                                          size: _cornerSize,
-                                          padding: _cornerPadding,
-                                          overVideo: true,
-                                          onPressed: _toggleFullscreen,
-                                        ),
-                                        const Spacer(),
-                                        RoundPlayerButton(
-                                          tooltip: _cinema
-                                              ? 'Sair do modo cinema'
-                                              : 'Modo cinema',
-                                          icon: _cinema
-                                              ? Icons.theaters
-                                              : Icons.theaters_outlined,
-                                          size: _cornerSize,
-                                          padding: _cornerPadding,
-                                          overVideo: true,
-                                          onPressed: _toggleCinema,
-                                        ),
-                                        // Compacto e janela do desktop: no
-                                        // celular nao ha janela a encolher.
-                                        if (!_mobile)
+                          if (_repositioning) const RepositionCover(),
+                          if (_seekFlash != null)
+                            SeekFlash(label: _seekFlash!, left: _seekFlashLeft),
+                          // Cantos flutuantes (Showtime): tela cheia a esquerda;
+                          // cinema, compacto, favorito e fechar a direita. Mesma
+                          // regra da AppBar antiga (escopo proprio, politica
+                          // direcional inalterada, visiveis sobre o overlay
+                          // para a fuga para cima e a saida), mas somem com
+                          // os controles e no cinema. Na tela cheia aparecem
+                          // no poke: a saida pelo botao mora aqui.
+                          Positioned(
+                            left: edge,
+                            right: edge,
+                            top: 0,
+                            child: SafeArea(
+                              bottom: false,
+                              child: Visibility(
+                                visible:
+                                    _controlsVisible && (!_cinema || _mobile),
+                                maintainState: true,
+                                maintainAnimation: true,
+                                child: ExcludeFocus(
+                                  excluding: !_controlsVisible ||
+                                      (_cinema && !_mobile),
+                                  child: FocusScope(
+                                    node: _cornerScope,
+                                    child: TvCornerIcons(
+                                      tvMode: _tvMode,
+                                      child: Row(
+                                        children: [
                                           RoundPlayerButton(
-                                            tooltip: _compact
-                                                ? 'Sair do modo compacto'
-                                                : 'Modo compacto',
-                                            icon: Icons
-                                                .picture_in_picture_alt_outlined,
+                                            tooltip: _fullscreen
+                                                ? 'Sair da tela cheia'
+                                                : 'Tela cheia',
+                                            icon: _fullscreen
+                                                ? Icons.fullscreen_exit
+                                                : Icons.fullscreen,
                                             size: _cornerSize,
                                             padding: _cornerPadding,
                                             overVideo: true,
-                                            onPressed: _toggleCompact,
+                                            onPressed: _toggleFullscreen,
                                           ),
-                                        RoundPlayerButton(
-                                          tooltip: _isFavorite
-                                              ? 'Remover dos favoritos'
-                                              : 'Adicionar aos favoritos',
-                                          icon: _isFavorite
-                                              ? Icons.favorite
-                                              : Icons.favorite_outline,
-                                          size: _cornerSize,
-                                          padding: _cornerPadding,
-                                          overVideo: true,
-                                          onPressed: _toggleFavorite,
-                                        ),
-                                        RoundPlayerButton(
-                                          tooltip: 'Fechar',
-                                          icon: Icons.close,
-                                          size: _cornerSize,
-                                          padding: _cornerPadding,
-                                          overVideo: true,
-                                          onPressed: _exitPlayer,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        // O card nunca desmonta (Fase 4): so oculta com estado.
-                        // Desmontar mataria o foco do controle atual e as
-                        // setas nao chegariam aos bindings (D-pad morto);
-                        // oculto, o foco sobrevive, setas buscam e o OK
-                        // continua alternando play/pause.
-                        Positioned(
-                          left: edge,
-                          right: edge,
-                          bottom: edge,
-                          child: SafeArea(
-                            top: false,
-                            child: Visibility(
-                              visible: _controlsVisible && !_overlayUp,
-                              maintainState: true,
-                              maintainAnimation: true,
-                              // F2 (Fase 4b): oculto, o card sai da travessia - sem
-                              // isso, com overlay no ar (onde o handler global se
-                              // cala), as setas alcancavam botoes invisiveis.
-                              child: ExcludeFocus(
-                                excluding: !_controlsVisible || _overlayUp,
-                                child: FocusScope(
-                                  node: _controlsScope,
-                                  child: Center(
-                                    child: ConstrainedBox(
-                                      constraints:
-                                          const BoxConstraints(maxWidth: 880),
-                                      child: _tvMode
-                                          ? TvPlayerControls(
-                                              player: widget
-                                                  .dependencies.playerService,
-                                              session: _session,
-                                              videoTitle: _currentItem.title,
-                                              settingsKey: _settingsKey,
-                                              systemMuted: _systemSilent,
-                                              onOpenPanel: (view, anchor) =>
-                                                  _openSettings(anchor,
-                                                      view: view),
-                                            )
-                                          : PlayerControls(
-                                              player: widget
-                                                  .dependencies.playerService,
-                                              session: _session,
-                                              onOpenSettings: _openSettings,
-                                              videoTitle: _currentItem.title,
-                                              settingsKey: _settingsKey,
-                                              dense: _dense,
-                                              systemMuted: _systemSilent,
+                                          const Spacer(),
+                                          RoundPlayerButton(
+                                            tooltip: _cinema
+                                                ? 'Sair do modo cinema'
+                                                : 'Modo cinema',
+                                            icon: _cinema
+                                                ? Icons.theaters
+                                                : Icons.theaters_outlined,
+                                            size: _cornerSize,
+                                            padding: _cornerPadding,
+                                            overVideo: true,
+                                            onPressed: _toggleCinema,
+                                          ),
+                                          // Compacto e janela do desktop: no
+                                          // celular nao ha janela a encolher.
+                                          if (!_mobile)
+                                            RoundPlayerButton(
+                                              tooltip: _compact
+                                                  ? 'Sair do modo compacto'
+                                                  : 'Modo compacto',
+                                              icon: Icons
+                                                  .picture_in_picture_alt_outlined,
+                                              size: _cornerSize,
+                                              padding: _cornerPadding,
+                                              overVideo: true,
+                                              onPressed: _toggleCompact,
                                             ),
+                                          RoundPlayerButton(
+                                            tooltip: _isFavorite
+                                                ? 'Remover dos favoritos'
+                                                : 'Adicionar aos favoritos',
+                                            icon: _isFavorite
+                                                ? Icons.favorite
+                                                : Icons.favorite_outline,
+                                            size: _cornerSize,
+                                            padding: _cornerPadding,
+                                            overVideo: true,
+                                            onPressed: _toggleFavorite,
+                                          ),
+                                          RoundPlayerButton(
+                                            tooltip: 'Fechar',
+                                            icon: Icons.close,
+                                            size: _cornerSize,
+                                            padding: _cornerPadding,
+                                            overVideo: true,
+                                            onPressed: _exitPlayer,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                          // O card nunca desmonta (Fase 4): so oculta com estado.
+                          // Desmontar mataria o foco do controle atual e as
+                          // setas nao chegariam aos bindings (D-pad morto);
+                          // oculto, o foco sobrevive, setas buscam e o OK
+                          // continua alternando play/pause.
+                          Positioned(
+                            left: edge,
+                            right: edge,
+                            bottom: edge,
+                            child: SafeArea(
+                              top: false,
+                              child: Visibility(
+                                visible: _controlsVisible && !_overlayUp,
+                                maintainState: true,
+                                maintainAnimation: true,
+                                // F2 (Fase 4b): oculto, o card sai da travessia - sem
+                                // isso, com overlay no ar (onde o handler global se
+                                // cala), as setas alcancavam botoes invisiveis.
+                                child: ExcludeFocus(
+                                  excluding: !_controlsVisible || _overlayUp,
+                                  child: FocusScope(
+                                    node: _controlsScope,
+                                    child: Center(
+                                      child: ConstrainedBox(
+                                        constraints:
+                                            const BoxConstraints(maxWidth: 880),
+                                        child: _tvMode
+                                            ? TvPlayerControls(
+                                                player: widget
+                                                    .dependencies.playerService,
+                                                session: _session,
+                                                videoTitle: _currentItem.title,
+                                                settingsKey: _settingsKey,
+                                                systemMuted: _systemSilent,
+                                                onOpenPanel: (view, anchor) =>
+                                                    _openSettings(anchor,
+                                                        view: view),
+                                              )
+                                            : PlayerControls(
+                                                player: widget
+                                                    .dependencies.playerService,
+                                                session: _session,
+                                                onOpenSettings: _openSettings,
+                                                videoTitle: _currentItem.title,
+                                                settingsKey: _settingsKey,
+                                                dense: _dense,
+                                                systemMuted: _systemSilent,
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1546,7 +1546,6 @@ class _PlayerScreenState extends State<PlayerScreen>
             ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -2143,491 +2142,3 @@ class _PlayerScreenState extends State<PlayerScreen>
 
 /// Area do video: superficie da implementacao com estados sobrepostos
 /// (carregando, erro, fim). A tela nao conhece a biblioteca de video.
-class _VideoArea extends StatelessWidget {
-  const _VideoArea({
-    required this.player,
-    required this.session,
-    required this.isLocal,
-    required this.onRetry,
-    required this.onCancel,
-    required this.onRelocate,
-    required this.onRemoveFromLibrary,
-    required this.onEditLink,
-    required this.onReplay,
-    required this.isFavorite,
-    required this.onToggleFavorite,
-    required this.nextTitle,
-    required this.onPlayNext,
-    required this.onClose,
-    required this.primaryFocus,
-    this.showReplayOffer = false,
-    this.onWatchAgain,
-    this.onDismissReplay,
-    this.onBackToAutomatic,
-  });
-
-  final MediaPlayerService player;
-  final PlaybackSession session;
-
-  /// Erro de arquivo local (spec 17.1, 17.5) ou de link (spec 17.2):
-  /// cada tipo tem suas acoes.
-  final bool isLocal;
-  final VoidCallback onRetry;
-  final VoidCallback onCancel;
-  final VoidCallback onRelocate;
-  final VoidCallback onRemoveFromLibrary;
-  final VoidCallback onEditLink;
-
-  /// Acoes finais (spec 11): rever, favoritar, proximo e fechar.
-  final VoidCallback onReplay;
-  final bool isFavorite;
-  final VoidCallback onToggleFavorite;
-  final String? nextTitle;
-  final VoidCallback? onPlayNext;
-  final VoidCallback onClose;
-
-  /// Volta para a qualidade Automatica (falha de variante HLS
-  /// manual). Null esconde a acao.
-  final VoidCallback? onBackToAutomatic;
-  final FocusNode primaryFocus;
-
-  /// Oferta "Ver de novo" (reabertura de concluido, spec 11): mostra
-  /// o card com as acoes abaixo. Null nas acoes esconde a oferta.
-  final bool showReplayOffer;
-  final VoidCallback? onWatchAgain;
-  final VoidCallback? onDismissReplay;
-
-  /// Mensagem pelo TIPO do erro, nunca a string nativa (pode conter
-  /// caminhos e URLs). Cada tipo diz de quem e a culpa: rede, fonte,
-  /// decodificador ou tempo esgotado — nunca o player por um erro da
-  /// fonte (spec 26).
-  /// Card da oferta "Ver de novo" (reabertura de concluido, spec 11):
-  /// mesmo visual do card de fim de video (fundo solido do painel,
-  /// tipografia e raio por modo), so com as acoes da reabertura.
-  Widget _replayOfferCard(BuildContext context) {
-    final isTv = TvLayout.isTv(context);
-    final tokens = isTv ? TvLayout.tokensOf(context) : null;
-    return Center(
-      child: Container(
-        padding: isTv
-            ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
-            : const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: PlayerSettingsPanel.panelColor,
-          borderRadius: BorderRadius.circular(isTv ? tokens!.panelRadius : 12),
-          border: isTv
-              ? Border.all(color: Colors.white.withValues(alpha: 0.08))
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Você já concluiu este vídeo',
-                style: isTv
-                    ? TextStyle(
-                        color: PlayerTheme.primaryText,
-                        fontSize: tokens!.textBody,
-                        fontWeight: FontWeight.w600,
-                      )
-                    : const TextStyle(color: PlayerTheme.primaryText)),
-            const SizedBox(height: 4),
-            Text('Começa do início.',
-                style: isTv
-                    ? TextStyle(
-                        color: PlayerTheme.secondaryText,
-                        fontSize: tokens!.textCaption,
-                      )
-                    : const TextStyle(color: PlayerTheme.secondaryText)),
-            SizedBox(height: isTv ? 8 : 12),
-            Wrap(
-              spacing: isTv ? 8 : 12,
-              runSpacing: isTv ? 8 : 12,
-              alignment: WrapAlignment.center,
-              children: [
-                FocusableButton(
-                  label: 'Ver de novo',
-                  focusNode: primaryFocus,
-                  icon: Icons.replay,
-                  primary: true,
-                  autofocus: true,
-                  onPressed: onWatchAgain!,
-                ),
-                FocusableButton(
-                  label: 'Fechar',
-                  icon: Icons.close,
-                  onPressed: onDismissReplay!,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _messageFor(PlaybackSession session) {
-    return switch (session.errorKind) {
-      // Fonte local nunca e problema de rede (F9, Fase 4b): o mpv
-      // relata "Failed to open ... Permission denied" e o
-      // classificador ja mapeia permissao para fonte; este guarda
-      // cobre qualquer outro texto classificado como rede.
-      PlaybackErrorKind.network => isLocal
-          ? const MediaError.missingFile().message
-          : const NetworkError.offline().message,
-      PlaybackErrorKind.source => isLocal
-          ? const MediaError.missingFile().message
-          : const NetworkError.unavailableLink().message,
-      PlaybackErrorKind.decoder => const MediaError.incompatible().message,
-      PlaybackErrorKind.timeout =>
-        'A fonte demorou demais a responder. Tente de novo ou volte.',
-      PlaybackErrorKind.unknown || null => isLocal
-          ? 'Não foi possível reproduzir este arquivo neste dispositivo.'
-          : 'Não foi possível carregar este link. Verifique a conexão ou confirme se o endereço ainda está disponível.',
-    };
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (session.status == PlaybackStatus.error) {
-      return EmptyState(
-        icon: Icons.error_outline,
-        title: 'Não foi possível reproduzir',
-        message: _messageFor(session),
-        actions: [
-          FocusableButton(
-            label: 'Tentar novamente',
-            focusNode: primaryFocus,
-            icon: Icons.refresh,
-            primary: true,
-            autofocus: true,
-            onPressed: onRetry,
-          ),
-          if (onBackToAutomatic != null)
-            FocusableButton(
-              label: 'Voltar para Automática',
-              icon: Icons.tune,
-              onPressed: onBackToAutomatic!,
-            ),
-          if (isLocal)
-            FocusableButton(
-              label: 'Localizar arquivo…',
-              icon: Icons.folder_open,
-              onPressed: onRelocate,
-            )
-          else
-            FocusableButton(
-              label: 'Editar link',
-              icon: Icons.edit,
-              onPressed: onEditLink,
-            ),
-          if (isLocal)
-            FocusableButton(
-              label: 'Remover da biblioteca',
-              icon: Icons.delete_outline,
-              onPressed: onRemoveFromLibrary,
-            ),
-          FocusableButton(
-            label: 'Fechar',
-            icon: Icons.close,
-            onPressed: onClose,
-          ),
-        ],
-      );
-    }
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        RotatedBox(
-          quarterTurns: session.rotation,
-          child: player.buildVideoView(),
-        ),
-        if (session.status == PlaybackStatus.loading ||
-            session.status == PlaybackStatus.buffering)
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(),
-                // Cancelar so na abertura: no meio do video (seek,
-                // pausa) o buffering e passageiro e o botao parava a
-                // reproducao; travamento longo vira erro pelo
-                // supervisor, com "Tentar novamente".
-                if (session.status == PlaybackStatus.loading ||
-                    session.position <= Duration.zero) ...[
-                  const SizedBox(height: 16),
-                  FocusableButton(
-                    label: 'Cancelar',
-                    icon: Icons.close,
-                    onPressed: onCancel,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        if (showReplayOffer && onWatchAgain != null && onDismissReplay != null)
-          _replayOfferCard(context),
-        if (session.status == PlaybackStatus.completed)
-          Builder(
-            builder: (context) {
-              // Card solido na cor do painel de Opcoes, nos dois
-              // modos: o preto 0.7 deixava o video atravessar e sumia
-              // com os botoes (blur e so na barra do player). Na TV,
-              // tipografia, respiros e raio seguem os tokens compactos
-              // e os botoes ja usam o alvo minimo dos tokens via
-              // FocusableButton. No desktop, so a cor muda: dimensoes
-              // intactas, pixel a pixel.
-              final isTv = TvLayout.isTv(context);
-              final tokens = isTv ? TvLayout.tokensOf(context) : null;
-              return Center(
-                child: Container(
-                  padding: isTv
-                      ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
-                      : const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: PlayerSettingsPanel.panelColor,
-                    borderRadius:
-                        BorderRadius.circular(isTv ? tokens!.panelRadius : 12),
-                    border: isTv
-                        ? Border.all(
-                            color: Colors.white.withValues(alpha: 0.08))
-                        : null,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Reprodução concluída',
-                          style: isTv
-                              ? TextStyle(
-                                  color: PlayerTheme.primaryText,
-                                  fontSize: tokens!.textBody,
-                                  fontWeight: FontWeight.w600,
-                                )
-                              : const TextStyle(
-                                  color: PlayerTheme.primaryText)),
-                      if (nextTitle != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'A seguir: $nextTitle',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: isTv
-                              ? TextStyle(
-                                  color: PlayerTheme.secondaryText,
-                                  fontSize: tokens!.textCaption,
-                                )
-                              : const TextStyle(
-                                  color: PlayerTheme.secondaryText),
-                        ),
-                      ],
-                      SizedBox(height: isTv ? 8 : 12),
-                      Wrap(
-                        spacing: isTv ? 8 : 12,
-                        runSpacing: isTv ? 8 : 12,
-                        alignment: WrapAlignment.center,
-                        children: [
-                          FocusableButton(
-                            label: 'Reproduzir novamente',
-                            focusNode: primaryFocus,
-                            icon: Icons.replay,
-                            primary: true,
-                            autofocus: true,
-                            onPressed: onReplay,
-                          ),
-                          FocusableButton(
-                            label: isFavorite
-                                ? 'Remover dos favoritos'
-                                : 'Adicionar aos favoritos',
-                            icon: isFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_outline,
-                            onPressed: onToggleFavorite,
-                          ),
-                          if (nextTitle != null && onPlayNext != null)
-                            FocusableButton(
-                              label: 'Próximo',
-                              icon: Icons.skip_next,
-                              onPressed: onPlayNext,
-                            ),
-                          FocusableButton(
-                            label: 'Fechar',
-                            icon: Icons.close,
-                            onPressed: onClose,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-      ],
-    );
-  }
-}
-
-/// Politica direcional do player (Fase 4): subir do card de controles
-/// ancora no botao dos cantos mais proximo, em vez de cair no slider
-/// de progresso (faixa de largura total que capturaria todo raio
-/// para cima e bipartiria a tela). Sem cantos (cinema) ou fora das
-/// setas para cima, vale o padrao. Tab segue a ordem de leitura.
-class _PlayerTraversalPolicy extends ReadingOrderTraversalPolicy {
-  _PlayerTraversalPolicy({
-    required this.controlsScope,
-    required this.cornerScope,
-  });
-
-  final FocusScopeNode controlsScope;
-  final FocusScopeNode cornerScope;
-
-  @override
-  bool inDirection(FocusNode currentNode, TraversalDirection direction) {
-    final upFromControls = direction == TraversalDirection.up &&
-        currentNode.ancestors.contains(controlsScope);
-    final downFromCorners = direction == TraversalDirection.down &&
-        currentNode.ancestors.contains(cornerScope);
-    if (upFromControls || downFromCorners) {
-      final target = upFromControls
-          ? _nearestAbove(currentNode)
-          : _nearestBelow(currentNode);
-      if (target != null) {
-        // Nao chama o super aqui de proposito: o padrao agenda um
-        // foco adiado na borda do escopo que puxaria o foco de volta
-        // depois deste salto (coberto pelo teste do loop cantos <->
-        // slider). Nos demais casos, o super resolve abaixo.
-        target.requestFocus();
-        return true;
-      }
-    }
-    return super.inDirection(currentNode, direction);
-  }
-
-  /// Focavel dos cantos mais proximo acima de [current], ou null sem
-  /// cantos montados (cinema) ou sem candidato.
-  FocusNode? _nearestAbove(FocusNode current) {
-    if (cornerScope.children.isEmpty) return null;
-    return _nearestIn(cornerScope, current, above: true);
-  }
-
-  /// Focavel do card mais proximo abaixo de [current] (na pratica,
-  /// o slider de progresso).
-  FocusNode? _nearestBelow(FocusNode current) {
-    if (controlsScope.children.isEmpty) return null;
-    return _nearestIn(controlsScope, current, above: false);
-  }
-
-  /// Vizinho focavel mais proximo de [current] dentro de [scope],
-  /// acima ou abaixo dele. Escopos nunca sao alvo.
-  FocusNode? _nearestIn(FocusScopeNode scope, FocusNode current,
-      {required bool above}) {
-    final origin = current.rect.center;
-    FocusNode? best;
-    var bestDistance = double.infinity;
-    void visit(FocusNode node) {
-      for (final child in node.children) {
-        final inBand = above
-            ? child.rect.center.dy < origin.dy
-            : child.rect.center.dy > origin.dy;
-        if (child is! FocusScopeNode &&
-            child.canRequestFocus &&
-            !child.skipTraversal &&
-            child.context != null &&
-            inBand) {
-          // Eixo vertical domina, horizontal desempatia: a faixa do
-          // slider (largura total) venceria pelo centro em distancia
-          // euclidiana pura.
-          final delta = child.rect.center - origin;
-          final distance = delta.dy.abs() * 4096 + delta.dx.abs();
-          if (distance < bestDistance) {
-            bestDistance = distance;
-            best = child;
-          }
-        }
-        visit(child);
-      }
-    }
-
-    visit(scope);
-    return best;
-  }
-}
-
-/// Glifos dos cantos: 20 na TV (como a barra), tema no desktop.
-class _TvCornerIcons extends StatelessWidget {
-  const _TvCornerIcons({required this.tvMode, required this.child});
-
-  final bool tvMode;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!tvMode) return child;
-    return IconTheme(
-      data: const IconThemeData(size: 20),
-      child: child,
-    );
-  }
-}
-
-/// Rotulo do toque duplo no celular ("-10 s" a esquerda, "+10 s" a
-/// direita). So desenha: nao recebe toques.
-class _SeekFlash extends StatelessWidget {
-  const _SeekFlash({required this.label, required this.left});
-
-  final String label;
-  final bool left;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Align(
-        alignment: left ? const Alignment(-0.6, 0) : const Alignment(0.6, 0),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Cobre o vídeo enquanto a retomada/troca de qualidade leva a imagem
-/// ao ponto salvo (o início do vídeo não aparece). Não recebe toques:
-/// os controles continuam por cima.
-class _RepositionCover extends StatelessWidget {
-  const _RepositionCover();
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: ColoredBox(
-        color: Colors.black,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Sem animação de propósito: a cobertura dura ~1-3 s e um
-              // indicador animado não deixaria a tela "assentar".
-              const Icon(Icons.update, size: 32),
-              const SizedBox(height: 12),
-              Text(
-                'Ajustando a posição…',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
