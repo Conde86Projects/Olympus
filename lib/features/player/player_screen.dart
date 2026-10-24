@@ -208,10 +208,11 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// nas laterais busca 10 s, tela cheia imersiva em paisagem.
   bool _mobile = false;
 
-  /// Rotulo rapido do toque duplo ("-10 s"/"+10 s") e o lado dele.
-  String? _seekFlash;
-  bool _seekFlashLeft = false;
-  Timer? _seekFlashTimer;
+  /// Flash do toque duplo (dono: MobileChrome, F3/#8): a tela lê e
+  /// reage via `ListenableBuilder`, sem copiar estado nem gerir timer.
+  /// O ponto bruto do gesto segue local ([_doubleTapAt]).
+  String? get _seekFlash => _chrome.seekFlash;
+  bool get _seekFlashLeft => _chrome.seekFlashLeft;
 
   /// Ponto do ultimo toque duplo (decide o lado da busca).
   Offset? _doubleTapAt;
@@ -1220,7 +1221,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     HardwareKeyboard.instance.removeHandler(_handleHiddenKeys);
     WidgetsBinding.instance.removeObserver(this);
     _minimizedSub?.cancel();
-    _seekFlashTimer?.cancel();
+    _chrome.resetSeekFlash();
     _repositionTimer?.cancel();
     // Saiu do player em tela cheia no celular: devolve barras e giro.
     if (_mobile && _fullscreen) unawaited(_chrome.setFullscreen(false));
@@ -1759,15 +1760,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final back = at.dx < width / 2;
     final player = widget.dependencies.playerService;
     player.seekBy(back ? -AppConstants.seekStep : AppConstants.seekStep);
-    final seconds = AppConstants.seekStep.inSeconds;
-    _seekFlashTimer?.cancel();
-    setState(() {
-      _seekFlash = back ? '-$seconds s' : '+$seconds s';
-      _seekFlashLeft = back;
-    });
-    _seekFlashTimer = Timer(const Duration(milliseconds: 700), () {
-      if (mounted) setState(() => _seekFlash = null);
-    });
+    _chrome.flashSeek(back: back);
   }
 
   Future<void> _toggleFullscreen() async {

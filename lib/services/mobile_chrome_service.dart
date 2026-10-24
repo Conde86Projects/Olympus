@@ -7,6 +7,13 @@ import 'package:player/core/constants/app_constants.dart';
 /// Chrome mobile: o que o aparelho mostra e esconde em volta do video.
 /// Dono do estado (cheia); a tela apenas assina via [Listenable].
 abstract class MobileChromeService extends ChangeNotifier {
+  /// Duracao visivel do flash do toque duplo (700 ms, ADR-0002).
+  static const Duration seekFlashDuration = Duration(milliseconds: 700);
+
+  /// Texto do flash para o lado dado ('-10 s'/'+10 s', passo da fonte).
+  static String formatSeekFlash(bool back) =>
+      '${back ? '-' : '+'}${AppConstants.seekStep.inSeconds} s';
+
   /// Cheia ativa ou nao. Valor inicial sincrono: desligada.
   bool get isFullscreen;
 
@@ -43,6 +50,19 @@ abstract class MobileChromeService extends ChangeNotifier {
   /// Gancho invocado após ocultar no disparo (efeito de foco da tela).
   void Function()? get onControlsAutoHidden;
   set onControlsAutoHidden(void Function()? hook);
+
+  /// Flash do toque duplo ('-10 s'/'+10 s'). Null = apagado.
+  String? get seekFlash;
+
+  /// true = flash a esquerda (busca para tras).
+  bool get seekFlashLeft;
+
+  /// Registra o flash do toque duplo e agenda o apagamento.
+  /// O lado e a busca seguem na tela; aqui vivem so texto + timer.
+  void flashSeek({required bool back});
+
+  /// Cancela o pendente e apaga (dispose; o módulo sobrevive a tela).
+  void resetSeekFlash();
 }
 
 /// Adaptador real (mobile): imersao + paisagem via `SystemChrome`.
@@ -55,6 +75,9 @@ class SystemMobileChrome extends MobileChromeService {
   bool _fullscreen = false;
   bool _controlsVisible = true;
   Timer? _hideTimer;
+  String? _seekFlash;
+  bool _seekFlashLeft = false;
+  Timer? _seekFlashTimer;
 
   @override
   bool get isFullscreen => _fullscreen;
@@ -125,6 +148,35 @@ class SystemMobileChrome extends MobileChromeService {
   }
 
   @override
+  String? get seekFlash => _seekFlash;
+
+  @override
+  bool get seekFlashLeft => _seekFlashLeft;
+
+  @override
+  void flashSeek({required bool back}) {
+    _seekFlashTimer?.cancel();
+    _seekFlash = MobileChromeService.formatSeekFlash(back);
+    _seekFlashLeft = back;
+    notifyListeners();
+    _seekFlashTimer =
+        Timer(MobileChromeService.seekFlashDuration, () {
+      _seekFlashTimer = null;
+      _seekFlash = null;
+      notifyListeners();
+    });
+  }
+
+  @override
+  void resetSeekFlash() {
+    _seekFlashTimer?.cancel();
+    _seekFlashTimer = null;
+    if (_seekFlash == null) return;
+    _seekFlash = null;
+    notifyListeners();
+  }
+
+  @override
   Future<void> setFullscreen(bool enabled) async {
     if (enabled == _fullscreen) return;
     // Estado só comita após as chamadas com sucesso (antes, o campo da
@@ -181,4 +233,16 @@ class NoOpMobileChrome extends MobileChromeService {
 
   @override
   set onControlsAutoHidden(void Function()? hook) {}
+
+  @override
+  String? get seekFlash => null;
+
+  @override
+  bool get seekFlashLeft => false;
+
+  @override
+  void flashSeek({required bool back}) {}
+
+  @override
+  void resetSeekFlash() {}
 }

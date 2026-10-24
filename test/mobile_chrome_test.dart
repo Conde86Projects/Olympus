@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/app.dart';
@@ -31,7 +32,7 @@ class FakeMobileChrome extends MobileChromeService {
   }
 
   bool _controlsVisible = true;
-  Duration? _hideIn;
+  Duration? _hideRemaining;
 
   @override
   bool get controlsVisible => _controlsVisible;
@@ -44,7 +45,7 @@ class FakeMobileChrome extends MobileChromeService {
 
   @override
   void showControls() {
-    _hideIn = null;
+    _hideRemaining = null;
     if (_controlsVisible) return;
     _controlsVisible = true;
     notifyListeners();
@@ -52,7 +53,7 @@ class FakeMobileChrome extends MobileChromeService {
 
   @override
   void hideControls() {
-    _hideIn = null;
+    _hideRemaining = null;
     if (!_controlsVisible) return;
     _controlsVisible = false;
     notifyListeners();
@@ -69,7 +70,7 @@ class FakeMobileChrome extends MobileChromeService {
 
   @override
   void pokeControls() {
-    _hideIn = AppConstants.controlsAutoHide;
+    _hideRemaining = AppConstants.controlsAutoHide;
     // Notifica sempre (mesmo ja visivel): espelha o adaptador real.
     _controlsVisible = true;
     notifyListeners();
@@ -77,27 +78,61 @@ class FakeMobileChrome extends MobileChromeService {
 
   @override
   void cancelAutoHide() {
-    _hideIn = null;
+    _hideRemaining = null;
   }
 
   bool _mayAutoHide() => autoHideGuard == null || autoHideGuard!();
 
+  String? _seekFlash;
+  bool _seekFlashLeft = false;
+  Duration? _flashRemaining;
+
+  @override
+  String? get seekFlash => _seekFlash;
+
+  @override
+  bool get seekFlashLeft => _seekFlashLeft;
+
+  @override
+  void flashSeek({required bool back}) {
+    _flashRemaining = MobileChromeService.seekFlashDuration;
+    _seekFlash = MobileChromeService.formatSeekFlash(back);
+    _seekFlashLeft = back;
+    notifyListeners();
+  }
+
+  @override
+  void resetSeekFlash() {
+    _flashRemaining = null;
+    if (_seekFlash == null) return;
+    _seekFlash = null;
+    notifyListeners();
+  }
+
   /// Avança o relógio determinístico do fake (F2): dispara o auto-hide
   /// sem bombear a tela nem esperar o tempo real.
   void advanceTime(Duration step) {
-    final remaining = _hideIn;
-    if (remaining == null) return;
+    if (_consume(_hideRemaining, (d) => _hideRemaining = d, step) && _mayAutoHide()) {
+      _controlsVisible = false;
+      notifyListeners();
+      onControlsAutoHidden?.call();
+    }
+    if (_consume(_flashRemaining, (d) => _flashRemaining = d, step)) {
+      _seekFlash = null;
+      notifyListeners();
+    }
+  }
+
+  /// Desconta [step] do prazo; true = expirou (prazo consumido).
+  bool _consume(Duration? remaining, void Function(Duration?) save, Duration step) {
+    if (remaining == null) return false;
     final next = remaining - step;
     if (next <= Duration.zero) {
-      _hideIn = null;
-      if (_mayAutoHide()) {
-        _controlsVisible = false;
-        notifyListeners();
-        onControlsAutoHidden?.call();
-      }
-    } else {
-      _hideIn = next;
+      save(null);
+      return true;
     }
+    save(next);
+    return false;
   }
 }
 
@@ -295,6 +330,117 @@ void main() {
       expect(find.byTooltip('Reproduzir'), findsNothing);
     });
   });
+
+  group('flash do toque duplo (F3: estado + timer no modulo)', () {
+    test('flashSeek mostra lado e texto; relogio apaga', () {
+      final fake = FakeMobileChrome();
+      final MobileChromeService chrome = fake;
+      var calls = 0;
+      chrome.addListener(() => calls++);
+
+      chrome.flashSeek(back: true);
+      expect(chrome.seekFlash, '-10 s');
+      expect(chrome.seekFlashLeft, isTrue);
+      expect(calls, 1);
+
+      // Parcial: ainda visivel.
+      fake.advanceTime(MobileChromeService.seekFlashDuration - const Duration(milliseconds: 1));
+      expect(chrome.seekFlash, '-10 s');
+
+      // Completa: apaga sem bombear tela alguma.
+      fake.advanceTime(const Duration(milliseconds: 1));
+      expect(chrome.seekFlash, isNull);
+      expect(calls, 2);
+    });
+
+    test('lado direito avanca; novo toque reinicia o prazo', () {
+      final fake = FakeMobileChrome();
+      final MobileChromeService chrome = fake;
+
+      chrome.flashSeek(back: false);
+      expect(chrome.seekFlash, '+10 s');
+      expect(chrome.seekFlashLeft, isFalse);
+
+      // Novo toque no meio do prazo: nao acumula, reinicia.
+      fake.advanceTime(MobileChromeService.seekFlashDuration ~/ 2);
+      chrome.flashSeek(back: false);
+      fake.advanceTime(MobileChromeService.seekFlashDuration ~/ 2);
+      expect(chrome.seekFlash, '+10 s');
+      fake.advanceTime(MobileChromeService.seekFlashDuration ~/ 2);
+      expect(chrome.seekFlash, isNull);
+    });
+
+    test('resetSeekFlash cancela e apaga', () {
+      final fake = FakeMobileChrome();
+      final MobileChromeService chrome = fake;
+      var calls = 0;
+      chrome.addListener(() => calls++);
+
+      chrome.flashSeek(back: true);
+      chrome.resetSeekFlash();
+      expect(chrome.seekFlash, isNull);
+      expect(calls, 2);
+      fake.advanceTime(MobileChromeService.seekFlashDuration);
+      expect(calls, 2);
+    });
+  });
+
+  group('fiacao dos gestos (F3: toque consome o modulo)', () {
+    testWidgets('duplo toque busca por lado com flash do modulo',
+        (tester) async {
+      final fake = FakeMobileChrome();
+      final MobileChromeService chrome = fake;
+      final harness = await _openMobilePlayer(tester, fake);
+
+      Future<void> doubleTap(Offset at) async {
+        await tester.tapAt(at);
+        await tester.pump(const Duration(milliseconds: 60));
+        await tester.tapAt(at);
+        await tester.pump(const Duration(milliseconds: 60));
+      }
+
+      await doubleTap(const Offset(650, 300));
+      expect(find.text('+10 s'), findsOneWidget);
+      expect(chrome.seekFlash, '+10 s');
+      expect(chrome.seekFlashLeft, isFalse);
+
+      await doubleTap(const Offset(150, 300));
+      expect(find.text('-10 s'), findsOneWidget);
+      expect(chrome.seekFlash, '-10 s');
+      expect(chrome.seekFlashLeft, isTrue);
+
+      expect(harness.player.seeks, [AppConstants.seekStep, -AppConstants.seekStep]);
+    });
+
+    testWidgets('tap alterna os controles via visibilidade',
+        (tester) async {
+      final fake = FakeMobileChrome();
+      final MobileChromeService chrome = fake;
+      await _openMobilePlayer(tester, fake);
+
+      expect(find.byTooltip('Reproduzir'), findsOneWidget);
+
+      await tester.tapAt(const Offset(400, 300));
+      await tester.pump(kDoubleTapTimeout);
+      expect(chrome.controlsVisible, isFalse);
+      expect(find.byTooltip('Reproduzir'), findsNothing);
+
+      await tester.tapAt(const Offset(400, 300));
+      await tester.pump(kDoubleTapTimeout);
+      expect(chrome.controlsVisible, isTrue);
+      expect(find.byTooltip('Reproduzir'), findsOneWidget);
+    });
+  });
+}
+
+class _TapPlayer extends NoOpMediaPlayerService {
+  final seeks = <Duration>[];
+
+  @override
+  Future<void> seekBy(Duration offset) async {
+    seeks.add(offset);
+    await super.seekBy(offset);
+  }
 }
 
 class _ChromeHarness {
@@ -302,7 +448,7 @@ class _ChromeHarness {
       : preferences = InMemoryPreferencesService(),
         library = InMemoryLibraryService(),
         history = InMemoryHistoryService(),
-        player = const NoOpMediaPlayerService(),
+        player = _TapPlayer(),
         windows = NoOpWindowService(),
         guard = StartupGuard(InMemoryLocalStore()),
         addons = LocalAddonService(InMemoryLocalStore()) {
@@ -313,7 +459,7 @@ class _ChromeHarness {
   final InMemoryPreferencesService preferences;
   final InMemoryLibraryService library;
   final InMemoryHistoryService history;
-  final NoOpMediaPlayerService player;
+  final _TapPlayer player;
   final NoOpWindowService windows;
   final LocalAddonService addons;
   final StartupGuard guard;
