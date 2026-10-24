@@ -1,7 +1,8 @@
 # Release Checklist — v0.3.0-rc.1
 
 Candidata a release do ciclo 0.3.0 (política de volume por plataforma).
-Base: commit `e2d932b` + bump de versão (sem tag criada).
+Base: commit `a2e8bb2` (tag `v0.3.0-rc.1` criada 24/10/2026). RC1
+preparada em `4d2d4fb` (20/10/2026, sem tag).
 
 ## Versões (sincronizadas)
 
@@ -16,45 +17,53 @@ Base: commit `e2d932b` + bump de versão (sem tag criada).
 ## Artefatos
 
 - `build/app/outputs/flutter-apk/app-release.apk`
-  (97.823.968 bytes)
+  (97.823.968 bytes, build da RC1 em `4d2d4fb`)
   - SHA-256:
     `2DBA6FF7BCD89606ED021D659B650DF82A4A8397DD726F2F3591A614367B5906`
-- `build/windows/x64/runner/Olympus-0.3.0-rc.1-windows.zip`
-  (pasta `Release` do `flutter build windows`)
+- APK validado nos aparelhos (pós-lote do mudo, 21/10/2026;
+  binário idêntico ao rebuild do HEAD — só docs/testes mudaram depois)
   - SHA-256:
-    `72F5592880339B330E3412AB6430B1ADE800F782C774A7DF24FD6405BB8D70A1`
-- EXE avulso `player.exe` (93.184 bytes)
+    `D06A92572E99FC2F2B838C6AC23FE7C58690C216D87DC6C592601CF93EBCC751`
+- `build/windows/x64/runner/Olympus-0.3.0-rc.1-windows.zip`
+  (rebuild do HEAD em 24/10/2026; `data/` com o lote do mudo)
+  - SHA-256:
+    `75DDBF77B2017F5A0615046A7978F3D5BB71B1851815C6C4CAB88FC36A0148C9`
+- EXE avulso `player.exe` (93.184 bytes, stub inalterado desde 20/10 —
+  o código Dart vai em `data/`)
   - SHA-256:
     `729F342A2686339801C4E63B21E6E9F4B34F0561F7956631C40533C60E3D783E`
 
-## Gates (20/10/2026)
+## Gates (20/10/2026; revistos 24/10/2026)
 
 - `flutter analyze`: limpo
 - `dart analyze`: limpo
-- `flutter test`: 671/671 verdes
-- `flutter build windows`: OK
+- `flutter test`: 677/677 verdes (era 671/671 em 20/10)
+- `flutter build windows`: OK (rebuild do HEAD em 24/10)
 - `flutter build apk --release`: OK
 - Segredos no diff: nenhum
 - Tags `v0.2.0` (`9e2ad47`) e `v0.2.1` (`dbcbf93`): intactas —
-  nenhuma tag nova criada
+  tag nova `v0.3.0-rc.1` (`d7a80fd`, anotada, push feito 24/10)
 
 ## Smoke test da RC1
 
 ### Celular
 
-- [ ] versionName correto (Sobre: 0.3.0-rc.1)
+- [x] versionName correto (Sobre: 0.3.0-rc.1, `dumpsys`, 24/10)
 - [ ] retrato
 - [ ] paisagem
-- [ ] botão físico de volume
-- [ ] botão mudo (sem barra, sem +, sem −, sem gesto)
-- [ ] catálogo definitivo (Fonte Própria, Big Buck Bunny)
-- [ ] Big Buck Bunny
-- [ ] play/pausa
-- [ ] seek
-- [ ] retomada
+- [x] botão físico de volume (despluga o mudo, 24/10)
+- [x] botão mudo (sem barra, sem +, sem −, sem gesto)
+- [x] catálogo definitivo (Fonte Própria, Big Buck Bunny)
+- [x] Big Buck Bunny (HLS multivariante publicado, 24/10)
+- [x] play/pausa
+- [x] seek
+- [x] retomada
 - [ ] tela cheia
-- [ ] voltar
-- [ ] histórico
+- [x] voltar
+- [x] histórico
+- [x] Qualidade: Automática · efetiva no painel (dono, 24/10)
+- [x] manual 360p e volta à Automática (dono, 24/10)
+- [x] rede fria: abre e lista Qualidade (dono, 24/10)
 
 ### TCL
 
@@ -70,19 +79,25 @@ Base: commit `e2d932b` + bump de versão (sem tag criada).
 - [x] retomada (cartão "parou em 1:53", abriu retomando)
 - [x] histórico (cartão Continuar assistindo com progresso 19%)
 - [x] retorno ao catálogo (BACK encadeado até a home)
+- [ ] Qualidade no BBB HLS vs master publicado (TCL offline em
+      24/10 — presumido OK pelo dono, falta validar)
 
 ### Windows
 
-- [x] versionName correto (build `flutter build windows` OK)
-- [x] abre e responde (PID 11080, `Responding: True`, deixado aberto
-      para o teste interativo)
-- [ ] trilho visual de volume
-- [ ] mudo
-- [ ] persistência
+- [x] versionName correto (rebuild do HEAD em 24/10: OK)
+- [x] abre e responde (PID 24208, deixado aberto para o re-check)
+- [x] Qualidade no BBB HLS (Automática · efetiva, dono, 24/10)
+- [x] manual 360p e volta à Automática (dono, 24/10)
+- [x] rede fria: abre e lista Qualidade (dono, 24/10)
+- [ ] fileira só com mudo, sem trilho (novo build — re-check de
+      1 min pendente)
+- [ ] setas ocultas com persistência (idem)
 - [ ] janela normal
 - [ ] janela pequena
 - [ ] minimizar
 - [ ] fechar pelo X
+- [ ] mudo
+- [ ] persistência
 - [ ] catálogo
 - [ ] reprodução
 - [ ] retomada
