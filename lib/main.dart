@@ -11,6 +11,7 @@ import 'package:player/models/preferences.dart';
 import 'package:player/services/diagnostics_service.dart';
 import 'package:player/services/local_addon_service.dart';
 import 'package:player/services/media_kit_player_service.dart';
+import 'package:player/services/mobile_chrome_service.dart';
 import 'package:player/services/persistent_history_service.dart';
 import 'package:player/services/persistent_library_service.dart';
 import 'package:player/services/shared_preferences_service.dart';
@@ -145,6 +146,10 @@ Future<void> _boot(void Function(StartupGuard) onGuard) async {
     desktopWindows = null;
   }
 
+  final MobileChromeService mobileChrome = Platform.isAndroid || Platform.isIOS
+      ? SystemMobileChrome()
+      : NoOpMobileChrome();
+
   runApp(
     PlayerApp(
       preferencesService: preferences,
@@ -158,6 +163,7 @@ Future<void> _boot(void Function(StartupGuard) onGuard) async {
       videoOutputGuard: videoGuard,
       mobilePlatform: Platform.isAndroid || Platform.isIOS,
       systemVolumeService: SystemVolumeService.platform(),
+      mobileChromeService: mobileChrome,
     ),
   );
   // Arranque concluido no primeiro frame: zera as falhas. Se a
