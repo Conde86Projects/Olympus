@@ -113,10 +113,22 @@ MediaItem _hlsItem() => MediaItem(
       addedAt: DateTime(2026, 1, 1),
     );
 
+MediaItem _mp4Item() => MediaItem(
+      id: 'bbb',
+      title: 'Big Buck Bunny',
+      sourceType: MediaSourceType.url,
+      source:
+          'https://conde86projects.github.io/olympus-catalog/media/big-buck-bunny.mp4',
+      duration: const Duration(minutes: 9, seconds: 56),
+      addedAt: DateTime(2026, 1, 1),
+    );
+
+
 Future<_Harness> _openPlayer(
   WidgetTester tester, {
   bool tvMode = false,
   Size surface = const Size(960, 540),
+  MediaItem? item,
 }) async {
   tester.view.physicalSize = surface;
   tester.view.devicePixelRatio = 1.0;
@@ -130,7 +142,7 @@ Future<_Harness> _openPlayer(
   addTearDown(() => HlsVariants.debugFetchOverride = null);
   await tester.pumpWidget(harness.app);
   await tester.pumpAndSettle();
-  final item = _hlsItem();
+  item ??= _hlsItem();
   await harness.library.upsert(item);
   final context = tester.element(find.byType(Scaffold).first);
   Navigator.of(context).pushNamed(AppRoutes.player, arguments: item);
@@ -454,6 +466,17 @@ void main() {
       await tester.tap(find.text('Automática'));
       await tester.pumpAndSettle();
       expect(harness.player.opened.last.source, _masterUrl);
+    });
+
+    testWidgets('Windows: MP4 único (feed definitivo) sem linha Qualidade',
+        (tester) async {
+      final harness = await _openPlayer(tester, item: _mp4Item());
+      expect(harness.player.opened.single.source, endsWith('.mp4'));
+
+      await tester.tap(find.byTooltip('Configurações'));
+      await tester.pumpAndSettle();
+      expect(find.text('Idioma'), findsOneWidget);
+      expect(find.text('Qualidade'), findsNothing);
     });
 
     testWidgets('falha da variante: erro controlado e voltar p/ Automática',

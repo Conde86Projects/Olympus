@@ -31,6 +31,11 @@ Atualizacao 18/10/2026: `NativePlayer.setProperty` (media_kit
   (504 testes, analyze limpo; 0.1.0-rc.2). Detalhes nos itens
   abaixo; detecção fria segue como investigação separada, sem
   bloquear a retomada aprovada.
+- Seletor só com o que escolher (24/10/2026): item de MP4 único
+  com `qualities[]` vazio não mostra a linha Qualidade em nenhuma
+  plataforma (celular, TV, Windows) — comportamento correto, não
+  bug (verificado no celular, Xiaomi Android 16). O seletor exige
+  HLS multivariante ou `qualities[]` preenchido.
 - Fontes autorizadas — Fase 5B pronta (tela adicionar/gerenciar:
   prévia de manifesto/feed, aviso de desconhecida, aprovação
   explícita, salva desativada, editar com reaprovação por origem,
