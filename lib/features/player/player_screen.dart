@@ -16,6 +16,7 @@ import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
 import 'package:player/core/utils/media_utils.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
+import 'package:player/features/player/hls_session_state.dart';
 import 'package:player/features/player/player_widgets.dart';
 import 'package:player/features/player/video_area.dart';
 import 'package:player/models/addon_catalog_item.dart';
@@ -116,12 +117,11 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// Selecao HLS manual (id da opcao; Automática e o padrao) e as
   /// variantes reais do master ja buscadas. Reabrir na variante
   /// preserva item/historico: o id segue o do master.
-  late final ValueNotifier<String> _hlsQuality;
+  late final HlsSessionState _hls;
   List<HlsVariant> _hlsVariants = const [];
 
   /// Qualidade efetivamente aberta (rotulo da variante; null =
   /// master/Original). Visivel na linha Qualidade do painel.
-  late final ValueNotifier<String?> _hlsEffective;
 
   /// Observador de capacidade (TV, Automatica): amostra
   /// posicao/relogio nos primeiros segundos e desce um degrau
@@ -139,7 +139,6 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// com pouso fora da tolerância): pausa de segurança e preserva
   /// o histórico do ponto errado. Vale até nova abertura ou nova
   /// localização de arquivo.
-  bool _hlsPositionProtect = false;
 
   /// Leituras da sonda de retomada HLS (só leitura, sem seeks).
   Timer? _resumeProbeTimer;
@@ -250,8 +249,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _chrome.autoHideGuard = () => mounted && !_panelOpen && !_overlayUp;
     _chrome.onControlsAutoHidden = _anchorFocusOnHide;
     _sourceQuality = ValueNotifier<String?>(null);
-    _hlsQuality = ValueNotifier<String>(HlsVariants.autoQualityId);
-    _hlsEffective = ValueNotifier<String?>(null);
+    _hls = HlsSessionState();
     // Ao sair da barra no modo TV, rearma o auto-hide (e so).
     _controlsScope.addListener(() {
       if (mounted &&
@@ -289,7 +287,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           was != PlaybackStatus.error &&
           _panelOpen &&
           _hlsVariants.isNotEmpty &&
-          _hlsQuality.value != HlsVariants.autoQualityId) {
+          _hls.quality.value != HlsVariants.autoQualityId) {
         // Falha da variante com o painel aberto: fecha o painel
         // para o erro controlado (overlay) aparecer com a volta
         // para Automatica alcancavel.
@@ -361,7 +359,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _hlsObserveTimer?.cancel();
     _hlsColdTimer?.cancel();
     _hlsColdTimer = null;
-    _hlsPositionProtect = false;
+    _hls.positionProtect = false;
     _replayOffer = false;
     _replayOffer = false;
     _openedCompleted = false;
@@ -388,18 +386,18 @@ class _PlayerScreenState extends State<PlayerScreen>
         _scheduleHlsColdWarm();
       }
       final target = _hlsTarget(
-        _hlsQuality.value,
+        _hls.quality.value,
         _baseItem.source,
         variants,
       );
       openItem = _baseItem.copyWith(source: target);
       _currentItem = openItem;
     } else if (openItem.sourceType == MediaSourceType.url &&
-        _hlsQuality.value != HlsVariants.autoQualityId &&
+        _hls.quality.value != HlsVariants.autoQualityId &&
         _hlsVariants.isNotEmpty) {
       // Retry apos troca manual: respeita a selecao vigente.
       final target = _hlsTarget(
-        _hlsQuality.value,
+        _hls.quality.value,
         _baseItem.source,
         _hlsVariants,
       );
@@ -462,9 +460,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (mounted) {
       setState(() => _session = player.session);
       if (isM3u8Url(_baseItem.source)) {
-        _hlsEffective.value = _effectiveLabelFor(openItem.source);
+        _hls.effective.value = _effectiveLabelFor(openItem.source);
       } else {
-        _hlsEffective.value = null;
+        _hls.effective.value = null;
       }
       _startHlsObserver();
       // Reexibe (retry apos erro) e rearma; sem isso o retry voltava
@@ -567,7 +565,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final wasPlaying = player.session.status == PlaybackStatus.playing ||
         player.session.status == PlaybackStatus.buffering;
     final prevItem = _currentItem;
-    final prevSelection = _hlsQuality.value;
+    final prevSelection = _hls.quality.value;
     // A troca invalida qualquer verificação de retomada pendente:
     // ela miraria o alvo antigo na variante nova.
     _resumeTimer?.cancel();
@@ -613,9 +611,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     if (!mounted) return;
     setState(() {
-      _hlsQuality.value = selectionId;
+      _hls.quality.value = selectionId;
       _currentItem = next;
-      _hlsEffective.value = _effectiveLabelFor(target);
+      _hls.effective.value = _effectiveLabelFor(target);
     });
     _poke();
     final restored = await _seekHlsPosition(
@@ -644,9 +642,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     if (!mounted) return;
     setState(() {
-      _hlsQuality.value = prevSelection;
+      _hls.quality.value = prevSelection;
       _currentItem = prevItem;
-      _hlsEffective.value = _effectiveLabelFor(prevItem.source);
+      _hls.effective.value = _effectiveLabelFor(prevItem.source);
     });
     _poke();
     final back = await _seekHlsPosition(
@@ -670,7 +668,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       // Pausa best-effort: a proteção abaixo vale de todo jeito.
     }
     if (!mounted) return;
-    _hlsPositionProtect = true;
+    _hls.positionProtect = true;
     _probeHlsResume(
         player,
         '$probe-fallback',
@@ -794,7 +792,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _obsAt = null;
     _obsPos = null;
     if (!_tvMode) return;
-    if (_hlsQuality.value != HlsVariants.autoQualityId) return;
+    if (_hls.quality.value != HlsVariants.autoQualityId) return;
     if (_currentItem.sourceType != MediaSourceType.url) return;
     if (!isM3u8Url(_baseItem.source)) return;
     _hlsObserveTimer = Timer.periodic(
@@ -811,7 +809,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       _hlsObserveTimer?.cancel();
       return;
     }
-    if (!_tvMode || _hlsQuality.value != HlsVariants.autoQualityId) {
+    if (!_tvMode || _hls.quality.value != HlsVariants.autoQualityId) {
       _hlsObserveTimer?.cancel();
       return;
     }
@@ -967,7 +965,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         'id=${_currentItem.id} targetMs=${target.inMilliseconds} '
             'durMs=${before.duration?.inMilliseconds ?? 'none'} '
             'statusBefore=${before.status.name} '
-            'effective=${_hlsEffective.value ?? 'master'} '
+            'effective=${_hls.effective.value ?? 'master'} '
             'loading=${isLoadingStatus(before.status)}');
     final ready = await _waitForHlsReady(player);
     if (!mounted) return;
@@ -1052,14 +1050,14 @@ class _PlayerScreenState extends State<PlayerScreen>
         // Pausa best-effort: a proteção abaixo vale de todo jeito.
       }
       if (!mounted) return;
-      _hlsPositionProtect = true;
+      _hls.positionProtect = true;
       _probeHlsResume(
           player,
           'fallback',
           'reason=landing-unverified '
               'targetMs=${target.inMilliseconds} '
               'posMs=${player.session.position.inMilliseconds} '
-              'effective=${_hlsEffective.value ?? 'master'}');
+              'effective=${_hls.effective.value ?? 'master'}');
     });
   }
 
@@ -1214,8 +1212,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _systemVolumeSub?.cancel();
     _screenFocus.dispose();
     _sourceQuality.dispose();
-    _hlsQuality.dispose();
-    _hlsEffective.dispose();
+    _hls.dispose();
     _controlsScope.dispose();
     _cornerScope.dispose();
     _overlayPrimaryFocus.dispose();
@@ -1346,7 +1343,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                   next == null ? null : () => _playNext(next),
                               onClose: _exitPlayer,
                               onBackToAutomatic: _hlsVariants.isNotEmpty &&
-                                      _hlsQuality.value !=
+                                      _hls.quality.value !=
                                           HlsVariants.autoQualityId
                                   ? () => _switchHlsQuality(
                                       HlsVariants.autoQualityId)
@@ -1842,11 +1839,11 @@ class _PlayerScreenState extends State<PlayerScreen>
       ),
       hls: HlsOptions(
         qualities: _hlsOptions,
-        selectedId: _hlsQuality.value,
-        selectedListenable: _hlsQuality,
+        selectedId: _hls.quality.value,
+        selectedListenable: _hls.quality,
         onSelect: _switchHlsQuality,
-        effectiveLabel: _hlsEffective.value,
-        effectiveListenable: _hlsEffective,
+        effectiveLabel: _hls.effective.value,
+        effectiveListenable: _hls.effective,
       ),
       initialView: view,
       transitionDuration:
@@ -2014,12 +2011,12 @@ class _PlayerScreenState extends State<PlayerScreen>
       _currentItem = updated;
       _baseItem = updated;
       _sourceQuality.value = null;
-      _hlsQuality.value = HlsVariants.autoQualityId;
+      _hls.quality.value = HlsVariants.autoQualityId;
       _hlsVariants = const [];
-      _hlsEffective.value = null;
+      _hls.effective.value = null;
       _hlsAutoDowngraded = false;
       _hlsObserveTimer?.cancel();
-      _hlsPositionProtect = false;
+      _hls.positionProtect = false;
     });
     await _open();
   }
@@ -2065,7 +2062,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     // Posição HLS não verificada (retomada ou troca): nunca marca
     // concluído nem sobrescreve o histórico com o ponto errado —
     // só pausa e mantém o ponto salvo anterior.
-    if (_hlsPositionProtect) {
+    if (_hls.positionProtect) {
       final kept =
           widget.dependencies.historyService.latestFor(_currentItem.id);
       _probeHlsResume(
