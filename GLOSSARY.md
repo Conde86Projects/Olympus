@@ -27,3 +27,7 @@ _Avoid_: atalho de volume, teclas de volume
 **Volume inicial**:
 Preferência de volume aplicada ao abrir o player; persistida só no desktop.
 _Avoid_: volume padrão, volume salvo
+
+**Chrome mobile**:
+O que o aparelho mostra e esconde em volta do vídeo no celular: imersão, orientação, visibilidade dos controles e gestos de toque. Vive num módulo único com estado próprio.
+_Avoid_: UI do player, barra do celular
