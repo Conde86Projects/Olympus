@@ -228,6 +228,10 @@ Tears of Steel continuam fora por tamanho).
   H.264 High 720p ~1 Mbps, keyframe a cada 2 s, AAC estéreo
   128 kbps, `faststart`, 84,5 MB, 596 s. SHA-256
   `f6dc1fc81c59f7a8babe6d9966ae2a89853cc116dc5460514d7be435d953164d`.
+  MP4 único = sem seletor de qualidade (correto para ele).
+  Decisão de 24/10/2026: ao gerar versões do BBB, preferir HLS
+  com variantes (seletor Automática/variantes em toda parte, sem
+  código novo) em vez de vários MP4s.
 - Miniatura: `images/big-buck-bunny.jpg`, quadro em 1:35, 640x360.
 - Créditos: `ATTRIBUTIONS.md` no próprio repositório do catálogo.
 - App: `OwnedTestSourceAdapter.feedHost` + `feedPathPrefix` casam
