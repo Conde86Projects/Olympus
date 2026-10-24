@@ -15,6 +15,7 @@ import 'package:player/services/mobile_chrome_service.dart';
 import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/services/window_service.dart';
+import 'package:player/widgets/focusable_button.dart';
 
 class FakeMobileChrome extends MobileChromeService {
   bool _fullscreen = false;
@@ -385,6 +386,13 @@ void main() {
     });
   });
 
+IconData cornerIcon(WidgetTester tester, String tip) => tester
+    .widget<RoundPlayerButton>(find.ancestor(
+      of: find.byTooltip(tip),
+      matching: find.byType(RoundPlayerButton),
+    ))
+    .icon;
+
   group('fiacao dos gestos (F3: toque consome o modulo)', () {
     testWidgets('duplo toque busca por lado com flash do modulo',
         (tester) async {
@@ -410,6 +418,25 @@ void main() {
       expect(chrome.seekFlashLeft, isTrue);
 
       expect(harness.player.seeks, [AppConstants.seekStep, -AppConstants.seekStep]);
+    });
+
+    testWidgets('cinema no mobile mantem saida visivel',
+        (tester) async {
+      final fake = FakeMobileChrome();
+      await _openMobilePlayer(tester, fake);
+
+      await tester.tap(find.byTooltip('Modo cinema'));
+      await tester.pumpAndSettle();
+
+      // Sem saida visivel o usuario trava: os cantos seguem no mobile,
+      // e o icone cheio mostra que o modo esta ativo.
+      expect(find.byTooltip('Sair do modo cinema'), findsOneWidget);
+      expect(cornerIcon(tester, 'Sair do modo cinema'), Icons.theaters);
+
+      await tester.tap(find.byTooltip('Sair do modo cinema'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Modo cinema'), findsOneWidget);
+      expect(cornerIcon(tester, 'Modo cinema'), Icons.theaters_outlined);
     });
 
     testWidgets('tap alterna os controles via visibilidade',
