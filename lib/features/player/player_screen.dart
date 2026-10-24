@@ -68,9 +68,11 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// remover so a deste player no dispose.
   late final Future<void> Function() _saveOnWindowClose = _saveSession;
   PlaybackSession _session = const PlaybackSession();
-  Timer? _hideTimer;
   Timer? _resumeTimer;
-  bool _controlsVisible = true;
+
+  /// Visibilidade dos controles (dona: MobileChrome, F2/#7): a tela lê
+  /// e reage via `ListenableBuilder`, sem copiar estado nem gerir timer.
+  bool get _controlsVisible => _chrome.controlsVisible;
 
   /// Chrome mobile (dono do estado de tela cheia NO CELULAR, F1/#6):
   /// a tela lê [_fullscreen] e assina mudanças; nunca mantém cópia local.
@@ -238,6 +240,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     _currentItem = widget.item;
     _baseItem = widget.item;
     _chrome = widget.dependencies.mobileChromeService;
+    // Nova sessão sempre abre visível (era o inicializador do campo).
+    _chrome.showControls();
+    // Guarda do auto-hide avaliada no disparo (painel/overlay seguram);
+    // gancho de foco após ocultar no disparo.
+    _chrome.autoHideGuard = () => mounted && !_panelOpen && !_overlayUp;
+    _chrome.onControlsAutoHidden = _anchorFocusOnHide;
     _sourceQuality = ValueNotifier<String?>(null);
     _hlsQuality = ValueNotifier<String>(HlsVariants.autoQualityId);
     _hlsEffective = ValueNotifier<String?>(null);
@@ -248,7 +256,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           _tvMode &&
           !_panelOpen &&
           !_controlsScope.hasFocus) {
-        _scheduleHide();
+        _chrome.pokeControls();
       }
     });
     final player = widget.dependencies.playerService;
@@ -1217,7 +1225,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     // Saiu do player em tela cheia no celular: devolve barras e giro.
     if (_mobile && _fullscreen) unawaited(_chrome.setFullscreen(false));
     widget.dependencies.windowService.removeBeforeClose(_saveOnWindowClose);
-    _hideTimer?.cancel();
+    _chrome.cancelAutoHide();
     _resumeTimer?.cancel();
     _resumeProbeTimer?.cancel();
     _hlsObserveTimer?.cancel();
@@ -1567,7 +1575,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       // segue para o foco normal e so rearma o auto-hide (spec 12.2).
       final current = _screenFocus.context;
       if (current != null && ModalRoute.of(current)?.isCurrent == true) {
-        _scheduleHide();
+        _chrome.pokeControls();
       }
       return false;
     }
@@ -1662,29 +1670,25 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   void _poke() {
     final wasHidden = !_controlsVisible;
-    setState(() => _controlsVisible = true);
-    _scheduleHide();
+    _chrome.pokeControls();
     // Reexibir depois de oculto: o foco morreu com a barra, ancora de
     // novo num controle (sem roubar o foco de quem ja tem um valido,
     // ex. mouse sobre a barra apos Tab).
     if (wasHidden) _restoreFocusIfLost();
   }
 
-  void _scheduleHide() {
-    _hideTimer?.cancel();
-    _hideTimer = Timer(AppConstants.controlsAutoHide, () {
-      // Some apos alguns segundos sem interacao, inclusive na TV com o
-      // foco na barra (spec 12.2). "Navegando" = teclas chegando: cada
-      // tecla rearma este timer (_handleHiddenKeys). Antes, na TV, o foco
-      // na barra a segurava para sempre, mesmo parado.
-      if (mounted && !_panelOpen && !_overlayUp) _hideControls();
-    });
+  /// Esconde a barra e os cantos (auto-hide e primeiro BACK na TV).
+  /// O estado vive no módulo; o foco continua local.
+  void _hideControls() {
+    _chrome.hideControls();
+    _anchorFocusOnHide();
   }
 
-  /// Esconde a barra e os cantos (auto-hide e primeiro BACK na TV).
-  void _hideControls() {
-    _hideTimer?.cancel();
-    setState(() => _controlsVisible = false);
+  /// Ancora o foco ao ocultar: guarda o último foco da barra e ancora
+  /// na raiz. Sem isso o foco cai no escopo da rota e a primeira seta
+  /// do D-pad se perde. Com overlay modal, nao rouba: o autofocus do
+  /// botao primario vale (F2, Fase 4b).
+  void _anchorFocusOnHide() {
     final current = FocusManager.instance.primaryFocus;
     // focusedChild e grudento (ultimo, nao atual): so guarda com o
     // foco DENTRO da barra; fora dela, null pede o proximo da ordem.
@@ -1742,13 +1746,9 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   /// Toque no video (celular): oculta se visivel, reexibe se oculto.
+  /// A condição (sem painel/overlay) vive no guard do módulo.
   void _toggleControlsByTouch() {
-    if (_controlsVisible && !_panelOpen && !_overlayUp) {
-      _hideTimer?.cancel();
-      setState(() => _controlsVisible = false);
-    } else {
-      _poke();
-    }
+    _chrome.toggleControls();
   }
 
   /// Toque duplo (celular): metade esquerda volta, direita avanca.
@@ -1777,17 +1777,16 @@ class _PlayerScreenState extends State<PlayerScreen>
       await _chrome.setFullscreen(next);
     }
     if (!mounted) return;
+    _chrome.pokeControls();
     setState(() {
       // Só fora do mobile o estado é espelho local (desktop/TV);
       // no mobile ele já vive no módulo (assinatura acima).
       if (!_mobile) _windowFullscreen = next;
-      _controlsVisible = true;
     });
     // Os cantos ocultam/exibem: o foco pode ter morrido com eles.
     // Ancorar no no raiz mataria as setas (nada fora de um retangulo
     // de tela cheia), entao restaura num controle de verdade.
     _restoreFocusIfLost();
-    _scheduleHide();
   }
 
   Future<void> _toggleCompact() async {
@@ -1844,9 +1843,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     setState(() {
       _panelOpen = true;
-      _controlsVisible = true;
     });
-    _hideTimer?.cancel();
+    _chrome.showControls();
     final prefs = widget.dependencies.preferencesService.current;
     final animations = prefs.animations;
     if (!context.mounted) return;
@@ -1875,7 +1873,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
     if (mounted) {
       setState(() => _panelOpen = false);
-      _scheduleHide();
+      _chrome.pokeControls();
     }
   }
 
