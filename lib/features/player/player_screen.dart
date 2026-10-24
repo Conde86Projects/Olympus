@@ -11,6 +11,7 @@ import 'package:player/app/theme.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/utils/hls_cold_probe.dart';
+import 'package:player/core/utils/hls_target.dart';
 import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
 import 'package:player/core/utils/media_utils.dart';
@@ -374,7 +375,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     // (spec 27.4).
     if (openItem.sourceType == MediaSourceType.url &&
         _isCappedClass &&
-        _isM3u8Url(_baseItem.source)) {
+        isM3u8Url(_baseItem.source)) {
       // Classe com teto: busca as variantes reais uma vez e abre
       // pela selecao (Automatica = teto atual, sem mudanca).
       final variants = await HlsVariants.fetchVariants(_baseItem.source);
@@ -407,7 +408,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     final coverResume =
         widget.dependencies.preferencesService.current.resumeAutomatically &&
-            _isM3u8Url(_baseItem.source) &&
+            isM3u8Url(_baseItem.source) &&
             (_currentItem.lastPosition ?? Duration.zero) > Duration.zero;
     if (coverResume) _beginReposition(player);
     await player.open(openItem);
@@ -460,7 +461,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     if (mounted) {
       setState(() => _session = player.session);
-      if (_isM3u8Url(_baseItem.source)) {
+      if (isM3u8Url(_baseItem.source)) {
         _hlsEffective.value = _effectiveLabelFor(openItem.source);
       } else {
         _hlsEffective.value = null;
@@ -504,34 +505,14 @@ class _PlayerScreenState extends State<PlayerScreen>
     return null;
   }
 
-  static bool _isM3u8Url(String source) {
-    final uri = Uri.tryParse(source);
-    return uri != null && uri.path.toLowerCase().endsWith('.m3u8');
-  }
-
   /// URL concreta de uma selecao HLS: Automatica (teto/master),
   /// Original (master) ou a variante, validada contra as reais.
   String _hlsTarget(
     String qualityId,
     String master,
     List<HlsVariant> variants,
-  ) {
-    if (qualityId == HlsVariants.originalQualityId) return master;
-    if (qualityId != HlsVariants.autoQualityId) {
-      for (final variant in variants) {
-        if (variant.uri.toString() == qualityId) return qualityId;
-      }
-      // Variante que sumiu do master: cai na Automatica.
-    }
-    final decision = _autoDecision;
-    return HlsVariants.automaticUrl(
-      master,
-      variants,
-      capped: decision.capped,
-      maxHeight: decision.maxHeight,
-      maxBandwidth: decision.maxBandwidth,
-    );
-  }
+  ) =>
+      hlsTargetFor(qualityId, master, variants, _autoDecision);
 
   /// Opcoes HLS para o painel: Original so quando difere da
   /// Automatica tetada.
@@ -721,7 +702,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         '$probe-readiness',
         'ready=$ready status=${atReady.status.name} '
             'posMs=${atReady.position.inMilliseconds} '
-            'loading=${_isLoadingStatus(atReady.status)}');
+            'loading=${isLoadingStatus(atReady.status)}');
     final beforeMs = atReady.position.inMilliseconds;
     final seekAt = DateTime.now();
     try {
@@ -737,7 +718,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         'at=${seekAt.toIso8601String()} beforeMs=$beforeMs '
             'posAfterMs=${afterSeek.position.inMilliseconds} '
             'status=${afterSeek.status.name} '
-            'loading=${_isLoadingStatus(afterSeek.status)}');
+            'loading=${isLoadingStatus(afterSeek.status)}');
     await Future.delayed(HlsVariants.hlsVerifyDelay);
     if (!mounted) return false;
     final actual = player.session;
@@ -746,7 +727,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         '$probe-verify',
         'posMs=${actual.position.inMilliseconds} '
             'status=${actual.status.name} '
-            'loading=${_isLoadingStatus(actual.status)}');
+            'loading=${isLoadingStatus(actual.status)}');
     if (actual.status == PlaybackStatus.error ||
         actual.status == PlaybackStatus.completed) {
       _probeHlsResume(player, '$probe-correction', 'skipped=status');
@@ -789,7 +770,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _hlsColdTimer?.cancel();
     if (!_isCappedClass) return;
     if (_currentItem.sourceType != MediaSourceType.url) return;
-    if (!_isM3u8Url(_baseItem.source)) return;
+    if (!isM3u8Url(_baseItem.source)) return;
     final player = widget.dependencies.playerService;
     _hlsColdTimer = Timer(HlsColdProbe.retryDelay, () async {
       _hlsColdTimer = null;
@@ -815,7 +796,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (!_tvMode) return;
     if (_hlsQuality.value != HlsVariants.autoQualityId) return;
     if (_currentItem.sourceType != MediaSourceType.url) return;
-    if (!_isM3u8Url(_baseItem.source)) return;
+    if (!isM3u8Url(_baseItem.source)) return;
     _hlsObserveTimer = Timer.periodic(
       const Duration(seconds: 1),
       (_) => unawaited(_observeHlsTick()),
@@ -885,7 +866,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// Falha de deteccao ou playlist simples: false (fluxo atual).
   Future<bool> _isHlsMaster() async {
     if (_currentItem.sourceType != MediaSourceType.url) return false;
-    if (!_isM3u8Url(_baseItem.source)) return false;
+    if (!isM3u8Url(_baseItem.source)) return false;
     if (_hlsVariants.isNotEmpty) return true;
     final variants = await HlsVariants.fetchVariants(_baseItem.source);
     if (!mounted) return false;
@@ -987,7 +968,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             'durMs=${before.duration?.inMilliseconds ?? 'none'} '
             'statusBefore=${before.status.name} '
             'effective=${_hlsEffective.value ?? 'master'} '
-            'loading=${_isLoadingStatus(before.status)}');
+            'loading=${isLoadingStatus(before.status)}');
     final ready = await _waitForHlsReady(player);
     if (!mounted) return;
     final readySession = player.session;
@@ -1010,7 +991,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         'at=${seekAt.toIso8601String()} beforeMs=$beforeMs '
             'posAfterMs=${afterSeek.position.inMilliseconds} '
             'status=${afterSeek.status.name} '
-            'loading=${_isLoadingStatus(afterSeek.status)}');
+            'loading=${isLoadingStatus(afterSeek.status)}');
     if (!mounted) return;
     unawaited(_endRepositionWhenLanded(player, target));
     _scheduleResumeProbeReadings(player);
@@ -1024,7 +1005,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           'verify',
           'posMs=${session.position.inMilliseconds} '
               'status=${session.status.name} '
-              'loading=${_isLoadingStatus(session.status)}');
+              'loading=${isLoadingStatus(session.status)}');
       if (session.status == PlaybackStatus.error ||
           session.status == PlaybackStatus.completed) {
         _probeHlsResume(player, 'correction', 'skipped=status');
@@ -1082,9 +1063,6 @@ class _PlayerScreenState extends State<PlayerScreen>
     });
   }
 
-  static bool _isLoadingStatus(PlaybackStatus status) =>
-      status == PlaybackStatus.loading || status == PlaybackStatus.buffering;
-
   /// Leituras agendadas da sonda (500 ms, 1 s, 1,5 s): só leem a
   /// sessão e registram; nunca disparam seeks.
   void _scheduleResumeProbeReadings(MediaPlayerService player) {
@@ -1104,7 +1082,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           'reading',
           'atMs=${ticks * 500} posMs=${session.position.inMilliseconds} '
               'status=${session.status.name} '
-              'loading=${_isLoadingStatus(session.status)}');
+              'loading=${isLoadingStatus(session.status)}');
     });
   }
 
@@ -1833,7 +1811,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     // abertura (desktop segue abrindo o master sem fetch).
     if (_hlsVariants.isEmpty &&
         _currentItem.sourceType == MediaSourceType.url &&
-        _isM3u8Url(_baseItem.source)) {
+        isM3u8Url(_baseItem.source)) {
       final variants = await HlsVariants.fetchVariants(_baseItem.source);
       if (!mounted) return;
       if (variants.isNotEmpty) {
