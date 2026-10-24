@@ -23,6 +23,7 @@ import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_permission_service.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/services/mobile_chrome_service.dart';
+import 'package:player/widgets/player_panel_options.dart';
 import 'package:player/services/supervised_player_service.dart';
 import 'package:player/services/system_volume_service.dart';
 import 'package:player/services/thumbnail_service.dart';
@@ -1856,16 +1857,20 @@ class _PlayerScreenState extends State<PlayerScreen>
       preferredAudio: prefs.defaultAudio,
       preferredSubtitle: prefs.defaultSubtitle,
       sourceLabel: sourceLabelFor(_currentItem),
-      sourceQualities: decodeSourceQualities(_baseItem.metadata['qualities']),
-      selectedSourceQualityId: _sourceQuality.value,
-      sourceQualityListenable: _sourceQuality,
-      onSelectSourceQuality: _switchSourceQuality,
-      hlsQualities: _hlsOptions,
-      selectedHlsQualityId: _hlsQuality.value,
-      hlsQualityListenable: _hlsQuality,
-      onSelectHlsQuality: _switchHlsQuality,
-      effectiveHlsLabel: _hlsEffective.value,
-      effectiveHlsListenable: _hlsEffective,
+      source: SourceOptions(
+        qualities: decodeSourceQualities(_baseItem.metadata['qualities']),
+        selectedId: _sourceQuality.value,
+        selectedListenable: _sourceQuality,
+        onSelect: _switchSourceQuality,
+      ),
+      hls: HlsOptions(
+        qualities: _hlsOptions,
+        selectedId: _hlsQuality.value,
+        selectedListenable: _hlsQuality,
+        onSelect: _switchHlsQuality,
+        effectiveLabel: _hlsEffective.value,
+        effectiveListenable: _hlsEffective,
+      ),
       initialView: view,
       transitionDuration:
           animations ? AppConstants.shortTransition : Duration.zero,

@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:flutter/services.dart';
@@ -9,9 +8,9 @@ import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/extensions/duration_extensions.dart';
 import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
-import 'package:player/models/addon_catalog_item.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_player_service.dart';
+import 'package:player/widgets/player_panel_options.dart';
 
 /// Painel flutuante de configuracoes do player (spec 13), no espirito do
 /// Showtime: compacto, ancorado sobre a barra de controles, com relevo e
@@ -27,16 +26,8 @@ class PlayerSettingsPanel extends StatefulWidget {
     this.preferredAudio,
     this.preferredSubtitle,
     this.sourceLabel,
-    this.sourceQualities = const [],
-    this.selectedSourceQualityId,
-    this.sourceQualityListenable,
-    this.onSelectSourceQuality,
-    this.hlsQualities = const [],
-    this.selectedHlsQualityId,
-    this.hlsQualityListenable,
-    this.onSelectHlsQuality,
-    this.effectiveHlsLabel,
-    this.effectiveHlsListenable,
+    this.source,
+    this.hls,
     this.initialView = PlayerPanelView.main,
     this.transitionDuration = AppConstants.shortTransition,
     this.maxHeight,
@@ -48,42 +39,11 @@ class PlayerSettingsPanel extends StatefulWidget {
   final PlaybackSession session;
   final String? videoTitle;
 
-  /// Rendicoes informadas pela fonte (5C): lista propria acima das
-  /// faixas do motor. Vazia = comportamento anterior (so faixas).
-  final List<SourceQuality> sourceQualities;
+  /// Cluster da fonte (5C). Null = sem secao de rendicao.
+  final SourceOptions? source;
 
-  /// Rendicao atual (null = URL padrao da midia).
-  final String? selectedSourceQualityId;
-
-  /// Ouvinte da rendicao atual: quando presente, o valor ao vivo dele
-  /// vale sobre [selectedSourceQualityId] e o painel se redesenha a
-  /// cada troca sem precisar reabrir (o dialogo e rota separada e nao
-  /// herda o setState da tela do player).
-  final ValueListenable<String?>? sourceQualityListenable;
-
-  /// Troca de rendicao (null volta ao padrao). Obrigatorio quando
-  /// [sourceQualities] nao e vazia.
-  final Future<void> Function(String? qualityId)? onSelectSourceQuality;
-
-  /// Opcoes do seletor HLS (Automatica/Original/variantes reais).
-  /// Vazia = sem secao HLS (comportamento anterior).
-  final List<HlsQualityOption> hlsQualities;
-
-  /// Selecao HLS atual (id da opcao; padrao Automatica).
-  final String? selectedHlsQualityId;
-
-  /// Ouvinte ao vivo da selecao HLS (dialogo e rota separada).
-  final ValueListenable<String>? hlsQualityListenable;
-
-  /// Troca de qualidade HLS pelo id da opcao.
-  final Future<void> Function(String qualityId)? onSelectHlsQuality;
-
-  /// Qualidade efetivamente aberta na Automatica (ex. "288p"),
-  /// quando difere do master. Null = master/Original.
-  final String? effectiveHlsLabel;
-
-  /// Ouvinte ao vivo da qualidade efetiva.
-  final ValueListenable<String?>? effectiveHlsListenable;
+  /// Cluster do HLS. Null = sem secao HLS.
+  final HlsOptions? hls;
 
   /// Idiomas preferidos (codigos, ex. "por"): quando nenhuma faixa
   /// casa, o submenu informa ("sem faixa em portugues", spec 26.12).
@@ -120,16 +80,8 @@ class PlayerSettingsPanel extends StatefulWidget {
     String? preferredAudio,
     String? preferredSubtitle,
     String? sourceLabel,
-    List<SourceQuality> sourceQualities = const [],
-    String? selectedSourceQualityId,
-    ValueListenable<String?>? sourceQualityListenable,
-    Future<void> Function(String? qualityId)? onSelectSourceQuality,
-    List<HlsQualityOption> hlsQualities = const [],
-    String? selectedHlsQualityId,
-    ValueListenable<String>? hlsQualityListenable,
-    Future<void> Function(String qualityId)? onSelectHlsQuality,
-    String? effectiveHlsLabel,
-    ValueListenable<String?>? effectiveHlsListenable,
+    SourceOptions? source,
+    HlsOptions? hls,
     BuildContext? anchorContext,
     PlayerPanelView initialView = PlayerPanelView.main,
     Duration transitionDuration = AppConstants.shortTransition,
@@ -200,16 +152,8 @@ class PlayerSettingsPanel extends StatefulWidget {
                   preferredAudio: preferredAudio,
                   preferredSubtitle: preferredSubtitle,
                   sourceLabel: sourceLabel,
-                  sourceQualities: sourceQualities,
-                  selectedSourceQualityId: selectedSourceQualityId,
-                  sourceQualityListenable: sourceQualityListenable,
-                  onSelectSourceQuality: onSelectSourceQuality,
-                  hlsQualities: hlsQualities,
-                  selectedHlsQualityId: selectedHlsQualityId,
-                  hlsQualityListenable: hlsQualityListenable,
-                  onSelectHlsQuality: onSelectHlsQuality,
-                  effectiveHlsLabel: effectiveHlsLabel,
-                  effectiveHlsListenable: effectiveHlsListenable,
+                  source: source,
+                  hls: hls,
                   initialView: initialView,
                   transitionDuration: transitionDuration,
                   maxHeight: cap,
@@ -251,35 +195,34 @@ class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
   void initState() {
     super.initState();
     _view = widget.initialView;
-    widget.sourceQualityListenable?.addListener(_onQualityChanged);
-    widget.hlsQualityListenable?.addListener(_onQualityChanged);
-    widget.effectiveHlsListenable?.addListener(_onQualityChanged);
+    widget.source?.selectedListenable?.addListener(_onQualityChanged);
+    widget.hls?.selectedListenable?.addListener(_onQualityChanged);
+    widget.hls?.effectiveListenable?.addListener(_onQualityChanged);
   }
 
   @override
   void didUpdateWidget(PlayerSettingsPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.sourceQualityListenable !=
-        widget.sourceQualityListenable) {
-      oldWidget.sourceQualityListenable?.removeListener(_onQualityChanged);
-      widget.sourceQualityListenable?.addListener(_onQualityChanged);
+    if (oldWidget.source?.selectedListenable != widget.source?.selectedListenable) {
+      oldWidget.source?.selectedListenable?.removeListener(_onQualityChanged);
+      widget.source?.selectedListenable?.addListener(_onQualityChanged);
     }
-    if (oldWidget.hlsQualityListenable != widget.hlsQualityListenable) {
-      oldWidget.hlsQualityListenable?.removeListener(_onQualityChanged);
-      widget.hlsQualityListenable?.addListener(_onQualityChanged);
+    if (oldWidget.hls?.selectedListenable != widget.hls?.selectedListenable) {
+      oldWidget.hls?.selectedListenable?.removeListener(_onQualityChanged);
+      widget.hls?.selectedListenable?.addListener(_onQualityChanged);
     }
-    if (oldWidget.effectiveHlsListenable !=
-        widget.effectiveHlsListenable) {
-      oldWidget.effectiveHlsListenable?.removeListener(_onQualityChanged);
-      widget.effectiveHlsListenable?.addListener(_onQualityChanged);
+    if (oldWidget.hls?.effectiveListenable !=
+        widget.hls?.effectiveListenable) {
+      oldWidget.hls?.effectiveListenable?.removeListener(_onQualityChanged);
+      widget.hls?.effectiveListenable?.addListener(_onQualityChanged);
     }
   }
 
   @override
   void dispose() {
-    widget.sourceQualityListenable?.removeListener(_onQualityChanged);
-    widget.hlsQualityListenable?.removeListener(_onQualityChanged);
-    widget.effectiveHlsListenable?.removeListener(_onQualityChanged);
+    widget.source?.selectedListenable?.removeListener(_onQualityChanged);
+    widget.hls?.selectedListenable?.removeListener(_onQualityChanged);
+    widget.hls?.effectiveListenable?.removeListener(_onQualityChanged);
     super.dispose();
   }
 
@@ -331,17 +274,8 @@ class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
                 preferredAudio: widget.preferredAudio,
                 preferredSubtitle: widget.preferredSubtitle,
                 sourceLabel: widget.sourceLabel,
-                sourceQualities: widget.sourceQualities,
-                selectedSourceQualityId:
-                    widget.sourceQualityListenable?.value ??
-                        widget.selectedSourceQualityId,
-                onSelectSourceQuality: widget.onSelectSourceQuality,
-                hlsQualities: widget.hlsQualities,
-                selectedHlsQualityId: widget.hlsQualityListenable?.value ??
-                    widget.selectedHlsQualityId,
-                onSelectHlsQuality: widget.onSelectHlsQuality,
-                effectiveHlsLabel: widget.effectiveHlsListenable?.value ??
-                    widget.effectiveHlsLabel,
+                source: widget.source,
+                hls: widget.hls,
                 view: _view,
                 onViewChanged: (view) => setState(() => _view = view),
                 transitionDuration: widget.transitionDuration,
@@ -366,13 +300,8 @@ class _PanelBody extends StatelessWidget {
     this.preferredAudio,
     this.preferredSubtitle,
     this.sourceLabel,
-    this.sourceQualities = const [],
-    this.selectedSourceQualityId,
-    this.onSelectSourceQuality,
-    this.hlsQualities = const [],
-    this.selectedHlsQualityId,
-    this.onSelectHlsQuality,
-    this.effectiveHlsLabel,
+    this.source,
+    this.hls,
     this.maxHeight,
   });
 
@@ -382,13 +311,8 @@ class _PanelBody extends StatelessWidget {
   final String? preferredAudio;
   final String? preferredSubtitle;
   final String? sourceLabel;
-  final List<SourceQuality> sourceQualities;
-  final String? selectedSourceQualityId;
-  final Future<void> Function(String? qualityId)? onSelectSourceQuality;
-  final List<HlsQualityOption> hlsQualities;
-  final String? selectedHlsQualityId;
-  final Future<void> Function(String qualityId)? onSelectHlsQuality;
-  final String? effectiveHlsLabel;
+  final SourceOptions? source;
+  final HlsOptions? hls;
   final PlayerPanelView view;
   final ValueChanged<PlayerPanelView> onViewChanged;
   final Duration transitionDuration;
@@ -735,33 +659,43 @@ class _PanelBody extends StatelessWidget {
     return null;
   }
 
-  /// Seção da fonte só com rendições E callback (sem callback, a
-  /// lista seria intocável: melhor nem mostrar).
-  bool get _showSourceQualities =>
-      sourceQualities.isNotEmpty && onSelectSourceQuality != null;
+  /// Seção da fonte só com rendições (cluster ausente ou vazio:
+  /// melhor nem mostrar, como antes).
+  bool get _showSourceQualities => source?.qualities.isNotEmpty ?? false;
 
-  bool get _showHlsQualities =>
-      hlsQualities.length > 1 && onSelectHlsQuality != null;
+  bool get _showHlsQualities => (hls?.qualities.length ?? 0) > 1;
+
+  /// Rendicao resolvida (ouvinte ao vivo vale sobre o instantaneo,
+  /// como o pai fazia antes de repassar).
+  String? get _resolvedSourceId => source?.resolvedId;
+
+  /// Selecao HLS resolvida (ouvinte ao vivo vale sobre o instantaneo).
+  String? get _resolvedHlsId => hls?.resolvedId;
+
+  /// Rotulo efetivo resolvido (ouvinte ao vivo vale sobre o instantaneo).
+  String? get _resolvedEffectiveLabel => hls?.resolvedEffectiveLabel;
 
   String? _hlsQualityLabel() {
     if (!_showHlsQualities) return null;
-    final id = selectedHlsQualityId ?? HlsVariants.autoQualityId;
+    final hls = this.hls!;
+    final id = _resolvedHlsId ?? HlsVariants.autoQualityId;
     if (id == HlsVariants.autoQualityId) {
       // Efetiva visivel: Automatica sozinha nao diz o que abriu.
-      final effective = effectiveHlsLabel;
+      final effective = _resolvedEffectiveLabel;
       return effective == null
           ? 'Automática'
           : 'Automática · $effective';
     }
-    for (final option in hlsQualities) {
+    for (final option in hls.qualities) {
       if (option.id == id) return option.label;
     }
     return 'Automática';
   }
 
   Widget _hlsList(BuildContext context) {
-    final select = onSelectHlsQuality!;
-    final selected = selectedHlsQualityId ?? HlsVariants.autoQualityId;
+    final hls = this.hls!;
+    final select = hls.onSelect;
+    final selected = _resolvedHlsId ?? HlsVariants.autoQualityId;
     // Linhas focaveis (sem RadioGroup): no RadioGroup as setas
     // SELECIONAM ao passar, mas na TV a troca so pode acontecer
     // no OK (Opcoes -> Qualidade -> D-pad -> OK). ListTile move o
@@ -770,7 +704,7 @@ class _PanelBody extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (final option in hlsQualities)
+        for (final option in hls.qualities)
           ListTile(
             dense: true,
             selected: option.id == selected,
@@ -782,8 +716,8 @@ class _PanelBody extends StatelessWidget {
             ),
             title: Text(option.label),
             subtitle: option.id == HlsVariants.autoQualityId &&
-                    effectiveHlsLabel != null
-                ? Text('Efetiva: $effectiveHlsLabel')
+                    _resolvedEffectiveLabel != null
+                ? Text('Efetiva: $_resolvedEffectiveLabel')
                 : null,
             onTap: () => _choose(() => select(option.id)),
           ),
@@ -792,9 +726,11 @@ class _PanelBody extends StatelessWidget {
   }
 
   String? _sourceQualityLabel() {
-    final id = selectedSourceQualityId;
+    final source = this.source;
+    if (source == null) return null;
+    final id = _resolvedSourceId;
     if (id == null) return null;
-    for (final quality in sourceQualities) {
+    for (final quality in source.qualities) {
       if (quality.id == id) return quality.label;
     }
     return null;
@@ -848,7 +784,8 @@ class _PanelBody extends StatelessWidget {
         onSelect: player.selectVideo,
       );
     }
-    final select = onSelectSourceQuality!;
+    final source = this.source!;
+    final select = source.onSelect;
     return Column(
       key: const ValueKey('sub-Qualidade'),
       mainAxisSize: MainAxisSize.min,
@@ -868,7 +805,7 @@ class _PanelBody extends StatelessWidget {
         ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 200),
           child: RadioGroup<String?>(
-            groupValue: selectedSourceQualityId,
+            groupValue: _resolvedSourceId,
             onChanged: (value) => _choose(() => select(value)),
             child: ListView(
               shrinkWrap: true,
@@ -879,7 +816,7 @@ class _PanelBody extends StatelessWidget {
                   title: Text('Padrão da fonte'),
                   value: null,
                 ),
-                ...sourceQualities.map(
+                ...source.qualities.map(
                   (quality) => RadioListTile<String?>(
                     dense: true,
                     title: Text(quality.label),

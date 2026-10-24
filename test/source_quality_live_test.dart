@@ -16,6 +16,7 @@ import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/services/supervised_player_service.dart';
 import 'package:player/services/window_service.dart';
+import 'package:player/widgets/player_panel_options.dart';
 import 'package:player/widgets/player_settings_panel.dart';
 
 const liveQualities = [
@@ -120,9 +121,11 @@ void main() {
             body: PlayerSettingsPanel(
               player: const NoOpMediaPlayerService(),
               session: const PlaybackSession(),
-              sourceQualities: liveQualities,
-              sourceQualityListenable: selected,
-              onSelectSourceQuality: (_) async {},
+              source: SourceOptions(
+                qualities: liveQualities,
+                selectedListenable: selected,
+                onSelect: (_) async {},
+              ),
             ),
           ),
         ),
@@ -145,9 +148,11 @@ void main() {
             body: PlayerSettingsPanel(
               player: const NoOpMediaPlayerService(),
               session: const PlaybackSession(),
-              sourceQualities: liveQualities,
-              selectedSourceQualityId: 'q1080',
-              onSelectSourceQuality: (_) async {},
+              source: SourceOptions(
+                qualities: liveQualities,
+                selectedId: 'q1080',
+                onSelect: (_) async {},
+              ),
             ),
           ),
         ),
