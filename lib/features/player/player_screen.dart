@@ -1402,11 +1402,13 @@ class _PlayerScreenState extends State<PlayerScreen>
                           child: SafeArea(
                             bottom: false,
                             child: Visibility(
-                              visible: _controlsVisible && !_cinema,
+                              visible: _controlsVisible &&
+                                  (!_cinema || _mobile),
                               maintainState: true,
                               maintainAnimation: true,
                               child: ExcludeFocus(
-                                excluding: !_controlsVisible || _cinema,
+                                excluding: !_controlsVisible ||
+                                    (_cinema && !_mobile),
                                 child: FocusScope(
                                   node: _cornerScope,
                                   child: _TvCornerIcons(
@@ -1427,8 +1429,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                                         ),
                                         const Spacer(),
                                         RoundPlayerButton(
-                                          tooltip: 'Modo cinema',
-                                          icon: Icons.theaters_outlined,
+                                          tooltip: _cinema
+                                              ? 'Sair do modo cinema'
+                                              : 'Modo cinema',
+                                          icon: _cinema
+                                              ? Icons.theaters
+                                              : Icons.theaters_outlined,
                                           size: _cornerSize,
                                           padding: _cornerPadding,
                                           overVideo: true,
