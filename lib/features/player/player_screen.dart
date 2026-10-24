@@ -16,6 +16,7 @@ import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
 import 'package:player/core/utils/media_utils.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
+import 'package:player/features/player/hls_resume_probe.dart';
 import 'package:player/features/player/hls_session_state.dart';
 import 'package:player/features/player/player_widgets.dart';
 import 'package:player/features/player/video_area.dart';
@@ -27,7 +28,6 @@ import 'package:player/services/media_permission_service.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/services/mobile_chrome_service.dart';
 import 'package:player/widgets/player_panel_options.dart';
-import 'package:player/services/supervised_player_service.dart';
 import 'package:player/services/system_volume_service.dart';
 import 'package:player/services/thumbnail_service.dart';
 import 'package:player/widgets/confirm_dialog.dart';
@@ -1089,16 +1089,12 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// id do item e o rótulo da variante — nunca URL ou segredo.
   void _probeHlsResume(MediaPlayerService player, String stage,
       [String? detail]) {
-    final inner = player is SupervisedPlayerService
-        ? player
-        : widget.dependencies.playerService is SupervisedPlayerService
-            ? widget.dependencies.playerService as SupervisedPlayerService
-            : null;
-    inner?.logResumeProbe(stage, detail: detail);
-    assert(() {
-      debugPrint('[hls-resume] $stage ${detail ?? ''}');
-      return true;
-    }());
+    logHlsResumeProbe(
+      player: player,
+      app: widget.dependencies.playerService,
+      stage: stage,
+      detail: detail,
+    );
   }
 
   /// Espera a duracao chegar (mpv com arquivo conhecido) antes do seek
