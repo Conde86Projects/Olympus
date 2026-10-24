@@ -175,7 +175,7 @@ Exemplo de `feed.json`:
       "id": "big-buck-bunny",
       "title": "Big Buck Bunny",
       "description": "Open Movie da Blender Foundation (CC-BY 3.0).",
-      "url": "https://seu-dominio/media/big-buck-bunny.mp4",
+      "url": "https://seu-dominio/media/hls/big-buck-bunny/master.m3u8",
       "thumbnail": "https://seu-dominio/images/big-buck-bunny.jpg",
       "duration": 596,
       "qualities": []
@@ -192,6 +192,9 @@ Exemplo de `feed.json`:
   ]
 }
 ```
+
+
+Publicado: `https://conde86projects.github.io/olympus-catalog/feed.json` (BBB no master HLS; ver seção abaixo).
 
 Modelo de `ATTRIBUTIONS.md` (publicar junto):
 
@@ -223,15 +226,15 @@ Tears of Steel continuam fora por tamanho).
   (só Big Buck Bunny, sem mux-smoke).
 - Testes HLS: `https://conde86projects.github.io/olympus-catalog/feed-smoke.json`
   (só o mux-smoke, separado do catálogo).
-- Mídia: `media/big-buck-bunny.mp4`, recodificado do original
-  oficial `big_buck_bunny_720p_h264.mov` (download.blender.org):
-  H.264 High 720p ~1 Mbps, keyframe a cada 2 s, AAC estéreo
-  128 kbps, `faststart`, 84,5 MB, 596 s. SHA-256
-  `f6dc1fc81c59f7a8babe6d9966ae2a89853cc116dc5460514d7be435d953164d`.
-  MP4 único = sem seletor de qualidade (correto para ele).
-  Decisão de 24/10/2026: ao gerar versões do BBB, preferir HLS
-  com variantes (seletor Automática/variantes em toda parte, sem
-  código novo) em vez de vários MP4s.
+- Mídia HLS (24/10/2026, commit `e12d6c7` no catálogo):
+  `media/hls/big-buck-bunny/master.m3u8` + variantes 720p/480p/360p/240p
+  (x264, keyframes a cada 2 s, segmentos de 6 s, 169,9 MB), geradas do
+  MP4 abaixo. Seletor Automática/variantes esperado nas 3 plataformas
+  (validação no aparelho: ticket #4), sem código novo.
+- Mídia reserva: `media/big-buck-bunny.mp4` (o recodificado original:
+  H.264 High 720p ~1 Mbps, keyframe a cada 2 s, AAC estéreo 128 kbps,
+  `faststart`, 84,5 MB, 596 s, SHA-256 `f6dc...53d`). MP4 único = sem
+  seletor (correto para ele); o feed aponta para o master HLS.
 - Miniatura: `images/big-buck-bunny.jpg`, quadro em 1:35, 640x360.
 - Créditos: `ATTRIBUTIONS.md` no próprio repositório do catálogo.
 - App: `OwnedTestSourceAdapter.feedHost` + `feedPathPrefix` casam
