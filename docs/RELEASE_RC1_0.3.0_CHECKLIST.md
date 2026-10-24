@@ -79,8 +79,7 @@ preparada em `4d2d4fb` (20/10/2026, sem tag).
 - [x] retomada (cartão "parou em 1:53", abriu retomando)
 - [x] histórico (cartão Continuar assistindo com progresso 19%)
 - [x] retorno ao catálogo (BACK encadeado até a home)
-- [ ] Qualidade no BBB HLS vs master publicado (TCL offline em
-      24/10 — presumido OK pelo dono, falta validar)
+- [x] Qualidade no BBB HLS vs master publicado (dono, 24/10)
 
 ### Windows
 
@@ -89,9 +88,8 @@ preparada em `4d2d4fb` (20/10/2026, sem tag).
 - [x] Qualidade no BBB HLS (Automática · efetiva, dono, 24/10)
 - [x] manual 360p e volta à Automática (dono, 24/10)
 - [x] rede fria: abre e lista Qualidade (dono, 24/10)
-- [ ] fileira só com mudo, sem trilho (novo build — re-check de
-      1 min pendente)
-- [ ] setas ocultas com persistência (idem)
+- [x] fileira só com mudo, sem trilho (novo build, dono, 24/10)
+- [x] setas ocultas com persistência (dono, 24/10)
 - [ ] janela normal
 - [ ] janela pequena
 - [ ] minimizar
