@@ -15,6 +15,7 @@ import 'package:player/services/history_service.dart';
 import 'package:player/services/library_service.dart';
 import 'package:player/services/local_addon_service.dart';
 import 'package:player/services/media_player_service.dart';
+import 'package:player/services/mobile_chrome_service.dart';
 import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/services/window_service.dart';
@@ -36,7 +37,7 @@ class _SeekPlayer extends NoOpMediaPlayerService {
 }
 
 class _Harness {
-  _Harness({this.mobile = true, bool tvMode = false, bool onboarding = false})
+  _Harness({this.mobile = true, bool tvMode = false, bool onboarding = false, this.chrome})
       : preferences = InMemoryPreferencesService(),
         library = InMemoryLibraryService(),
         history = InMemoryHistoryService(),
@@ -47,6 +48,7 @@ class _Harness {
   }
 
   final bool mobile;
+  final MobileChromeService? chrome;
   final InMemoryPreferencesService preferences;
   final InMemoryLibraryService library;
   final InMemoryHistoryService history;
@@ -64,6 +66,7 @@ class _Harness {
         addonService: addons,
         startupGuard: guard,
         mobilePlatform: mobile,
+        mobileChromeService: chrome,
         diagnosticsService: DiagnosticsService(
           store: InMemoryLocalStore(),
           preferences: preferences,
@@ -85,12 +88,12 @@ final _item = MediaItem(
 );
 
 Future<_Harness> _boot(WidgetTester tester, Size size,
-    {bool mobile = true, bool tvMode = false, bool onboarding = false}) async {
+    {bool mobile = true, bool tvMode = false, bool onboarding = false, MobileChromeService? chrome}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
   final harness =
-      _Harness(mobile: mobile, tvMode: tvMode, onboarding: onboarding);
+      _Harness(mobile: mobile, tvMode: tvMode, onboarding: onboarding, chrome: chrome);
   await tester.pumpWidget(harness.app);
   await tester.pumpAndSettle();
   return harness;
@@ -223,8 +226,8 @@ void main() {
 
   group('player no celular', () {
     Future<_Harness> openPlayer(WidgetTester tester, Size size,
-        {bool mobile = true}) async {
-      final harness = await _boot(tester, size, mobile: mobile);
+        {bool mobile = true, MobileChromeService? chrome}) async {
+      final harness = await _boot(tester, size, mobile: mobile, chrome: chrome);
       await harness.library.upsert(_item);
       final context = tester.element(find.byType(Scaffold).first);
       Navigator.of(context).pushNamed(AppRoutes.player, arguments: _item);
@@ -315,7 +318,7 @@ void main() {
       });
       addTearDown(() => tester.binding.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, null));
-      await openPlayer(tester, _portrait);
+      await openPlayer(tester, _portrait, chrome: SystemMobileChrome());
 
       await tester.tap(find.byTooltip('Tela cheia'));
       await tester.pumpAndSettle();

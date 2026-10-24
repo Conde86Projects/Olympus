@@ -12,6 +12,7 @@ import 'package:player/services/diagnostics_service.dart';
 import 'package:player/services/history_service.dart';
 import 'package:player/services/library_service.dart';
 import 'package:player/services/media_player_service.dart';
+import 'package:player/services/mobile_chrome_service.dart';
 import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/services/system_volume_service.dart';
@@ -33,6 +34,7 @@ class PlayerApp extends StatelessWidget {
     required this.diagnosticsService,
     this.videoOutputGuard,
     this.mobilePlatform = false,
+    this.mobileChromeService,
     this.systemVolumeService = const NoOpSystemVolumeService(),
   });
 
@@ -54,6 +56,9 @@ class PlayerApp extends StatelessWidget {
 
   /// Volume do sistema (Android); NoOp fora dele e nos testes.
   final SystemVolumeService systemVolumeService;
+
+  /// Chrome mobile (imersao/orientacao); NoOp fora dele e nos testes.
+  final MobileChromeService? mobileChromeService;
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +118,7 @@ class PlayerApp extends StatelessWidget {
               diagnosticsService: diagnosticsService,
               videoOutputGuard: videoOutputGuard,
               systemVolumeService: systemVolumeService,
+              mobileChromeService: mobileChromeService ?? NoOpMobileChrome(),
             ),
           ),
           ),
@@ -136,6 +142,7 @@ class AppDependencies {
     required this.diagnosticsService,
     this.videoOutputGuard,
     this.systemVolumeService = const NoOpSystemVolumeService(),
+    required this.mobileChromeService,
   });
 
   final PreferencesService preferencesService;
@@ -152,6 +159,9 @@ class AppDependencies {
 
   /// Volume do sistema (Android); NoOp fora dele.
   final SystemVolumeService systemVolumeService;
+
+  /// Chrome mobile (imersao/orientacao); NoOp fora dele.
+  final MobileChromeService mobileChromeService;
 }
 
 /// Aplica as metricas da classe de largura sobre o tema (spec 27.4).

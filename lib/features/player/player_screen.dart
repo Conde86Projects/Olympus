@@ -22,6 +22,7 @@ import 'package:player/models/media_item.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_permission_service.dart';
 import 'package:player/services/media_player_service.dart';
+import 'package:player/services/mobile_chrome_service.dart';
 import 'package:player/services/supervised_player_service.dart';
 import 'package:player/services/system_volume_service.dart';
 import 'package:player/services/thumbnail_service.dart';
@@ -70,7 +71,13 @@ class _PlayerScreenState extends State<PlayerScreen>
   Timer? _hideTimer;
   Timer? _resumeTimer;
   bool _controlsVisible = true;
-  bool _fullscreen = false;
+
+  /// Chrome mobile (dono do estado de tela cheia NO CELULAR, F1/#6):
+  /// a tela lê [_fullscreen] e assina mudanças; nunca mantém cópia local.
+  /// Desktop/TV seguem no espelho local abaixo (dono futuro, fora da F1).
+  late final MobileChromeService _chrome;
+  bool _windowFullscreen = false;
+  bool get _fullscreen => _mobile ? _chrome.isFullscreen : _windowFullscreen;
   bool _compact = false;
   bool _cinema = false;
   bool _panelOpen = false;
@@ -230,6 +237,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     super.initState();
     _currentItem = widget.item;
     _baseItem = widget.item;
+    _chrome = widget.dependencies.mobileChromeService;
     _sourceQuality = ValueNotifier<String?>(null);
     _hlsQuality = ValueNotifier<String>(HlsVariants.autoQualityId);
     _hlsEffective = ValueNotifier<String?>(null);
@@ -1207,7 +1215,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _seekFlashTimer?.cancel();
     _repositionTimer?.cancel();
     // Saiu do player em tela cheia no celular: devolve barras e giro.
-    if (_mobile && _fullscreen) unawaited(_applyMobileFullscreen(false));
+    if (_mobile && _fullscreen) unawaited(_chrome.setFullscreen(false));
     widget.dependencies.windowService.removeBeforeClose(_saveOnWindowClose);
     _hideTimer?.cancel();
     _resumeTimer?.cancel();
@@ -1270,7 +1278,11 @@ class _PlayerScreenState extends State<PlayerScreen>
     } else if (!modalUp) {
       _wasOverlayUp = false;
     }
-    return PopScope(
+    // A tela assina o chrome (ADR-0002): qualquer mudança no módulo
+    // reconstrói via ListenableBuilder, sem cópia local de estado.
+    return ListenableBuilder(
+      listenable: _chrome,
+      builder: (context, _) => PopScope(
       canPop: _allowPop,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
@@ -1519,6 +1531,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -1757,26 +1770,17 @@ class _PlayerScreenState extends State<PlayerScreen>
     });
   }
 
-  /// Celular em tela cheia: barras do sistema escondidas e paisagem.
-  /// Fora dela, barras de volta e qualquer orientacao.
-  Future<void> _applyMobileFullscreen(bool enabled) async {
-    await SystemChrome.setEnabledSystemUIMode(
-        enabled ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge);
-    await SystemChrome.setPreferredOrientations(enabled
-        ? const [
-            DeviceOrientation.landscapeLeft,
-            DeviceOrientation.landscapeRight,
-          ]
-        : const []);
-  }
-
   Future<void> _toggleFullscreen() async {
     final next = !_fullscreen;
     await widget.dependencies.windowService.setFullscreen(next);
-    if (_mobile) await _applyMobileFullscreen(next);
+    if (_mobile) {
+      await _chrome.setFullscreen(next);
+    }
     if (!mounted) return;
     setState(() {
-      _fullscreen = next;
+      // Só fora do mobile o estado é espelho local (desktop/TV);
+      // no mobile ele já vive no módulo (assinatura acima).
+      if (!_mobile) _windowFullscreen = next;
       _controlsVisible = true;
     });
     // Os cantos ocultam/exibem: o foco pode ter morrido com eles.
