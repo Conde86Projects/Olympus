@@ -37,6 +37,7 @@ class TvPlayerControls extends StatelessWidget {
     required this.onOpenPanel,
     this.videoTitle,
     this.settingsKey,
+    this.systemMuted = false,
   });
 
   final MediaPlayerService player;
@@ -50,6 +51,9 @@ class TvPlayerControls extends StatelessWidget {
 
   /// Chave da engrenagem (ancora do painel, spec 3.5).
   final Key? settingsKey;
+
+  /// Sistema zerado/mudo (Android): o ícone reflete também o aparelho.
+  final bool systemMuted;
 
   static double? _loggedPanelWidth;
 
@@ -171,6 +175,7 @@ class TvPlayerControls extends StatelessWidget {
                               _TvVolumeControl(
                                 player: player,
                                 session: session,
+                                systemMuted: systemMuted,
                               ),
                               Expanded(
                                 child: Row(
@@ -263,14 +268,18 @@ class _TvVolumeControl extends StatelessWidget {
   const _TvVolumeControl({
     required this.player,
     required this.session,
+    this.systemMuted = false,
   });
 
   final MediaPlayerService player;
   final PlaybackSession session;
 
+  /// Sistema zerado/mudo: o ícone reflete também o aparelho.
+  final bool systemMuted;
+
   @override
   Widget build(BuildContext context) {
-    final muted = session.isMuted || session.volume <= 0;
+    final muted = session.isMuted || session.volume <= 0 || systemMuted;
     return RoundPlayerButton(
       tooltip: muted ? 'Ativar som' : 'Silenciar',
       icon: muted ? Icons.volume_off : Icons.volume_up,

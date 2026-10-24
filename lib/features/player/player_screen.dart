@@ -23,6 +23,7 @@ import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_permission_service.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/services/supervised_player_service.dart';
+import 'package:player/services/system_volume_service.dart';
 import 'package:player/services/thumbnail_service.dart';
 import 'package:player/widgets/confirm_dialog.dart';
 import 'package:player/widgets/empty_state.dart';
@@ -56,6 +57,11 @@ class _PlayerScreenState extends State<PlayerScreen>
     with WidgetsBindingObserver {
   StreamSubscription<PlaybackSession>? _subscription;
   StreamSubscription<void>? _minimizedSub;
+
+  /// Sistema zerado/mudo (Android): o ícone de mudo reflete também o
+  /// aparelho, não só o estado interno. Desktop ignora (sem canal).
+  bool _systemSilent = false;
+  StreamSubscription<SystemVolumeState>? _systemVolumeSub;
 
   /// Gravacao no X do sistema (Windows). Referencia estavel para
   /// remover so a deste player no dispose.
@@ -296,6 +302,25 @@ class _PlayerScreenState extends State<PlayerScreen>
     _minimizedSub = widget.dependencies.windowService.minimized
         .listen((_) => unawaited(_saveSession(pause: false)));
     widget.dependencies.windowService.addBeforeClose(_saveOnWindowClose);
+    // Volume do sistema (Android): zerou no aparelho → mostra mudo;
+    // aumentou → despluga o mudo do app (a tecla física também faz
+    // isso em [_handleHiddenKeys]; aqui cobre ajuste pelo painel e
+    // garante o ícone certo).
+    if (_isMobileOs) {
+      final volumes = widget.dependencies.systemVolumeService;
+      unawaited(volumes.current().then((state) {
+        if (!mounted) return;
+        setState(() => _systemSilent = state.isSilent);
+      }));
+      _systemVolumeSub = volumes.watch().listen((state) {
+        if (!mounted) return;
+        setState(() => _systemSilent = state.isSilent);
+        if (!state.isSilent && _session.isMuted) {
+          unawaited(
+              widget.dependencies.playerService.setMuted(false));
+        }
+      });
+    }
   }
 
   Future<void> _open() async {
@@ -1191,6 +1216,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _hlsColdTimer?.cancel();
     _hlsColdTimer = null;
     _subscription?.cancel();
+    _systemVolumeSub?.cancel();
     _screenFocus.dispose();
     _sourceQuality.dispose();
     _hlsQuality.dispose();
@@ -1462,6 +1488,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                               session: _session,
                                               videoTitle: _currentItem.title,
                                               settingsKey: _settingsKey,
+                                              systemMuted: _systemSilent,
                                               onOpenPanel: (view, anchor) =>
                                                   _openSettings(anchor,
                                                       view: view),
@@ -1474,7 +1501,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                               videoTitle: _currentItem.title,
                                               settingsKey: _settingsKey,
                                               dense: _dense,
-                                              onVolumeCommitted: _persistVolume,
+                                              systemMuted: _systemSilent,
                                             ),
                                     ),
                                   ),
@@ -1505,6 +1532,23 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// tecla executa uma unica vez.
   bool _handleHiddenKeys(KeyEvent event) {
     if (event is! KeyDownEvent || !mounted) return false;
+    // Tecla física de volume (VOL+/VOL− do controle da TV, botões do
+    // celular, teclado multimídia): se o app estava mudado, despluga
+    // o mudo em qualquer estado da barra. Retorna false de propósito
+    // para o sistema ajustar o próprio volume — o app nunca consome
+    // essa tecla.
+    if (event.logicalKey == LogicalKeyboardKey.audioVolumeUp ||
+        event.logicalKey == LogicalKeyboardKey.audioVolumeDown) {
+      final context = _screenFocus.context;
+      if (context != null &&
+          ModalRoute.of(context)?.isCurrent == true &&
+          !_panelOpen &&
+          !_overlayUp &&
+          _session.isMuted) {
+        widget.dependencies.playerService.setMuted(false);
+      }
+      return false;
+    }
     if (_controlsVisible && !_panelOpen && !_overlayUp) {
       // Navegando na barra visivel (controle remoto ou teclado): a tecla
       // segue para o foco normal e so rearma o auto-hide (spec 12.2).
@@ -1668,9 +1712,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     });
   }
 
-  /// Trilho no desktop/Windows: o volume escolhido vira o volume
-  /// inicial da preferencia e o proximo player abre com ele. No
-  /// celular e na TV não há trilho: vale o volume do sistema/aparelho.
+  /// Setas ocultas no desktop/Windows: o volume escolhido vira o
+  /// volume inicial da preferencia e o proximo player abre com ele
+  /// (único ajuste fino interno; sem trilho em nenhuma plataforma).
   void _persistVolume(double volume) {
     final prefs = widget.dependencies.preferencesService;
     unawaited(prefs.update(prefs.current.copyWith(initialVolume: volume)));

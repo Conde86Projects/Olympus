@@ -28,7 +28,7 @@ class PlayerControls extends StatelessWidget {
     this.videoTitle,
     this.settingsKey,
     this.dense = false,
-    this.onVolumeCommitted,
+    this.systemMuted = false,
   });
 
   /// Altura de janela abaixo da qual a tela usa o card [dense]. O
@@ -55,10 +55,8 @@ class PlayerControls extends StatelessWidget {
   /// card normal cobria metade do video e encostava nos cantos.
   final bool dense;
 
-  /// Volume ajustado pelo trilho no desktop (0.0–1.0): vira o volume
-  /// inicial. No celular e na TV nao ha trilho (so o mudo), entao o
-  /// callback nao dispara nessas plataformas.
-  final ValueChanged<double>? onVolumeCommitted;
+  /// Sistema zerado/mudo (Android): o ícone reflete também o aparelho.
+  final bool systemMuted;
 
   @override
   Widget build(BuildContext context) {
@@ -132,63 +130,56 @@ class PlayerControls extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          // Janela estreita (compacto/retrato): some o trilho
-                          // de volume para a fileira nunca estourar; o mudo
-                          // continua disponivel.
-                          final narrow = constraints.maxWidth < 460;
-                          return Row(
-                            children: [
-                              _VolumeControl(
-                                player: player,
-                                session: session,
-                                showSlider: !narrow && !MobileMode.of(context),
-                                onVolumeCommitted: onVolumeCommitted,
-                              ),
-                              Expanded(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    RoundPlayerButton(
-                                      tooltip: 'Retroceder 10 segundos',
-                                      icon: Icons.replay_10,
-                                      onPressed: () =>
-                                          player.seekBy(-AppConstants.seekStep),
-                                    ),
-                                    RoundPlayerButton(
-                                      autofocus: true,
-                                      tooltip:
-                                          isPlaying ? 'Pausar' : 'Reproduzir',
-                                      icon: isPlaying
-                                          ? Icons.pause
-                                          : Icons.play_arrow,
-                                      onPressed: () => isPlaying
-                                          ? player.pause()
-                                          : player.play(),
-                                    ),
-                                    RoundPlayerButton(
-                                      tooltip: 'Avançar 10 segundos',
-                                      icon: Icons.forward_10,
-                                      onPressed: () =>
-                                          player.seekBy(AppConstants.seekStep),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Builder(
-                                builder: (anchorContext) => RoundPlayerButton(
-                                  key: settingsKey,
-                                  tooltip: 'Configurações',
-                                  icon: Icons.settings,
+                      Row(
+                        children: [
+                          // Sem trilho em nenhuma plataforma (decisão de
+                          // produto): o trilho empurrava os botões no
+                          // Windows. Só o mudo; volume no sistema/aparelho
+                          // (e nas setas ocultas do desktop).
+                          _VolumeControl(
+                            player: player,
+                            session: session,
+                            systemMuted: systemMuted,
+                          ),
+                          Expanded(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                RoundPlayerButton(
+                                  tooltip: 'Retroceder 10 segundos',
+                                  icon: Icons.replay_10,
                                   onPressed: () =>
-                                      onOpenSettings(anchorContext),
+                                      player.seekBy(-AppConstants.seekStep),
                                 ),
-                              ),
-                            ],
-                          );
-                        },
+                                RoundPlayerButton(
+                                  autofocus: true,
+                                  tooltip: isPlaying ? 'Pausar' : 'Reproduzir',
+                                  icon: isPlaying
+                                      ? Icons.pause
+                                      : Icons.play_arrow,
+                                  onPressed: () => isPlaying
+                                      ? player.pause()
+                                      : player.play(),
+                                ),
+                                RoundPlayerButton(
+                                  tooltip: 'Avançar 10 segundos',
+                                  icon: Icons.forward_10,
+                                  onPressed: () =>
+                                      player.seekBy(AppConstants.seekStep),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Builder(
+                            builder: (anchorContext) => RoundPlayerButton(
+                              key: settingsKey,
+                              tooltip: 'Configurações',
+                              icon: Icons.settings,
+                              onPressed: () => onOpenSettings(anchorContext),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -206,7 +197,7 @@ class PlayerControls extends StatelessWidget {
     final touch = MobileMode.of(context);
     final size = touch ? MobileMode.minTouchTarget : 36.0;
     final padding = EdgeInsets.all(touch ? 12 : 6);
-    final muted = session.isMuted || session.volume <= 0;
+    final muted = session.isMuted || session.volume <= 0 || systemMuted;
     return Row(
       children: [
         RoundPlayerButton(
@@ -293,55 +284,28 @@ class _TimeLabel extends StatelessWidget {
   }
 }
 
+/// Botão de mudo: único controle de áudio do player em todas as
+/// plataformas (sem trilho — ele empurrava os botões no Windows).
 class _VolumeControl extends StatelessWidget {
   const _VolumeControl({
     required this.player,
     required this.session,
-    this.showSlider = true,
-    this.onVolumeCommitted,
+    this.systemMuted = false,
   });
 
   final MediaPlayerService player;
   final PlaybackSession session;
 
-  /// Falso em janela estreita: so o mudo (sem estouro).
-  final bool showSlider;
-
-  /// Recebe o volume escolhido no trilho do desktop (0.0–1.0): vira o
-  /// volume inicial (só vale no Windows; no celular/TV não há trilho).
-  final ValueChanged<double>? onVolumeCommitted;
+  /// Sistema zerado/mudo (Android): o ícone reflete também o aparelho.
+  final bool systemMuted;
 
   @override
   Widget build(BuildContext context) {
-    final muted = session.isMuted || session.volume <= 0;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        RoundPlayerButton(
-          tooltip: muted ? 'Ativar som' : 'Silenciar',
-          icon: muted ? Icons.volume_off : Icons.volume_up,
-          onPressed: () => player.setMuted(!session.isMuted),
-        ),
-        if (showSlider)
-          SizedBox(
-            width: 72,
-            child: SliderFocusRing(
-              child: ExitSlider(
-                // Na fileira de botoes nao ha para onde descer: sai para o
-                // mudo, vizinho da esquerda.
-                exit: TraversalDirection.left,
-                child: Slider(
-                  value: session.isMuted ? 0 : session.volume,
-                  onChanged: (v) {
-                    player.setVolume(v);
-                    if (v > 0 && session.isMuted) player.setMuted(false);
-                    onVolumeCommitted?.call(v);
-                  },
-                ),
-              ),
-            ),
-          ),
-      ],
+    final muted = session.isMuted || session.volume <= 0 || systemMuted;
+    return RoundPlayerButton(
+      tooltip: muted ? 'Ativar som' : 'Silenciar',
+      icon: muted ? Icons.volume_off : Icons.volume_up,
+      onPressed: () => player.setMuted(!session.isMuted),
     );
   }
 }

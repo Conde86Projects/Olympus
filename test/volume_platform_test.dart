@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,13 +16,16 @@ import 'package:player/services/local_addon_service.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
+import 'package:player/services/system_volume_service.dart';
 import 'package:player/services/window_service.dart';
 
-/// Regra de volume por plataforma (decisão de produto 20/10/2026):
-/// volume simples no celular e na TV, completo só no desktop.
+/// Regra de volume por plataforma (decisão de produto 20/10/2026,
+/// sem trilho em nenhuma desde o ajuste de layout do Windows):
+/// só o mudo dentro do app, em toda parte.
 ///
-/// - Desktop/Windows: volume interno (`initialVolume`) aplicado na
-///   abertura, trilho, setas com controles ocultos e persistência.
+/// - Desktop/Windows: volume pelo sistema; volume interno
+///   (`initialVolume`) aplicado na abertura e ajustável nas setas
+///   com controles ocultos, com persistência; só o mudo no player.
 /// - Celular: vale o volume do sistema (botões físicos); o app nunca
 ///   aplica nem salva volume interno; só o mudo.
 /// - TV: vale o volume da TV (VOL+/VOL− do controle remoto, fora do
@@ -30,8 +35,28 @@ import 'package:player/services/window_service.dart';
 /// fixa a plataforma-alvo explicitamente (restauração no `finally`,
 /// dentro do corpo: a verificação de invariantes roda antes dos
 /// `tearDown`).
+/// Fake do volume do sistema: o teste controla o estado e emite eventos.
+class _FakeSystemVolume extends SystemVolumeService {
+  _FakeSystemVolume([SystemVolumeState state = SystemVolumeState.full])
+      : _state = state;
+
+  SystemVolumeState _state;
+  final _controller = StreamController<SystemVolumeState>.broadcast();
+
+  @override
+  Future<SystemVolumeState> current() async => _state;
+
+  @override
+  Stream<SystemVolumeState> watch() => _controller.stream;
+
+  void emit(SystemVolumeState state) {
+    _state = state;
+    _controller.add(state);
+  }
+}
+
 class _Harness {
-  _Harness({this.mobilePlatform = false})
+  _Harness({this.mobilePlatform = false, this.systemVolume})
       : preferences = InMemoryPreferencesService(),
         library = InMemoryLibraryService(),
         history = InMemoryHistoryService(),
@@ -39,11 +64,11 @@ class _Harness {
         windows = NoOpWindowService(),
         guard = StartupGuard(InMemoryLocalStore()),
         addons = LocalAddonService(InMemoryLocalStore()) {
-    preferences.update(
-        preferences.current.copyWith(showOnboarding: false));
+    preferences.update(preferences.current.copyWith(showOnboarding: false));
   }
 
   final bool mobilePlatform;
+  final SystemVolumeService? systemVolume;
   final InMemoryPreferencesService preferences;
   final InMemoryLibraryService library;
   final InMemoryHistoryService history;
@@ -72,6 +97,8 @@ class _Harness {
         startupGuard: guard,
         diagnosticsService: diagnostics,
         mobilePlatform: mobilePlatform,
+        systemVolumeService:
+            systemVolume ?? const NoOpSystemVolumeService(),
       );
 }
 
@@ -92,8 +119,10 @@ Future<_Harness> _openPlayer(
   bool mobilePlatform = false,
   double initialVolume = 1.0,
   double playerVolume = 1.0,
+  SystemVolumeService? systemVolume,
 }) async {
-  final harness = _Harness(mobilePlatform: mobilePlatform);
+  final harness = _Harness(
+      mobilePlatform: mobilePlatform, systemVolume: systemVolume);
   await harness.preferences.update(harness.preferences.current
       .copyWith(tvMode: tvMode, initialVolume: initialVolume));
   await harness.player.setMuted(false);
@@ -116,16 +145,14 @@ Future<_Harness> _openPlayer(
 }
 
 Future<void> _hideControls(WidgetTester tester) async {
-  await tester
-      .pump(AppConstants.controlsAutoHide + const Duration(seconds: 1));
+  await tester.pump(AppConstants.controlsAutoHide + const Duration(seconds: 1));
   await tester.pumpAndSettle();
   expect(find.byTooltip('Reproduzir'), findsNothing);
 }
 
 void main() {
   group('volume inicial por plataforma', () {
-    testWidgets('desktop: abertura aplica o volume inicial',
-        (tester) async {
+    testWidgets('desktop: abertura aplica o volume inicial', (tester) async {
       await _withPlatform(TargetPlatform.windows, () async {
         final harness = await _openPlayer(
           tester,
@@ -151,8 +178,7 @@ void main() {
       });
     });
 
-    testWidgets(
-        'celular: abertura ignora o volume inicial (vale o do sistema)',
+    testWidgets('celular: abertura ignora o volume inicial (vale o do sistema)',
         (tester) async {
       await _withPlatform(TargetPlatform.android, () async {
         final harness = await _openPlayer(
@@ -181,8 +207,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(harness.player.session.volume, closeTo(0.55, 1e-9));
-        expect(harness.preferences.current.initialVolume,
-            closeTo(0.55, 1e-9));
+        expect(harness.preferences.current.initialVolume, closeTo(0.55, 1e-9));
         expect(find.byTooltip('Pausar'), findsNothing);
         expect(find.byTooltip('Reproduzir'), findsOneWidget);
       });
@@ -246,14 +271,112 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
         await tester.pumpAndSettle();
 
-        expect(
-            harness.player.session.position, const Duration(seconds: 10));
+        expect(harness.player.session.position, const Duration(seconds: 10));
         expect(harness.player.session.volume, closeTo(0.5, 1e-9));
       });
     });
   });
 
-  group('mudo nas duas plataformas', () {
+  group('tecla física de volume despluga o mudo', () {
+    testWidgets('TV: VOL+ despluga o mudo sem consumir a tecla',
+        (tester) async {
+      await _withPlatform(TargetPlatform.windows, () async {
+        final harness = await _openPlayer(tester, tvMode: true);
+        await harness.player.setMuted(true);
+        await tester.pumpAndSettle();
+        expect(harness.player.session.isMuted, isTrue);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.audioVolumeUp);
+        await tester.pumpAndSettle();
+
+        expect(harness.player.session.isMuted, isFalse);
+      });
+    });
+
+    testWidgets('desktop: VOL− despluga o mudo sem consumir a tecla',
+        (tester) async {
+      await _withPlatform(TargetPlatform.windows, () async {
+        final harness = await _openPlayer(tester);
+        await harness.player.setMuted(true);
+        await tester.pumpAndSettle();
+        expect(harness.player.session.isMuted, isTrue);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.audioVolumeDown);
+        await tester.pumpAndSettle();
+
+        expect(harness.player.session.isMuted, isFalse);
+      });
+    });
+  });
+
+  group('volume do sistema no Android', () {
+    testWidgets('celular: sistema zerado mostra mudo sem tocar no interno',
+        (tester) async {
+      await _withPlatform(TargetPlatform.android, () async {
+        final volumes = _FakeSystemVolume(
+            const SystemVolumeState(volume: 0.0, muted: false));
+        final harness = await _openPlayer(
+          tester,
+          mobilePlatform: true,
+          systemVolume: volumes,
+        );
+
+        expect(find.byTooltip('Ativar som'), findsOneWidget);
+        expect(harness.player.session.volume, closeTo(1.0, 1e-9));
+        expect(harness.player.session.isMuted, isFalse);
+      });
+    });
+
+    testWidgets('celular: sistema aumentou despluga o mudo do app',
+        (tester) async {
+      await _withPlatform(TargetPlatform.android, () async {
+        final volumes = _FakeSystemVolume();
+        final harness = await _openPlayer(
+          tester,
+          mobilePlatform: true,
+          systemVolume: volumes,
+        );
+        await harness.player.setMuted(true);
+        await tester.pumpAndSettle();
+        expect(find.byTooltip('Ativar som'), findsOneWidget);
+
+        volumes.emit(const SystemVolumeState(volume: 0.5, muted: false));
+        await tester.pumpAndSettle();
+
+        expect(harness.player.session.isMuted, isFalse);
+        expect(find.byTooltip('Silenciar'), findsOneWidget);
+      });
+    });
+
+    testWidgets('TV: sistema zerado mostra mudo', (tester) async {
+      await _withPlatform(TargetPlatform.android, () async {
+        final volumes = _FakeSystemVolume(
+            const SystemVolumeState(volume: 0.0, muted: false));
+        await _openPlayer(
+          tester,
+          tvMode: true,
+          systemVolume: volumes,
+        );
+
+        expect(find.byTooltip('Ativar som'), findsOneWidget);
+      });
+    });
+  });
+
+  group('mudo em todas as plataformas (sem trilho em nenhuma)', () {
+    testWidgets('desktop: só mudo, sem trilho', (tester) async {
+      await _withPlatform(TargetPlatform.windows, () async {
+        await _openPlayer(tester);
+
+        expect(find.byTooltip('Silenciar'), findsOneWidget);
+        expect(
+            tester
+                .widgetList<Slider>(find.byType(Slider))
+                .where((s) => s.max == 1.0),
+            isEmpty);
+      });
+    });
+
     testWidgets('TV: mudo alterna sem trilho', (tester) async {
       await _withPlatform(TargetPlatform.windows, () async {
         final harness = await _openPlayer(tester, tvMode: true);

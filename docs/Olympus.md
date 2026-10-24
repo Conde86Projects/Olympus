@@ -77,7 +77,7 @@ O adaptador demo é usado para validar o fluxo de fontes sem depender de um serv
 - reproduzir e pausar;
 - avançar e retroceder;
 - seek na timeline;
-- controle de volume dentro do app no desktop (trilho independente, lembrado entre aberturas); no celular e na TV, só o mudo (ver "Volume" abaixo);
+- só o botão de mudo dentro do app, em todas as plataformas; volume no sistema/aparelho (ver "Volume" abaixo);
 - seleção de áudio;
 - seleção de legendas;
 - velocidade de reprodução;
@@ -90,9 +90,10 @@ O adaptador demo é usado para validar o fluxo de fontes sem depender de um serv
 
 ### Volume
 
-Decisão de produto (20/10/2026): volume simples no celular e na TV,
-completo só no desktop. Sem barra, sem botões de + e − e sem gesto
-vertical nessas plataformas.
+Decisão de produto (20/10/2026, ajuste 21/10/2026): só o mudo
+dentro do app, em todas as plataformas. Sem barra, sem botões de
++ e − e sem gesto vertical em nenhuma delas. O trilho saiu até do
+Windows: ele empurrava os botões de pausar/play/voltar.
 
 - Celular: o volume sai nos botões físicos do aparelho (volume do
   sistema). O app mostra só o botão de mudo.
@@ -100,15 +101,21 @@ vertical nessas plataformas.
   (volume da TV, fora do app). O app mostra só o botão de mudo. O
   D-pad não altera o volume: fica reservado para navegação, foco e
   progresso.
-- Desktop (Windows): trilho de volume dentro do app, independente do
-  volume do sistema, com mudo e persistência, como no YouTube.
-- Só o ajuste do trilho no desktop é salvo como o volume inicial
-  (`initialVolume`) e restaurado na próxima abertura. No celular e na
-  TV, o app respeita o volume do sistema/aparelho: não aplica nem
-  salva volume interno.
+- Desktop (Windows): o volume sai no sistema; o app mostra só o
+  botão de mudo. O volume interno (`initialVolume`) segue aplicado
+  na abertura e ajustável nas setas com controles ocultos (passo
+  0,05, entre 0,0 e 1,0), salvo como inicial — ajuste fino sem
+  ocupar a fileira.
+- No celular e na TV, o app respeita o volume do sistema/aparelho:
+  não aplica nem salva volume interno.
 - Mudo preserva o volume anterior; desmutar restaura o mesmo nível.
-  O mudo é o único controle de áudio dentro do app no celular e na TV.
-- Passo do trilho no desktop: 0,05, entre 0,0 e 1,0.
+- Tecla física de volume (VOL+/VOL−, botões do celular) com o app
+  mudado despluga o mudo em qualquer estado da barra — e o sistema
+  ajusta o próprio volume normalmente, pois o app nunca consome a
+  tecla.
+- Sistema zerado/mudo no Android reflete no ícone do app (mostra
+  mudo sem tocar no volume interno); aumentar no aparelho despluga
+  o mudo do app.
 
 ### Biblioteca
 

@@ -533,7 +533,7 @@ void main() {
       expect(tester.getSize(thumbBox()), const Size(96, 56));
     });
 
-    testWidgets('PlayerControls e desktop: trilhos 72/56 fixos',
+    testWidgets('PlayerControls: fileira sem trilho (só mudo)',
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -553,8 +553,10 @@ void main() {
                 widget.width == w &&
                 widget.height == null,
           );
-      expect(boxWidth(72), findsOneWidget);
+      // Sem trilho de volume em nenhuma plataforma (só o mudo).
+      expect(boxWidth(72), findsNothing);
       expect(boxWidth(56), findsNWidgets(2));
+      expect(find.byTooltip('Silenciar'), findsOneWidget);
     });
   });
 }
