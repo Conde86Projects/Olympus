@@ -17,6 +17,7 @@ import 'package:player/services/startup_guard.dart';
 import 'package:player/services/window_service.dart';
 import 'package:player/services/sources/demo_source_adapter.dart';
 import 'package:player/widgets/media_card.dart';
+import 'package:player/widgets/player_panel_options.dart';
 import 'package:player/widgets/player_settings_panel.dart';
 import 'package:player/core/errors/app_error.dart';
 
@@ -125,9 +126,7 @@ class _Harness {
 
 Future<void> _pumpPanel(
   WidgetTester tester, {
-  List<SourceQuality> sourceQualities = const [],
-  String? selectedSourceQualityId,
-  Future<void> Function(String?)? onSelectSourceQuality,
+  SourceOptions? source,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -135,9 +134,7 @@ Future<void> _pumpPanel(
         body: PlayerSettingsPanel(
           player: const NoOpMediaPlayerService(),
           session: const PlaybackSession(),
-          sourceQualities: sourceQualities,
-          selectedSourceQualityId: selectedSourceQualityId,
-          onSelectSourceQuality: onSelectSourceQuality,
+          source: source,
         ),
       ),
     ),
@@ -349,9 +346,11 @@ void main() {
       String? chosen;
       await _pumpPanel(
         tester,
-        sourceQualities: qualities,
-        selectedSourceQualityId: 'q720',
-        onSelectSourceQuality: (id) async => chosen = id,
+        source: SourceOptions(
+          qualities: qualities,
+          selectedId: 'q720',
+          onSelect: (id) async => chosen = id,
+        ),
       );
       expect(find.text('Qualidade'), findsOneWidget);
       await tester.tap(find.text('Qualidade'));

@@ -16,6 +16,7 @@ import 'package:player/services/media_player_service.dart';
 import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/services/window_service.dart';
+import 'package:player/widgets/player_panel_options.dart';
 import 'package:player/widgets/player_settings_panel.dart';
 
 const _masterUrl = 'https://midia.test/x36xhzz/x36xhzz.m3u8';
@@ -326,10 +327,12 @@ void main() {
             body: PlayerSettingsPanel(
               player: const NoOpMediaPlayerService(),
               session: const PlaybackSession(),
-              hlsQualities: options,
-              selectedHlsQualityId: HlsVariants.autoQualityId,
-              onSelectHlsQuality: (_) async {},
-              effectiveHlsLabel: '288p',
+              hls: HlsOptions(
+                qualities: options,
+                selectedId: HlsVariants.autoQualityId,
+                onSelect: (_) async {},
+                effectiveLabel: '288p',
+              ),
             ),
           ),
         ),

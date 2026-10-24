@@ -18,6 +18,7 @@ import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/services/window_service.dart';
 import 'package:player/widgets/player_controls.dart';
+import 'package:player/widgets/player_panel_options.dart';
 import 'package:player/widgets/player_settings_panel.dart';
 import 'package:player/widgets/tv_player_controls.dart';
 
@@ -177,12 +178,14 @@ class _HlsPanelHarnessState extends State<_HlsPanelHarness> {
         body: PlayerSettingsPanel(
           player: const NoOpMediaPlayerService(),
           session: const PlaybackSession(),
-          hlsQualities: widget.options,
-          selectedHlsQualityId: _selected,
-          onSelectHlsQuality: (id) async {
-            widget.chosen.add(id);
-            setState(() => _selected = id);
-          },
+          hls: HlsOptions(
+            qualities: widget.options,
+            selectedId: _selected,
+            onSelect: (id) async {
+              widget.chosen.add(id);
+              setState(() => _selected = id);
+            },
+          ),
           initialView: PlayerPanelView.quality,
         ),
       ),
