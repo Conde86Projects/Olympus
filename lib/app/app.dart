@@ -14,6 +14,7 @@ import 'package:player/services/library_service.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
+import 'package:player/services/system_volume_service.dart';
 import 'package:player/services/video_output_guard.dart';
 import 'package:player/services/window_service.dart';
 
@@ -32,6 +33,7 @@ class PlayerApp extends StatelessWidget {
     required this.diagnosticsService,
     this.videoOutputGuard,
     this.mobilePlatform = false,
+    this.systemVolumeService = const NoOpSystemVolumeService(),
   });
 
   final PreferencesService preferencesService;
@@ -49,6 +51,9 @@ class PlayerApp extends StatelessWidget {
   /// Android/iOS. Com o modo TV desligado vira a composicao de
   /// celular ([MobileMode]); desktop e testes ficam no padrao (false).
   final bool mobilePlatform;
+
+  /// Volume do sistema (Android); NoOp fora dele e nos testes.
+  final SystemVolumeService systemVolumeService;
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +112,7 @@ class PlayerApp extends StatelessWidget {
               startupGuard: startupGuard,
               diagnosticsService: diagnosticsService,
               videoOutputGuard: videoOutputGuard,
+              systemVolumeService: systemVolumeService,
             ),
           ),
           ),
@@ -129,6 +135,7 @@ class AppDependencies {
     required this.startupGuard,
     required this.diagnosticsService,
     this.videoOutputGuard,
+    this.systemVolumeService = const NoOpSystemVolumeService(),
   });
 
   final PreferencesService preferencesService;
@@ -142,6 +149,9 @@ class AppDependencies {
 
   /// Guarda da saida direta (Android); null fora dela.
   final VideoOutputGuard? videoOutputGuard;
+
+  /// Volume do sistema (Android); NoOp fora dele.
+  final SystemVolumeService systemVolumeService;
 }
 
 /// Aplica as metricas da classe de largura sobre o tema (spec 27.4).

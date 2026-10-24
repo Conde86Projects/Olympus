@@ -278,7 +278,9 @@ Regra vigente, travada em testes (`test/volume_platform_test.dart`,
 - TV: VOL+/VOL− do controle remoto (volume da TV, fora do app); no
   app, só o mudo. O D-pad não altera o volume (navegação, foco e
   progresso).
-- Windows: trilho interno independente do sistema, com mudo e
-  persistência (`initialVolume` só salvo/restaurado no desktop).
+- Windows (ajuste 21/10/2026): sem trilho no player (empurrava os
+  botões) — só o mudo; volume no sistema. `initialVolume` segue
+  aplicado na abertura e ajustável nas setas ocultas, com
+  persistência.
 - Validar em aparelho: botões físicos no celular, VOL+/VOL− na TCL,
-  mudo nas duas plataformas e trilho completo no Windows.
+  mudo nas três plataformas e fileira alinhada no Windows.

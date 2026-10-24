@@ -923,31 +923,23 @@ void main() {
       );
     });
 
-    testWidgets('slider de volume: ajusta e sai para o mudo', (tester) async {
+    testWidgets('sem trilho: esquerda sai no mudo, volume intacto',
+        (tester) async {
       final harness = await _openPlayer(tester);
 
-      bool onVolumeSlider() {
-        final context = FocusManager.instance.primaryFocus?.context;
-        final slider = context?.findAncestorWidgetOfExactType<Slider>();
-        return slider != null && slider.max == 1.0;
-      }
-
-      // Reproduzir -> esquerda, esquerda: retroceder, slider de volume.
+      // Reproduzir -> esquerda, esquerda: retroceder, mudo (sem
+      // trilho de volume no caminho).
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.pumpAndSettle();
-      expect(onVolumeSlider(), isTrue);
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
-      await tester.pumpAndSettle();
-      expect(onVolumeSlider(), isTrue);
-      expect(harness.player.session.volume, lessThan(1.0));
+      expect(_focusedTooltip(), isIn(['Ativar som', 'Silenciar']));
+      expect(harness.player.session.volume, 1.0);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
-      expect(onVolumeSlider(), isFalse);
-      expect(_focusedTooltip(), isIn(['Ativar som', 'Silenciar']));
+      expect(harness.player.session.isMuted, isTrue);
+      expect(_focusedTooltip(), 'Ativar som');
     });
 
     testWidgets('poke restaura o último controle, não os cantos (F5)',

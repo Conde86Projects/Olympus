@@ -17,6 +17,7 @@ import 'package:player/services/shared_preferences_service.dart';
 import 'package:player/services/sources/owned_test_source.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/services/supervised_player_service.dart';
+import 'package:player/services/system_volume_service.dart';
 import 'package:player/services/tv_info_service.dart';
 import 'package:player/services/video_output_guard.dart';
 import 'package:player/services/window_service.dart';
@@ -156,6 +157,7 @@ Future<void> _boot(void Function(StartupGuard) onGuard) async {
       diagnosticsService: diagnostics,
       videoOutputGuard: videoGuard,
       mobilePlatform: Platform.isAndroid || Platform.isIOS,
+      systemVolumeService: SystemVolumeService.platform(),
     ),
   );
   // Arranque concluido no primeiro frame: zera as falhas. Se a

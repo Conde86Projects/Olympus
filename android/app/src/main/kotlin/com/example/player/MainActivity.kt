@@ -2,10 +2,14 @@ package com.example.player
 
 import android.Manifest
 import android.app.UiModeManager
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.media.AudioManager
 import android.media.MediaMetadataRetriever
 import android.os.Build
 import java.io.ByteArrayOutputStream
@@ -13,6 +17,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
@@ -45,6 +50,49 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "olympus/player/system_volume")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getState" -> result.success(systemVolumeState())
+                    else -> result.notImplemented()
+                }
+            }
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "olympus/player/system_volume_events")
+            .setStreamHandler(object : EventChannel.StreamHandler {
+                private var receiver: BroadcastReceiver? = null
+
+                override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                    val receiver = object : BroadcastReceiver() {
+                        override fun onReceive(context: Context?, intent: Intent?) {
+                            events?.success(systemVolumeState())
+                        }
+                    }
+                    this.receiver = receiver
+                    registerReceiver(
+                        receiver,
+                        IntentFilter("android.media.VOLUME_CHANGED_ACTION")
+                    )
+                }
+
+                override fun onCancel(arguments: Any?) {
+                    receiver?.let {
+                        try {
+                            unregisterReceiver(it)
+                        } catch (_: Exception) {
+                        }
+                    }
+                    receiver = null
+                }
+            })
+    }
+
+    private fun systemVolumeState(): Map<String, Any> {
+        val audio = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        val max = audio?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 0
+        val current = audio?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
+        val muted = audio?.isStreamMute(AudioManager.STREAM_MUSIC) ?: false
+        val volume = if (max > 0) current.toDouble() / max.toDouble() else 1.0
+        return mapOf("volume" to volume, "muted" to muted)
     }
 
     private fun setupThumbnails(flutterEngine: FlutterEngine) {

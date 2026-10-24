@@ -181,12 +181,13 @@ void main() {
           tester, const Size(1264, PlayerControls.denseMaxHeight));
       await _openPlayer(tester, harness);
       final card = tester.getRect(find.byType(BackdropFilter));
-      // Mesmo desenho de antes: titulo, volume e progresso, botoes de 44.
+      // Mesmo desenho de antes, sem trilho de volume: titulo, mudo
+      // e progresso, botoes de 44.
       expect(find.text(_item.title), findsOneWidget);
-      expect(find.byType(Slider), findsNWidgets(2));
+      expect(find.byType(Slider), findsOneWidget);
+      expect(find.byTooltip('Silenciar'), findsOneWidget);
       expect(tester.getSize(find.byTooltip('Fechar')), const Size(44, 44));
       expect(card.width, 880);
-      expect(card.height, 194);
       expect(card.bottom, PlayerControls.denseMaxHeight - 16);
     });
   });
