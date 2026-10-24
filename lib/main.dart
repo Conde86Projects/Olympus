@@ -146,9 +146,9 @@ Future<void> _boot(void Function(StartupGuard) onGuard) async {
     desktopWindows = null;
   }
 
-  final MobileChromeService mobileChrome = Platform.isAndroid || Platform.isIOS
-      ? SystemMobileChrome()
-      : NoOpMobileChrome();
+  // Visibilidade/auto-hide valem em toda plataforma (timer sem
+  // dependencia nativa; o SystemChrome da cheia segue so no mobile).
+  final MobileChromeService mobileChrome = SystemMobileChrome();
 
   runApp(
     PlayerApp(

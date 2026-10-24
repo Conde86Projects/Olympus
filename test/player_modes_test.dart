@@ -16,6 +16,7 @@ import 'package:player/services/history_service.dart';
 import 'package:player/services/library_service.dart';
 import 'package:player/services/local_addon_service.dart';
 import 'package:player/services/media_player_service.dart';
+import 'package:player/services/mobile_chrome_service.dart';
 import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/services/window_service.dart';
@@ -66,6 +67,7 @@ class _Harness {
         addonService: addons,
         startupGuard: guard,
         diagnosticsService: diagnostics,
+        mobileChromeService: SystemMobileChrome(),
       );
 }
 

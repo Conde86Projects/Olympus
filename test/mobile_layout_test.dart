@@ -66,7 +66,7 @@ class _Harness {
         addonService: addons,
         startupGuard: guard,
         mobilePlatform: mobile,
-        mobileChromeService: chrome,
+        mobileChromeService: chrome ?? SystemMobileChrome(),
         diagnosticsService: DiagnosticsService(
           store: InMemoryLocalStore(),
           preferences: preferences,
