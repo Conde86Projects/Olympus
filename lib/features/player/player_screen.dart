@@ -20,6 +20,7 @@ import 'package:player/features/player/hls_observer.dart';
 import 'package:player/features/player/hls_resume_probe.dart';
 import 'package:player/features/player/hls_cold_warmer.dart';
 import 'package:player/features/player/hls_session_state.dart';
+import 'package:player/features/player/subtitle_bar_inset.dart';
 import 'package:player/features/player/player_volume_policy.dart';
 import 'package:player/features/player/player_widgets.dart';
 import 'package:player/features/player/video_area.dart';
@@ -210,9 +211,8 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// Altura que a barra de controles ocupa sobre o video: a legenda sobe
   /// para nao ficar coberta enquanto a barra esta visivel.
-  final _subtitleInset = ValueNotifier<double>(0);
-  final _videoAreaKey = GlobalKey();
-  final _controlsCardKey = GlobalKey();
+  late final SubtitleBarInset _subtitleInset =
+      SubtitleBarInset(barVisible: () => _controlsVisible && !_overlayUp);
 
   /// Ultimo controle focado antes do hide (F5, Fase 4b): o poke
   /// restaura nele, nao no primeiro da ordem (cantos).
@@ -288,7 +288,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     // gancho de foco após ocultar no disparo.
     _chrome.autoHideGuard = () => mounted && !_panelOpen && !_overlayUp;
     _chrome.onControlsAutoHidden = _anchorFocusOnHide;
-    _chrome.addListener(_scheduleSubtitleInset);
+    _chrome.addListener(_subtitleInset.schedule);
     _sourceQuality = ValueNotifier<String?>(null);
     _hls = HlsSessionState();
     // Ao sair da barra no modo TV, rearma o auto-hide (e so).
@@ -1242,7 +1242,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _hlsColdWarmer.cancel();
     _subscription?.cancel();
     _systemVolumeSub?.cancel();
-    _chrome.removeListener(_scheduleSubtitleInset);
+    _chrome.removeListener(_subtitleInset.schedule);
     _subtitleInset.dispose();
     _screenFocus.dispose();
     _sourceQuality.dispose();
@@ -1322,7 +1322,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     // A tela assina o chrome (ADR-0002): qualquer mudança no módulo
     // reconstrói via ListenableBuilder, sem cópia local de estado.
-    _scheduleSubtitleInset();
+    _subtitleInset.schedule();
     return ListenableBuilder(
       listenable: _chrome,
       builder: (context, _) => PopScope(
@@ -1388,9 +1388,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                             child: SubtitleScope(
                               style: SubtitleStyle.fromPreferences(widget
                                   .dependencies.preferencesService.current),
-                              bottomInset: _subtitleInset,
+                              bottomInset: _subtitleInset.inset,
                               child: VideoArea(
-                              key: _videoAreaKey,
+                              key: _subtitleInset.areaKey,
                               player: widget.dependencies.playerService,
                               session: _session,
                               isLocal: _currentItem.sourceType ==
@@ -1548,7 +1548,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                     node: _controlsScope,
                                     child: Center(
                                       child: ConstrainedBox(
-                                        key: _controlsCardKey,
+                                        key: _subtitleInset.barKey,
                                         constraints:
                                             const BoxConstraints(maxWidth: 880),
                                         child: _tvMode
@@ -1591,29 +1591,6 @@ class _PlayerScreenState extends State<PlayerScreen>
         ),
       ),
     );
-  }
-
-  void _scheduleSubtitleInset() {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncSubtitleInset());
-  }
-
-  /// Mede quanto a barra visivel cobre da base do video.
-  void _syncSubtitleInset() {
-    if (!mounted) return;
-    var inset = 0.0;
-    final area = _videoAreaKey.currentContext?.findRenderObject();
-    final card = _controlsCardKey.currentContext?.findRenderObject();
-    if (_controlsVisible &&
-        !_overlayUp &&
-        area is RenderBox &&
-        card is RenderBox &&
-        area.hasSize &&
-        card.hasSize) {
-      final areaBottom = area.localToGlobal(Offset(0, area.size.height)).dy;
-      final cardTop = card.localToGlobal(Offset.zero).dy;
-      inset = (areaBottom - cardTop).clamp(0.0, area.size.height);
-    }
-    _subtitleInset.value = inset;
   }
 
   /// D-pad/teclado com a barra oculta (F1, Fase 4b, spec 18): setas
