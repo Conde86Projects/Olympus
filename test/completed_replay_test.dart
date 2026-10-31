@@ -30,8 +30,7 @@ class _Harness {
         guard = StartupGuard(InMemoryLocalStore()),
         addons = LocalAddonService(InMemoryLocalStore()) {
     if (skipOnboarding) {
-      preferences.update(
-          preferences.current.copyWith(showOnboarding: false));
+      preferences.update(preferences.current.copyWith(showOnboarding: false));
     }
   }
 
@@ -169,7 +168,8 @@ void main() {
   });
 
   group('concluido fora do Continuar assistindo', () {
-    testWidgets('item concluido nao aparece, mas fica em biblioteca e historico',
+    testWidgets(
+        'item concluido nao aparece, mas fica em biblioteca e historico',
         (tester) async {
       final harness = _Harness();
       await harness.library.upsert(_item(
@@ -184,8 +184,7 @@ void main() {
       expect(harness.history.latestFor('concluido')?.completed, isTrue);
     });
 
-    testWidgets('percentual alto sem flag tambem sai da lista',
-        (tester) async {
+    testWidgets('percentual alto sem flag tambem sai da lista', (tester) async {
       final harness = _Harness();
       await harness.library.upsert(_item(
         lastPosition: const Duration(seconds: 98),
@@ -198,8 +197,7 @@ void main() {
       expect(harness.library.findById('concluido'), isNotNull);
     });
 
-    testWidgets('nao concluido continua na lista (regressao)',
-        (tester) async {
+    testWidgets('nao concluido continua na lista (regressao)', (tester) async {
       final harness = _Harness();
       await harness.library.upsert(_item(
         id: 'metade',
@@ -233,8 +231,15 @@ void main() {
           ));
 
       expect(harness.player.session.position, Duration.zero);
-      expect(find.widgetWithText(FocusableButton, 'Ver de novo'),
-          findsOneWidget);
+      expect(
+          find.widgetWithText(FocusableButton, 'Ver de novo'), findsOneWidget);
+      // O foco entra no cartão (sem isso as setas ficam no canto e o
+      // diálogo não responde ao controle).
+      expect(
+        FocusManager.instance.primaryFocus?.context
+            ?.findAncestorWidgetOfExactType<FocusableButton>(),
+        isNotNull,
+      );
     });
 
     testWidgets('Ver de novo reve do inicio', (tester) async {
@@ -249,14 +254,12 @@ void main() {
             duration: const Duration(seconds: 100),
           ));
 
-      await tester
-          .tap(find.widgetWithText(FocusableButton, 'Ver de novo'));
+      await tester.tap(find.widgetWithText(FocusableButton, 'Ver de novo'));
       await tester.pumpAndSettle();
 
       expect(harness.player.session.position, Duration.zero);
       expect(harness.player.session.status, PlaybackStatus.playing);
-      expect(find.widgetWithText(FocusableButton, 'Ver de novo'),
-          findsNothing);
+      expect(find.widgetWithText(FocusableButton, 'Ver de novo'), findsNothing);
     });
 
     testWidgets('sair sem progresso preserva historico e biblioteca',
@@ -301,8 +304,7 @@ void main() {
           ));
 
       expect(harness.player.session.position, const Duration(minutes: 5));
-      expect(find.widgetWithText(FocusableButton, 'Ver de novo'),
-          findsNothing);
+      expect(find.widgetWithText(FocusableButton, 'Ver de novo'), findsNothing);
     });
   });
 }
