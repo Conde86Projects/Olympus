@@ -2,7 +2,7 @@
 
 > Player de mídia minimalista, bonito e eficiente, inspirado na simplicidade do Showtime e na flexibilidade dos players com extensões.
 
-**Versão atual:** `0.2.0`  
+**Versão atual:** `0.3.0-rc.1` (ver `pubspec.yaml`)  
 **Codinome do projeto:** `Olympus`  
 **Tecnologia principal:** Flutter / Dart  
 **Interface inicial:** Português do Brasil  
@@ -182,7 +182,7 @@ lib/
 │   ├── media_player_service.dart
 │   ├── addon_service.dart
 │   ├── addon_fetcher.dart
-│   ├── source_credential_store.dart
+│   ├── source_credentials.dart
 │   └── sources/
 │       ├── source_adapter.dart
 │       └── demo_source_adapter.dart
@@ -351,7 +351,7 @@ Se ocorrer erro relacionado a `atlstr.h`, o componente ATL do MSVC não está in
 
 ## Testes
 
-A suíte atual possui **394 testes aprovados**.
+A suíte atual possui **741 testes aprovados** (execução de 31/10/2026; registrar o número real antes de cada release).
 
 Execute:
 
@@ -430,8 +430,8 @@ Não coloque tokens, senhas ou chaves no repositório.
 - [x] miniaturas, pôsteres e placeholders;
 - [x] qualidades dinâmicas;
 - [x] refinamento de UX;
-- [ ] build e teste visual no Windows;
-- [ ] validação em hardware de TV.
+- [x] build e teste visual no Windows (checklist RC1, 31/10);
+- [x] validação em hardware de TV (TCL, 31/10; ver docs/SITUACAO_ATUAL.md).
 
 ### Próxima etapa
 
@@ -449,9 +449,9 @@ Não coloque tokens, senhas ou chaves no repositório.
 - estilo visual de legendas;
 - miniaturas mais avançadas;
 - qualidade dinâmica em fontes reais;
-- modo seguro;
-- diagnóstico e exportação de logs sem credenciais;
-- atualizações controladas de add-ons;
+- modo seguro (implementado);
+- diagnóstico e exportação de logs sem credenciais (implementado);
+- atualizações controladas de add-ons (implementado);
 - fontes autorizadas reais;
 - catálogo e autenticação quando necessários;
 - validação física em Smart TV;

@@ -24,7 +24,14 @@ Atualizacao 18/10/2026: `NativePlayer.setProperty` (media_kit
 1.2.6) e publico e ja e usado pela saida direta MediaCodec; os
 `sub-*` podem ser aplicados por ele. Reavaliar esta pendencia.
 
+Reavaliado em 31/10/2026: a premissa acima está superada (`setProperty` é
+público e já é usado no código). A pendência segue aberta apenas por falta
+de implementação (ver docs/PLANO_PROXIMAS_ATUALIZACOES.md, F6).
+
 ## Fora da fase atual (confirmado)
+
+> Esta seção mistura itens concluídos e pendentes. O estado atual está em
+> docs/PLANO_PROXIMAS_ATUALIZACOES.md.
 
 - Qualidade dinâmica e retomada HLS (§13): seleção manual,
   política automática e resume HLS concluídos e aprovados na TCL
@@ -35,7 +42,7 @@ Atualizacao 18/10/2026: `NativePlayer.setProperty` (media_kit
   multivariante no catálogo (commit `e12d6c7`, master + 720p/480p/360p/240p)
   Linha Qualidade esperada nas 3 plataformas; item de MP4 único com
   `qualities[]` vazio segue sem linha (comportamento correto, agora é o
-  caso da reserva). Validação no aparelho contra o master: ticket #4.
+  caso da reserva). Validação no aparelho contra o master: issue #4 (fechada; o smoke RC1 segue em U13-U15).
 - Fontes autorizadas — Fase 5B pronta (tela adicionar/gerenciar:
   prévia de manifesto/feed, aviso de desconhecida, aprovação
   explícita, salva desativada, editar com reaprovação por origem,
@@ -117,9 +124,9 @@ O que era "próxima etapa" foi aplicado e está coberto por testes
   ao reproduzir (`ThumbnailService.backfill`); render no card com
   fallback para placeholder; merge do `upsert` preserva/aplica
   `thumbnailPath` (regressão coberta). Links ficam no placeholder
-  (pôsteres remotos seguem em aberto). Desktop sem geração
+  (pôsteres remotos com fallback, feito no 5C). Desktop sem geração
   (MissingPlugin → placeholder). Provado no AVD-TV (t_both.png).
-  Limitações: arquivos órfãos não são apagados ao remover itens;
+  Arquivos órfãos são apagados ao remover itens (feito, ver test/thumbnail_cleanup_test.dart);
   `Image.file` trava o `flutter test` neste Windows (ramo coberto
   via builder injetável + inspeção sem pump).
 - 301 testes, analyze limpo.
@@ -179,6 +186,7 @@ Honestas e registradas, sem bloquear a revisão:
 - Retomar item com progresso em 100% conclui em segundos em vez de
   recomeçar do zero (observado no soak com `tv long`). UX menor:
   item concluído deveria reabrir do início. Não bloqueia a RC1.
+  **Resolvido:** item concluído reabre do início com "Ver de novo" (test/completed_replay_test.dart).
 - hwdec indisponível no PC de dev (12/10/2026): todos os drivers
   falham no log do mpv (d3d11-egl, dxva2-egl com "Failed to create
   EGL surface", d3d11va, dxva2-dxgi, dxva2-dxinterop; Intel Arc B580
@@ -249,7 +257,7 @@ Honestas e registradas, sem bloquear a revisão:
   manual e para o downgrade do observador. Mesmo mecanismo do
   resume frio, mas no caminho `_switchHlsQuality`/reabertura —
   exige gate de seek antes de reabrir em variante (proposta, sem
-  código aplicado).
+  código aplicado). **Resolvido em 13/10 (bloco seguinte).**
 - [Resolvido e validado na TCL em 13/10/2026] Preservação de
   posição na troca de qualidade: `_reopenHlsTarget` reutiliza o
   gate de prontidão (primeiro avanço real, fora de buffering),
@@ -289,3 +297,4 @@ Regra vigente, travada em testes (`test/volume_platform_test.dart`,
   persistência.
 - Validar em aparelho: botões físicos no celular, VOL+/VOL− na TCL,
   mudo nas três plataformas e fileira alinhada no Windows.
+  Atualizado em 31/10: celular, TCL e mudo do Windows validados (F2).

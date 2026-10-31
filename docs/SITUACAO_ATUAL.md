@@ -4,7 +4,7 @@ Retrato datado de 31/10/2026 a partir de `docs/` + `lib/`.
 Só muda sob comando direto; nunca a cada commit.
 Foco: functions, buttons, pages, pendências gerais.
 Glossário canônico em `GLOSSARY.md` (Mudo do app, Mudo do sistema,
-Desplugar o mudo, Trilho, Setas ocultas, Volume inicial, Chrome mobile).
+Desplugar o mudo, Mutar com o sistema, Trilho, Setas ocultas, Volume inicial, Chrome mobile).
 
 ## 1. Pages (rotas reais em `lib/app/routes.dart` + `router.dart`)
 
@@ -169,16 +169,17 @@ Controle por pendências, sem divisão por entrega.
 
 - Estilo visual de legendas: tamanho, cor, fundo e posição
   (`sub-*` via `NativePlayer.setProperty` a reavaliar).
-- Miniaturas órfãs não apagadas ao remover itens.
+- Miniaturas órfãs: apagadas ao remover itens (feito, test/thumbnail_cleanup_test.dart).
 - Item concluído reabre em 0:00 com "Ver de novo" (sair sem assistir
   preserva o concluído; a concluir some do "Continuar assistindo").
-- Stall de rede vira "Cancelar" eterno: falta timeout visível no mpv +
+- Stall de rede (parcial: buffering acima do limite já vira erro com nova
+  tentativa; confirmar no aparelho, ver PLANO F4) —
   overlay com "tentar de novo".
 - Tizen fora (sem alvo Flutter oficial).
 - AVD-TV com EGL quebrado (decode/relógio OK, frame preto).
 - compileSdk fixo em 36 por causa do file_picker.
 - hwdec por software no PC de dev (suficiente p/ 1080p30; 4K a avaliar).
-- `startInFullscreen` no mobile segue lacuna conhecida.
+- `startInFullscreen` no mobile: aplicado após o primeiro quadro (feito).
 - Qualidade na TV só aparece com HLS multivariante ou `qualities[]`;
   MP4 único corretamente sem linha.
 - Nenhum provider real sem URL + formato + autorização + testes;
@@ -193,8 +194,9 @@ Controle por pendências, sem divisão por entrega.
   quando focada. Diálogo "Remover da biblioteca" com Cancelar focado
   por padrão. Validado na TCL (erro com arquivo ausente: setas movem o
   foco, OK em Cancelar fecha sem remover) e no Windows (setas, Esc,
-  painel de opções com o vídeo tocando). Pendente: o diálogo de fim de
-  reprodução na TCL, que exige o vídeo chegar ao fim no aparelho.
+  painel de opções com o vídeo tocando). Validado em 31/10 na TCL: o vídeo de teste
+  chegou ao fim, o diálogo "Reprodução concluída" respondeu ao controle e
+  "Fechar" saiu do player. Mudo validado no Windows (clique liga e desliga).
 - Crash nativo no FinalizerDaemon (`SurfaceTexture.release`, SIGSEGV
   0x424) em ciclos de abre/sai: LIMITAÇÃO CONHECIDA E CONGELADA,
   exclusiva do hardware da TCL (Android 9/Realtek, mediacodec_embed)
