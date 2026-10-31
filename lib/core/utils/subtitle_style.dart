@@ -30,5 +30,6 @@ class SubtitleStyle {
         'sub-color': '#$textColor',
         'sub-back-color': '#$backColor',
         'sub-pos': '$position',
+        'sub-use-margins': 'no',
       };
 }

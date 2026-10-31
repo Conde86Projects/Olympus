@@ -8,6 +8,7 @@ void main() {
       'sub-color': '#FFFFFFFF',
       'sub-back-color': '#80000000',
       'sub-pos': '85',
+      'sub-use-margins': 'no',
     });
   });
 
@@ -23,6 +24,7 @@ void main() {
       'sub-color': '#FFFFFF00',
       'sub-back-color': '#00000000',
       'sub-pos': '85',
+      'sub-use-margins': 'no',
     });
   });
 }
