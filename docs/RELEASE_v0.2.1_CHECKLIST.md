@@ -1,7 +1,7 @@
 # Checklist de release — v0.2.1 (feed definitivo)
 
 Versão: `0.2.1+16` (versionCode 16, versionName 0.2.1).
-Base: `v0.2.0` (`4259d48`) preservada; a tag `v0.2.1` é criada só
+Base: `v0.2.0` (`bfcfc9f`) preservada; a tag `v0.2.1` é criada só
 depois destes gates.
 
 ## Gates
@@ -50,6 +50,6 @@ depois destes gates.
 - [x] TCL: instalado por atualização, versionName 0.2.1, versionCode 16;
       histórico preservado (Big Buck Bunny, "parou em 8:34").
 - [x] Celular: smoke test concluído pelo usuário.
-- [x] Windows: build 0.2.1+16 do `8c1707b`, abre com o histórico.
+- [x] Windows: build 0.2.1+16 do `c308089`, abre com o histórico.
 - [x] Usuário confirmou os três aparelhos (catálogo, reprodução e
       histórico conferidos com o controle/toque).

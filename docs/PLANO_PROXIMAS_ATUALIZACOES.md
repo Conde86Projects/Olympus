@@ -1,7 +1,7 @@
 # Plano das próximas atualizações (snapshot de pesquisa)
 
 Data: 2026-10-31
-Repositório: `player` (app Flutter "Olympus"), branch `main`, HEAD `745c73b`.
+Repositório: `player` (app Flutter "Olympus"), branch `main`, HEAD `c39140a`.
 
 Análise somente leitura. Nenhum código ou arquivo existente foi alterado, e nenhum build ou teste foi executado. Documentos lidos: `docs/BACKLOG.md`, `docs/Olympus.md`, `docs/SITUACAO_ATUAL.md`, `docs/RELEASE_RC1_0.3.0_CHECKLIST.md`, `docs/adr/0001-volume-por-plataforma.md`, `docs/adr/0002-fase-3-mobile.md`, `GLOSSARY.md`, `docs/agents/*.md`. A verificação de estado foi feita com Grep/Read/git e com a lista de issues abertas (`gh issue list`). Contagens de testes são estáticas (`test(`/`testWidgets(` em `test/`) e não foram executadas.
 
@@ -115,7 +115,7 @@ Ordem por valor e risco. Cada fatia pode ser entregue e testada sozinha.
 
 ## 3. Decisões pendentes do usuário
 
-- **D1. Qual commit é a RC1?** O checklist diz base `a2e8bb2` e tag `d7a80fd` (l.4-5, l.45). Pelo git, a tag `v0.3.0-rc.1` aponta para o commit `79339dd` ("configura skills"). `a2e8bb2` não é ancestral de `4d2d4fb`. Decidir se a tag fica como está ou se é recriada (U17).
+- **D1. Qual commit é a RC1?** O checklist diz base `e4e4579` e tag `d7a80fd` (l.4-5, l.45). Pelo git, a tag `v0.3.0-rc.1` aponta para o commit `260f340` ("configura skills"). `e4e4579` não é ancestral de `088f15c`. Decidir se a tag fica como está ou se é recriada (U17).
 - **D2. Fechar a issue #1** ("BBB definitivo como HLS multivariante") no GitHub: o trabalho consta como feito (BACKLOG l.34-38; RC1 l.82). Ação de publicação, requer confirmação explícita.
 - **D3. Valores visuais das legendas** (tamanho, cor, fundo, posição) e se o padrão segue `docs/PADROES_VISUAIS.md` (U01).
 - **D4. Modelo de TV física** para validação de frames (§24.8, BACKLOG l.108) e se há TV para comprar ou emprestar (U10).
@@ -157,7 +157,7 @@ Ordem por valor e risco. Cada fatia pode ser entregue e testada sozinha.
 13. **Stall de rede:** `docs/SITUACAO_ATUAL.md` l.175-176 diz "falta timeout visível". `lib/services/supervised_player_service.dart:254-258` já converte buffering acima de `bufferTimeout` em erro de timeout. Falta confirmar a interface (U02).
 14. **Issue #1:** `gh issue list --state open` mostra a issue #1 "Spec: BBB definitivo como HLS multivariante" aberta com `ready-for-agent`. `docs/BACKLOG.md` l.34-38 e l.194-201 e o checklist RC1 l.82 registram o trabalho como feito. As issues #2, #3, #6, #7 e #8 estão fechadas. A #4 (smoke) também está fechada, mas o smoke RC1 continua aberto (U13-U15). `docs/BACKLOG.md` l.38 ainda aponta "ticket #4" como pendência.
 15. **Build number:** `docs/RELEASE_RC1_0.3.0_CHECKLIST.md` l.9 diz `0.3.0-rc.1+1`. O `pubspec.yaml:4` diz `+1002`. Decidir qual vale (D1).
-16. **Tag e commit da RC1:** `docs/RELEASE_RC1_0.3.0_CHECKLIST.md` l.4-5 e l.45 citam base `a2e8bb2` e tag `d7a80fd`. `git rev-list -n1 v0.3.0-rc.1` retorna `79339dd`. Ver D1.
+16. **Tag e commit da RC1:** `docs/RELEASE_RC1_0.3.0_CHECKLIST.md` l.4-5 e l.45 citam base `e4e4579` e tag `d7a80fd`. `git rev-list -n1 v0.3.0-rc.1` retorna `260f340`. Ver D1.
 17. **Validação de volume:** `docs/BACKLOG.md` l.290-291 pede validar "mudo nas três plataformas e fileira alinhada no Windows" como pendente. `docs/RELEASE_RC1_0.3.0_CHECKLIST.md` l.91 marca a fileira do Windows como validada e l.97 deixa o mudo do Windows aberto. Os dois documentos divergem sobre o que falta.
 18. **Cabeçalho do BACKLOG:** "Fora da fase atual (confirmado)" (l.27) lista itens concluídos (5B, 5C, refinamento UX) e pendentes na mesma seção. Separar em "Concluído" e "Pendente".
 19. **Glossário e SITUACAO:** `GLOSSARY.md` l.18-19 define "Mutar com o sistema", termo que `docs/SITUACAO_ATUAL.md` l.6-7 não lista entre os termos canônicos. Menor, mas vale incluir.

@@ -1,6 +1,6 @@
 # Resultados — feed definitivo (0.2.1, Fase 0.3)
 
-Build de teste: commit `48a6fa2` (versão `0.2.1+11`).
+Build de teste: commit `fa2cc78` (versão `0.2.1+11`).
 APK release SHA-256
 `831878f38350c48e9057ef8df5bd1da9512c00923798ea4b449fc4695d40dcdc`
 (97.807.576 bytes; `aapt`: versionCode 11, versionName 0.2.1).

@@ -3,17 +3,17 @@
 Marco 0.2.0: composição mobile, janela pequena no Windows, catálogo da
 fonte própria, saída direta do vídeo no Android/TV, menus compactos da
 TV e padrão visual único (`docs/PADROES_VISUAIS.md`). Commit do marco:
-`0d82363`. Testes finais em `docs/TESTES_FINAIS_0.2.0.md`, resultados em
+`aa56ed8`. Testes finais em `docs/TESTES_FINAIS_0.2.0.md`, resultados em
 `docs/RESULTADOS_TESTES_0.2.0.md`. `v0.1.0` (`bd3270a`) e as tags
 `rc` anteriores ficam intactas.
 
 ## Gates (antes da tag)
 
 - [x] Suíte completa verde: 642/642 (`flutter test`) numa cópia limpa
-      de `0d82363`.
+      de `aa56ed8`.
 - [x] `dart analyze` limpo.
 - [x] Árvore limpa: nenhuma alteração local pendente (os menus da
-      TV entraram em `b940173`).
+      TV entraram em `3af9af3`).
 - [x] `version_consistency_test`: `AppConstants.appVersion` acompanha
       o núcleo do `version:` do pubspec.
 - [x] Celular físico validado (Xiaomi 24069PC21G, Android 16).
@@ -28,7 +28,7 @@ TV e padrão visual único (`docs/PADROES_VISUAIS.md`). Commit do marco:
 - [x] APK release instalado na TCL: `versionName=0.2.0`,
       `versionCode=10` (dumpsys).
 - [x] Windows release: `ProductVersion`/`FileVersion` `0.2.0+10`.
-- [x] SHA-256 do APK release de `0d82363` (97.807.576 bytes,
+- [x] SHA-256 do APK release de `aa56ed8` (97.807.576 bytes,
       `flutter build apk --release`, assinatura de release dedicada),
       instalado na TCL:
   `59AAC37CC5F63FA363E488132B29033DD1A3185E98414DACA762593D4C3D6AA4`.
@@ -60,6 +60,6 @@ TV e padrão visual único (`docs/PADROES_VISUAIS.md`). Commit do marco:
 
 ## Tag
 
-- [x] Tag anotada `v0.2.0` em `4259d48` (objeto da tag
-      `9e2ad47`), enviada ao `origin` em 19/10/2026 com a
+- [x] Tag anotada `v0.2.0` em `bfcfc9f` (objeto da tag
+      `108b732`), enviada ao `origin` em 19/10/2026 com a
       confirmação do usuário. `v0.1.0` intacta em `bd3270a`.

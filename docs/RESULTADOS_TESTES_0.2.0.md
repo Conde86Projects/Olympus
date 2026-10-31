@@ -10,21 +10,21 @@ Sem tag `v0.2.0`; `v0.1.0` intacta em `bd3270a`.
 | Item | Valor |
 |---|---|
 | Árvore | cópia limpa (worktree) sem as alterações locais de vídeo Android/TV e menus da TV |
-| Commit inicial | `e79d466` → bloqueado (catálogo não estava commitado) |
-| Commit do catálogo | `95590f0` (separado das alterações locais da outra sessão) |
-| Commit testado | `a1f6de6` (correção do X do Windows achada nesta rodada) |
+| Commit inicial | `a8c97cf` → bloqueado (catálogo não estava commitado) |
+| Commit do catálogo | `baeebd9` (separado das alterações locais da outra sessão) |
+| Commit testado | `3b8d5d3` (correção do X do Windows achada nesta rodada) |
 | `pubspec` / `AppConstants` | `0.1.0+9` / `0.1.0` (sem bump; o bump fica para o marco) |
 | `dart analyze` | limpo |
 | `flutter test` | 614/614 |
 | APK (debug) SHA-256 | `d9026589172c9f55573c941e5a42dd32ef732df9e143ea7428f295e4d54311e3` |
 | Windows | build release do mesmo commit |
-| Celular | APK debug de `08b6633` + correção do painel (problema 5, depois commitada em `75a02f9`); catálogo com APK debug de `683f847` |
-| Rodada 2 (19/10) | `683f847` (catálogo no Windows e no celular), `ff3c455` (saída direta) e `a9984aa` (correções da TCL) |
-| TCL final | APK **release** de `ff3c455` + `a9984aa` (SHA-256 `67dbed16...`), TV reiniciada |
+| Celular | APK debug de `d6e186e` + correção do painel (problema 5, depois commitada em `f5dff4c`); catálogo com APK debug de `45ab362` |
+| Rodada 2 (19/10) | `45ab362` (catálogo no Windows e no celular), `cae623d` (saída direta) e `5841eb0` (correções da TCL) |
+| TCL final | APK **release** de `cae623d` + `5841eb0` (SHA-256 `67dbed16...`), TV reiniciada |
 
 ## Gates
 
-- [x] Árvore limpa no commit testado (`a1f6de6`).
+- [x] Árvore limpa no commit testado (`3b8d5d3`).
 - [x] `flutter test` verde: 614.
 - [x] `dart analyze` limpo.
 - [ ] Feed temporário respondendo — **FALHA**: HTTP 502 desde
@@ -33,12 +33,12 @@ Sem tag `v0.2.0`; `v0.1.0` intacta em `bd3270a`.
 
 ## Problemas encontrados
 
-1. **Catálogo ausente em `e79d466`** — o adaptador do feed próprio,
+1. **Catálogo ausente em `a8c97cf`** — o adaptador do feed próprio,
    a tela do catálogo, a rota, o botão "Abrir catálogo" e o registro
    no `main.dart` eram alterações locais nunca commitadas; o feed era
    recusado ("O endereço não é um manifesto nem um feed de catálogo
-   válido"). **Corrigido** em `95590f0` (só o catálogo, 614 testes).
-   Captura: `testes-0.2.0/windows-catalogo-ausente-e79d466.png`.
+   válido"). **Corrigido** em `baeebd9` (só o catálogo, 614 testes).
+   Captura: `testes-0.2.0/windows-catalogo-ausente-a8c97cf.png`.
 2. **Feed temporário fora do ar** — `.../feed.json` responde 502. O
    app mostra "O endereço não respondeu (HTTP 502)." de forma
    controlada (cobre "fonte fora do ar" na instalação). **Bloqueia**
@@ -46,7 +46,7 @@ Sem tag `v0.2.0`; `v0.1.0` intacta em `bd3270a`.
    Captura: `testes-0.2.0/windows-feed-http502.png`.
 3. **Windows: janela ficava ~6,7 s na tela depois do X** com HLS
    tocando (gravar + desligar o motor), parecendo travada.
-   **Corrigido** em `a1f6de6` (esconde a janela primeiro): janela some
+   **Corrigido** em `3b8d5d3` (esconde a janela primeiro): janela some
    em 0,1 s, posição gravada (1:50 → 1:56), processo termina logo
    depois.
 4. **TCL: painel do player, qualidade manual — não conclusivo por
@@ -66,32 +66,32 @@ Sem tag `v0.2.0`; `v0.1.0` intacta em `bd3270a`.
    sem a correção). Capturas: `testes-0.2.0/celular-painel-paisagem-
    antes.jpg` e `...-depois.png`.
 
-6. **TCL: vídeo travando e menus lentos** com o APK de `683f847`
+6. **TCL: vídeo travando e menus lentos** com o APK de `45ab362`
    (debug, caminho antigo `vo=gpu` + `mediacodec-copy`): log com
    "Audio/Video desynchronisation". Duas causas somadas: (a) a saída
    direta do MediaCodec ainda não estava commitada → **commitada em
-   `ff3c455`** (separada dos menus da TV); (b) APK debug numa TV com
+   `cae623d`** (separada dos menus da TV); (b) APK debug numa TV com
    6 dias ligada (95 MB livres, swap 520 MB, load 24). Com o
    **release** e a TV reiniciada, rodou liso.
 7. **TCL: barra do player não sumia** com o foco nela, mesmo parada
-   (contrário à spec 12.2). **Corrigido** em `a9984aa`: some após
+   (contrário à spec 12.2). **Corrigido** em `5841eb0`: some após
    alguns segundos sem tecla; cada tecla rearma.
 8. **Retomada e troca de qualidade mostravam o início do vídeo
    (título)** antes do ponto salvo — efeito do gate de prontidão
    validado (toca até o primeiro avanço real antes do seek), em todas
-   as plataformas. **Corrigido** em `a9984aa` só no visual: "Ajustando
+   as plataformas. **Corrigido** em `5841eb0` só no visual: "Ajustando
    a posição…" cobre do open até o vídeo andar a partir do ponto
    salvo. Conferido na TCL ("funcionou perfeitamente").
 
 9. **Aviso "Catálogo atualizado" datado** (faixa do SnackBar colada
-   no rodapé). **Trocado** em `16f20e8` por um aviso no topo que cai,
+   no rodapé). **Trocado** em `262fc49` por um aviso no topo que cai,
    espera 4 s e sobe; vale para as 4 mensagens do app. Conferido na
    TCL, no Windows e no celular.
 
 ## 1. Celular físico (Xiaomi 24069PC21G, Android 16)
 
 Tela 1220x2712 a 480 dpi (~406x904 dp), navegação de 3 botões. APK
-debug de `08b6633` + correção do painel (problema 5). A HyperOS
+debug de `d6e186e` + correção do painel (problema 5). A HyperOS
 bloqueou toques por adb (`INJECT_EVENTS`); o usuário tocou e a
 conferência foi por captura de tela e log (`[player-diag]`,
 `[hls-resume]`, `history.json`, `startup_guard.json`).
@@ -113,7 +113,7 @@ conferência foi por captura de tela e log (`[player-diag]`,
 | Modo seguro | OK pelo relato; ao fim `manualSafeMode=false`, sem queda no arranque |
 | Diagnóstico / Exportar relatório | OK pelo relato |
 
-## 2. Windows (125%, 3440x1440, build release de `a1f6de6`)
+## 2. Windows (125%, 3440x1440, build release de `3b8d5d3`)
 
 | Caso | Resultado |
 |---|---|
@@ -130,7 +130,7 @@ conferência foi por captura de tela e log (`[player-diag]`,
 
 ## 3. TCL (BeyondTV, Android 9, 1920x1080 a 320 dpi)
 
-Rodada final (19/10): APK release de `ff3c455` + `a9984aa`, TV
+Rodada final (19/10): APK release de `cae623d` + `5841eb0`, TV
 reiniciada, conferência pelo usuário com o controle remoto (o build
 release não grava `[player-diag]`).
 

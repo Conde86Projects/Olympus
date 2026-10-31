@@ -2,11 +2,11 @@
 
 Candidata a release do ciclo 0.3.0 (política de volume por plataforma).
 Tag `v0.3.0-rc.1`: criada em 24/10/2026 e movida em 31/10/2026 para
-`09afc3b`, a pedido do dono. RC1 preparada em `4d2d4fb` (20/10/2026,
+`e5d289b`, a pedido do dono. RC1 preparada em `088f15c` (20/10/2026,
 sem tag).
 
 Corrigido depois da tag (fora dos artefatos publicados): foco invisível
-em Ajustes e no painel na TV (`ba06866`) e posição da legenda (`9781a33`).
+em Ajustes e no painel na TV (`acf106a`) e posição da legenda (`2daad1b`).
 
 ## Versões (sincronizadas)
 
@@ -20,7 +20,7 @@ em Ajustes e no painel na TV (`ba06866`) e posição da legenda (`9781a33`).
 
 ## Artefatos
 
-Atualizados em 31/10/2026 a partir do commit `09afc3b` (código igual ao
+Atualizados em 31/10/2026 a partir do commit `e5d289b` (código igual ao
 da RC1; só docs mudaram depois do APK de 15:19):
 
 - APK: `app-release.apk` (97.922.428 bytes)
@@ -33,7 +33,7 @@ da RC1; só docs mudaram depois do APK de 15:19):
 Os valores abaixo são do build de 24/10 (histórico).
 
 - `build/app/outputs/flutter-apk/app-release.apk`
-  (97.823.968 bytes, build da RC1 em `4d2d4fb`)
+  (97.823.968 bytes, build da RC1 em `088f15c`)
   - SHA-256:
     `2DBA6FF7BCD89606ED021D659B650DF82A4A8397DD726F2F3591A614367B5906`
 - APK validado nos aparelhos (pós-lote do mudo, 21/10/2026;
@@ -57,7 +57,7 @@ Os valores abaixo são do build de 24/10 (histórico).
 - `flutter build windows`: OK (rebuild do HEAD em 24/10)
 - `flutter build apk --release`: OK
 - Segredos no diff: nenhum
-- Tags `v0.2.0` (`9e2ad47`) e `v0.2.1` (`dbcbf93`): intactas —
+- Tags `v0.2.0` (`108b732`) e `v0.2.1` (`2f4e4c9`): intactas —
   tag nova `v0.3.0-rc.1` (`d7a80fd`, anotada, push feito 24/10)
 
 ## Smoke test da RC1
