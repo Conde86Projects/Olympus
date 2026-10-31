@@ -6,6 +6,7 @@ import 'package:player/core/constants/app_constants.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_player_service.dart';
+import 'package:player/services/playback_watchdog.dart';
 
 /// Entrada do log tecnico: etapa + instante + duracao + desfecho. Nunca
 /// carrega titulo, caminho, URL ou mensagem nativa (spec 6.1: sem dados
@@ -42,6 +43,15 @@ class SupervisedPlayerService implements MediaPlayerService {
     this.loadTimeout = AppConstants.loadTimeout,
     this.bufferTimeout = AppConstants.bufferTimeout,
   }) {
+    _watchdog = PlaybackWatchdog(
+      loadTimeout: loadTimeout,
+      bufferTimeout: bufferTimeout,
+      current: () => _mirror,
+      onExpired: (event) {
+        _logEvent(event, outcome: 'fired');
+        _fail(PlaybackErrorKind.timeout, _generation);
+      },
+    );
     _subscription = _inner.sessionStream.listen(_onInner);
   }
 
@@ -57,9 +67,7 @@ class SupervisedPlayerService implements MediaPlayerService {
   PlaybackSession _mirror = const PlaybackSession();
   final List<PlaybackLogEntry> _log = [];
 
-  Timer? _loadTimer;
-  Timer? _bufferTimer;
-  Timer? _startTimer;
+  late final PlaybackWatchdog _watchdog;
   int _generation = 0;
 
   /// Erro injetado pelo supervisor (pre-checagem/timeout): segura o
@@ -84,7 +92,7 @@ class SupervisedPlayerService implements MediaPlayerService {
   @override
   Future<void> open(MediaItem item) async {
     final generation = ++_generation;
-    _cancelTimers();
+    _watchdog.cancel();
     _latched = null;
     _openStartedAt = DateTime.now();
 
@@ -130,7 +138,7 @@ class SupervisedPlayerService implements MediaPlayerService {
       return;
     }
     _logEvent('open', outcome: 'started');
-    _armLoadTimer(generation);
+    if (generation == _generation) _watchdog.armLoad();
   }
 
   @override
@@ -142,7 +150,7 @@ class SupervisedPlayerService implements MediaPlayerService {
   @override
   Future<void> stop() async {
     _generation++;
-    _cancelTimers();
+    _watchdog.cancel();
     _latched = null;
     try {
       await _inner.stop();
@@ -196,7 +204,7 @@ class SupervisedPlayerService implements MediaPlayerService {
   @override
   Future<void> dispose() async {
     _generation++;
-    _cancelTimers();
+    _watchdog.cancel();
     await _subscription.cancel();
     await _sessionController.close();
     await _inner.dispose();
@@ -218,8 +226,7 @@ class SupervisedPlayerService implements MediaPlayerService {
       _logEvent('error', outcome: kind.name);
     }
     _mirror = mirror;
-    _retime(mirror.status);
-    _retimeStart(mirror);
+    _watchdog.observe(mirror);
     _emit();
   }
 
@@ -227,37 +234,13 @@ class SupervisedPlayerService implements MediaPlayerService {
   bool _startedAfterStall(PlaybackSession session) =>
       _latchedFrom == PlaybackStatus.playing &&
       session.status == PlaybackStatus.playing &&
-      session.position > Duration.zero;
-
-  /// Motor em "tocando" sem nunca sair do zero (rede caiu antes do primeiro
-  /// quadro): nao ha buffering para o [bufferTimeout] pegar e a tela ficava
-  /// preta para sempre. Mesmo prazo da carga.
-  void _retimeStart(PlaybackSession session) {
-    if (session.status != PlaybackStatus.playing ||
-        session.position > Duration.zero) {
-      _startTimer?.cancel();
-      _startTimer = null;
-      return;
-    }
-    if (_startTimer != null) return;
-    final generation = _generation;
-    _startTimer = Timer(loadTimeout, () {
-      _startTimer = null;
-      if (generation != _generation) return;
-      if (_mirror.status != PlaybackStatus.playing ||
-          _mirror.position > Duration.zero) {
-        return;
-      }
-      _logEvent('timeout-start', outcome: 'fired');
-      _fail(PlaybackErrorKind.timeout, generation);
-    });
-  }
+      !PlaybackWatchdog.isStalledAtStart(session);
 
   /// Erro do supervisor: trava o espelho ate a proxima abertura, parada
   /// ou sinal de vida do motor. Timer de geracao antiga e ignorado.
   void _fail(PlaybackErrorKind kind, int generation) {
     if (generation != _generation) return;
-    _cancelTimers();
+    _watchdog.cancel();
     _latchedFrom = _mirror.status;
     _latched = _mirror = _mirror.copyWith(
       status: PlaybackStatus.error,
@@ -268,42 +251,6 @@ class SupervisedPlayerService implements MediaPlayerService {
     );
     _logEvent('error', outcome: kind.name);
     _emit();
-  }
-
-  void _armLoadTimer(int generation) {
-    _loadTimer?.cancel();
-    _loadTimer = Timer(loadTimeout, () {
-      if (generation != _generation) return;
-      if (_mirror.status != PlaybackStatus.loading) return;
-      _logEvent('timeout-load', outcome: 'fired');
-      _fail(PlaybackErrorKind.timeout, generation);
-    });
-  }
-
-  void _retime(PlaybackStatus status) {
-    if (status != PlaybackStatus.loading) _loadTimer?.cancel();
-    if (status == PlaybackStatus.buffering && _bufferTimer == null) {
-      final generation = _generation;
-      _bufferTimer = Timer(bufferTimeout, () {
-        _bufferTimer = null;
-        if (generation != _generation) return;
-        if (_mirror.status != PlaybackStatus.buffering) return;
-        _logEvent('timeout-buffer', outcome: 'fired');
-        _fail(PlaybackErrorKind.timeout, generation);
-      });
-    } else if (status != PlaybackStatus.buffering) {
-      _bufferTimer?.cancel();
-      _bufferTimer = null;
-    }
-  }
-
-  void _cancelTimers() {
-    _loadTimer?.cancel();
-    _loadTimer = null;
-    _bufferTimer?.cancel();
-    _bufferTimer = null;
-    _startTimer?.cancel();
-    _startTimer = null;
   }
 
   /// Sonda de diagnostico da retomada HLS (instrumentacao, sem
