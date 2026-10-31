@@ -83,7 +83,7 @@ class PlayerApp extends StatelessWidget {
           child: TvMode(
           enabled: prefs.tvMode,
           child: MaterialApp(
-            title: 'Player',
+            title: 'Olympus',
             debugShowCheckedModeBanner: false,
             // Na TV, a classe de largura (spec 27.4) escolhe a faixa
             // do texto e as metricas; fora da TV, nada muda.

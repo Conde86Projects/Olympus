@@ -336,7 +336,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ]),
               const _Section('Sobre', [
                 ListTile(
-                  title: Text('Player'),
+                  title: Text('Olympus'),
                   subtitle:
                       Text('Versão ${AppConstants.appVersion} — protótipo'),
                 ),

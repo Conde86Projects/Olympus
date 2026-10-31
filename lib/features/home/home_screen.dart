@@ -30,7 +30,7 @@ class HomeScreen extends StatelessWidget {
     // na navegacao inferior ([MobileShell]); o Historico fica aqui.
     final mobile = MobileMode.of(context);
     return AppShell(
-      title: 'Player',
+      title: 'Olympus',
       actions: [
         if (!mobile)
         IconButton(

@@ -174,7 +174,7 @@ Future<void> _boot(void Function(StartupGuard) onGuard) async {
 
   // Geometria inicial so no desktop (no Android desktopWindows e null).
   await desktopWindows?.applyStartupGeometry(
-    title: 'Player',
+    title: 'Olympus',
     alwaysOnTop: preferences.current.alwaysOnTop,
     startInFullscreen: preferences.current.startInFullscreen,
     restoredBounds: restoredBounds,
