@@ -193,3 +193,15 @@ class PlaybackSession {
     );
   }
 }
+
+
+/// Icone de mudo: app mudado, volume interno zerado ou sistema
+/// silencioso. Fonte unica do predicado dos botoes de mudo.
+/// (Mudo do app + Mudo do sistema, sem Trilho.)
+///
+/// [systemMuted] vem do aparelho; fora do Android vale false.
+/// Exemplo: session.displayMuted(systemMuted: systemMuted).
+extension DisplayMuted on PlaybackSession {
+  bool displayMuted({required bool systemMuted}) =>
+      isMuted || volume <= 0 || systemMuted;
+}

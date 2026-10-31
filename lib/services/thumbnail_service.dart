@@ -74,4 +74,20 @@ class ThumbnailService {
       return null;
     }
   }
+
+  /// Apaga a miniatura de [id] (<dir>/<id>.jpg). Falha ou ausencia
+  /// vira nada: a remocao do item nunca trava por causa do arquivo.
+  /// Nunca toca na midia de origem.
+  static Future<void> deleteFor(
+    String id, {
+    ThumbnailService service = const ThumbnailService(),
+  }) async {
+    try {
+      final dir = await service.directoryProvider();
+      final file = File('${dir.path}${Platform.pathSeparator}$id.jpg');
+      if (await file.exists()) await file.delete();
+    } catch (_) {
+      // No-op: item removido segue removido.
+    }
+  }
 }

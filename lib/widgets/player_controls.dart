@@ -197,7 +197,7 @@ class PlayerControls extends StatelessWidget {
     final touch = MobileMode.of(context);
     final size = touch ? MobileMode.minTouchTarget : 36.0;
     final padding = EdgeInsets.all(touch ? 12 : 6);
-    final muted = session.isMuted || session.volume <= 0 || systemMuted;
+    final muted = session.displayMuted(systemMuted: systemMuted);
     return Row(
       children: [
         RoundPlayerButton(
@@ -301,7 +301,7 @@ class _VolumeControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final muted = session.isMuted || session.volume <= 0 || systemMuted;
+    final muted = session.displayMuted(systemMuted: systemMuted);
     return RoundPlayerButton(
       tooltip: muted ? 'Ativar som' : 'Silenciar',
       icon: muted ? Icons.volume_off : Icons.volume_up,

@@ -26,6 +26,10 @@ class MainActivity : FlutterActivity() {
     private val permRequestCode = 4411
     private var pendingResult: MethodChannel.Result? = null
 
+    // Backstop do receptor de volume: o onCancel normalmente desregistra,
+    // mas se a Activity cair de forma abrupta o onDestroy garante que nao vaze.
+    private var volumeReceiver: BroadcastReceiver? = null
+
     private fun mediaPermission(): String =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             Manifest.permission.READ_MEDIA_VIDEO
@@ -72,6 +76,7 @@ class MainActivity : FlutterActivity() {
                         receiver,
                         IntentFilter("android.media.VOLUME_CHANGED_ACTION")
                     )
+                    this@MainActivity.volumeReceiver = receiver
                 }
 
                 override fun onCancel(arguments: Any?) {
@@ -82,8 +87,20 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                     receiver = null
+                    this@MainActivity.volumeReceiver = null
                 }
             })
+    }
+
+    override fun onDestroy() {
+        volumeReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (_: Exception) {
+            }
+        }
+        volumeReceiver = null
+        super.onDestroy()
     }
 
     private fun systemVolumeState(): Map<String, Any> {

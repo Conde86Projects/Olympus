@@ -72,6 +72,16 @@ class _MobileShellState extends State<MobileShell> {
       _index = index;
       _visited.add(index);
     });
+    // Primeira seta deterministica: se o foco se perdeu na troca
+    // (no da aba antiga fora de cena), ancora de novo apos o rebuild.
+    // Foco valido nao e roubado.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final current = FocusManager.instance.primaryFocus;
+      if (current == null || current.context == null) {
+        FocusScope.of(context).nextFocus();
+      }
+    });
   }
 
   @override

@@ -28,11 +28,11 @@ import 'package:player/widgets/player_settings_panel.dart';
 import 'package:player/widgets/slider_focus_ring.dart';
 
 class _Harness {
-  _Harness()
+  _Harness({NoOpMediaPlayerService? playerService})
       : preferences = InMemoryPreferencesService(),
         library = InMemoryLibraryService(),
         history = InMemoryHistoryService(),
-        player = const NoOpMediaPlayerService(),
+        player = playerService ?? const NoOpMediaPlayerService(),
         windows = NoOpWindowService(),
         guard = StartupGuard(InMemoryLocalStore()),
         addons = LocalAddonService(InMemoryLocalStore()) {
@@ -122,10 +122,13 @@ void _expectFocusVisible(WidgetTester tester, String reason) {
   expect(hidden, isFalse, reason: '$reason (botão visível, não oculto)');
 }
 
-/// Rótulo do botão de diálogo com foco (TextButton/FilledButton).
+/// Rótulo do botão de diálogo com foco (FocusableButton, e os
+/// TextButton/FilledButton nus dos demais diálogos).
 String? _focusedDialogLabel() {
   final context = FocusManager.instance.primaryFocus?.context;
   if (context == null) return null;
+  final focusable = context.findAncestorWidgetOfExactType<FocusableButton>();
+  if (focusable != null) return focusable.label;
   final text = context.findAncestorWidgetOfExactType<TextButton>();
   if (text != null) return (text.child as Text).data;
   final filled = context.findAncestorWidgetOfExactType<FilledButton>();
@@ -138,8 +141,9 @@ Future<_Harness> _openPlayer(
   String id = 'tv',
   bool tvMode = false,
   bool local = false,
+  NoOpMediaPlayerService? player,
 }) async {
-  final harness = _Harness();
+  final harness = _Harness(playerService: player);
   if (tvMode) {
     await harness.preferences
         .update(harness.preferences.current.copyWith(tvMode: true));
@@ -159,6 +163,17 @@ Future<_Harness> _openPlayer(
   Navigator.of(context).pushNamed(AppRoutes.player, arguments: item);
   await tester.pumpAndSettle();
   return harness;
+}
+
+/// NoOp que conta paradas: prova que sair do player libera o motor.
+class _StopCountingPlayer extends NoOpMediaPlayerService {
+  int stopCalls = 0;
+
+  @override
+  Future<void> stop() async {
+    stopCalls++;
+    await super.stop();
+  }
 }
 
 void main() {
@@ -439,6 +454,22 @@ void main() {
       expect(harness.history.entries, hasLength(1));
     });
 
+    testWidgets('sair do player para o motor apos salvar a posicao',
+        (tester) async {
+      final recorder = _StopCountingPlayer();
+      final harness = await _openPlayer(tester, player: recorder);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      // Saiu para a inicial com a posicao salva (zero no NoOp).
+      expect(find.byType(BackButton), findsNothing);
+      expect(harness.history.entries, hasLength(1));
+      expect(harness.history.entries.single.position, Duration.zero);
+      // Motor parado exatamente uma vez, depois do save.
+      expect(recorder.stopCalls, 1);
+    });
+
     testWidgets('voltar com painel fecha só o painel', (tester) async {
       await _openPlayer(tester);
       await tester.tap(find.byTooltip('Configurações'));
@@ -594,6 +625,17 @@ void main() {
         await tester.pumpAndSettle();
         _expectFocusVisible(tester, 'seta $i não cai no vazio nem no oculto');
       }
+    });
+
+    testWidgets('concluido na TV apos hide foca o Reproduzir', (tester) async {
+      final harness = await _openPlayer(tester, tvMode: true);
+      // Esconde a barra: foco ancora no no da tela (precondicao da TV).
+      await tester
+          .pump(AppConstants.controlsAutoHide + const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      harness.player.simulateStatus(PlaybackStatus.completed);
+      await tester.pumpAndSettle();
+      expect(_focusedOverlayLabel(tester), 'Reproduzir novamente');
     });
 
     testWidgets('concluído na TV: card sólido compacto, sem transparência',

@@ -279,7 +279,7 @@ class _TvVolumeControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final muted = session.isMuted || session.volume <= 0 || systemMuted;
+    final muted = session.displayMuted(systemMuted: systemMuted);
     return RoundPlayerButton(
       tooltip: muted ? 'Ativar som' : 'Silenciar',
       icon: muted ? Icons.volume_off : Icons.volume_up,
