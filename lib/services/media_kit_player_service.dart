@@ -5,11 +5,11 @@ import 'package:flutter/widgets.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:player/core/constants/app_constants.dart';
-import 'package:player/core/utils/subtitle_style.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/services/video_output_guard.dart';
+import 'package:player/widgets/subtitle_overlay.dart';
 
 /// Implementacao real do contrato de reproducao sobre media_kit/libmpv
 /// (Fase 2). Exige [MediaKit.ensureInitialized] antes de instanciar (feito
@@ -38,10 +38,6 @@ class MediaKitPlayerService implements MediaPlayerService {
       'network-timeout',
       '${AppConstants.bufferTimeout.inSeconds}',
     ));
-    // Legendas no padrao do projeto (F6); troca futura via SubtitleStyle.
-    for (final entry in SubtitleStyle.defaults.toMpvProperties().entries) {
-      unawaited(_native.setProperty(entry.key, entry.value));
-    }
     _subscriptions.addAll([
       _player.stream.playing.listen((playing) {
         _playing = playing;
@@ -221,12 +217,27 @@ class MediaKitPlayerService implements MediaPlayerService {
   @override
   Widget buildVideoView() {
     return SizedBox.expand(
-      child: Video(
-        controller: _videoController,
-        // Desliga a barra embutida do media_kit_video (o default e
-        // AdaptiveVideoControls): o app desenha os proprios controles e
-        // as duas barras apareciam sobrepostas.
-        controls: NoVideoControls,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Video(
+            controller: _videoController,
+            // Desliga a barra embutida do media_kit_video (o default e
+            // AdaptiveVideoControls): o app desenha os proprios controles
+            // e as duas barras apareciam sobrepostas.
+            controls: NoVideoControls,
+            // A legenda embutida tem margem fixa e colada na base; quem
+            // desenha e o SubtitleOverlay, proporcional a area.
+            subtitleViewConfiguration:
+                const SubtitleViewConfiguration(visible: false),
+          ),
+          StreamBuilder<List<String>>(
+            stream: _player.stream.subtitle,
+            initialData: _player.state.subtitle,
+            builder: (context, snapshot) =>
+                SubtitleOverlay(lines: snapshot.data ?? const []),
+          ),
+        ],
       ),
     );
   }

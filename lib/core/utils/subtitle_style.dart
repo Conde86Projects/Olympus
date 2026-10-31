@@ -1,35 +1,42 @@
-/// Estilo das legendas (F6, U01). Os valores sao convertidos nas
-/// propriedades `sub-*` do mpv; cores no formato `AARRGGBB` (hexadecimal
-/// sem `#`, o `#` e acrescentado aqui).
+import 'dart:math';
+
+import 'package:flutter/painting.dart';
+
+/// Estilo das legendas (F6, U01). A legenda e desenhada pelo Flutter: com
+/// `libass` desligado o media_kit desativa a do mpv (`sub-visibility=no`),
+/// entao as propriedades `sub-*` nao tem efeito. Tamanho e posicao sao
+/// proporcionais a area do video para valer em TV, celular e janela.
 class SubtitleStyle {
   const SubtitleStyle({
-    this.fontSize = 55,
-    this.textColor = 'FFFFFFFF',
-    this.backColor = '80000000',
-    this.position = 85,
+    this.textColor = const Color(0xFFFFFFFF),
+    this.backgroundColor = const Color(0x80000000),
+    this.bottomFraction = 0.10,
+    this.sizeFraction = 0.045,
+    this.minFontSize = 16,
+    this.maxFontSize = 40,
   });
 
   /// Padrao do projeto: texto branco, fundo preto semitransparente,
-  /// tamanho normal do mpv, um pouco acima da base (acima da barra de controles).
+  /// 10% acima da base da area do video.
   static const defaults = SubtitleStyle();
 
-  /// Tamanho em pontos do mpv (padrao do mpv: 55).
-  final int fontSize;
+  final Color textColor;
 
-  /// Cor do texto em `AARRGGBB`.
-  final String textColor;
+  /// Fundo atras do texto; transparente para nao ter fundo.
+  final Color backgroundColor;
 
-  /// Cor do fundo da legenda em `AARRGGBB`; `00000000` sem fundo.
-  final String backColor;
+  /// Distancia da base, como fracao da altura da area do video.
+  final double bottomFraction;
 
-  /// Posicao vertical de 0 (topo) a 100 (base da tela).
-  final int position;
+  /// Tamanho da fonte, como fracao do menor lado da area do video.
+  final double sizeFraction;
 
-  Map<String, String> toMpvProperties() => {
-        'sub-font-size': '$fontSize',
-        'sub-color': '#$textColor',
-        'sub-back-color': '#$backColor',
-        'sub-pos': '$position',
-        'sub-use-margins': 'no',
-      };
+  final double minFontSize;
+  final double maxFontSize;
+
+  double fontSizeFor(Size area) =>
+      (min(area.width, area.height) * sizeFraction)
+          .clamp(minFontSize, maxFontSize);
+
+  double bottomFor(Size area) => area.height * bottomFraction;
 }
