@@ -66,6 +66,18 @@ class PlayerApp extends StatelessWidget {
       animation: preferencesService,
       builder: (context, _) {
         final prefs = preferencesService.current;
+        // Na TV o foco tem de aparecer sempre: no modo automatico o Flutter
+        // pode ficar em "toque" e os destaques de foco nao sao desenhados
+        // (Ajustes e painel do player na TCL). Depois do frame porque a
+        // troca notifica widgets em plena construcao.
+        final strategy = prefs.tvMode
+            ? FocusHighlightStrategy.alwaysTraditional
+            : FocusHighlightStrategy.automatic;
+        if (FocusManager.instance.highlightStrategy != strategy) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            FocusManager.instance.highlightStrategy = strategy;
+          });
+        }
         return MobileMode(
           enabled: mobilePlatform && !prefs.tvMode,
           child: TvMode(

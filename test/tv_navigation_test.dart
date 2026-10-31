@@ -1174,5 +1174,27 @@ void main() {
       await tester.pumpAndSettle();
       expect(harness.preferences.current.tvMode, isFalse);
     });
+
+    testWidgets('modo TV sempre desenha o destaque de foco', (tester) async {
+      final harness = _Harness();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.highlightStrategy,
+          FocusHighlightStrategy.automatic);
+
+      await harness.preferences
+          .update(harness.preferences.current.copyWith(tvMode: true));
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.highlightStrategy,
+          FocusHighlightStrategy.alwaysTraditional);
+      expect(FocusManager.instance.highlightMode,
+          FocusHighlightMode.traditional);
+
+      await harness.preferences
+          .update(harness.preferences.current.copyWith(tvMode: false));
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.highlightStrategy,
+          FocusHighlightStrategy.automatic);
+    });
   });
 }
