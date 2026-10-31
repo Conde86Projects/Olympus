@@ -55,3 +55,12 @@ Fonte derrubada por `adb reverse`, sem cortar o Wi-Fi da TV.
 - `Tentar novamente` não confirmado na TCL.
 - Prazo de 5 s no seek da retomada (commit local) cobre o caso em teste, mas não
   resolveu esse congelamento.
+
+## Teste real sem internet na TCL (dono, 31/10/2026)
+
+- Big Buck Bunny com posição salva, sem internet: erro com "Tentar novamente", sem
+  congelar. O congelamento do teste anterior provavelmente veio do `adb reverse`;
+  não ficou provado.
+- Com a internet de volta, o Big Buck Bunny abriu e retomou perto de 3:25.
+- `Tentar novamente` com a internet de volta segue sem confirmação direta.
+- Item de teste `master` não carrega fora dos testes: aponta para o servidor local.
