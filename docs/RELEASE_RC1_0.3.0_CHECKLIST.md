@@ -16,6 +16,18 @@ preparada em `4d2d4fb` (20/10/2026, sem tag).
 
 ## Artefatos
 
+Atualizados em 31/10/2026 a partir do commit `09afc3b` (código igual ao
+da RC1; só docs mudaram depois do APK de 15:19):
+
+- APK: `app-release.apk` (97.922.428 bytes)
+  - SHA-256: `F7F128BD6C0A09BC43C740C8EB4E7F269B5A96FDF8655C3A17E5D3074D2CA6E2`
+- Windows: `Olympus-0.3.0-rc.1-windows.zip` (33.064.677 bytes)
+  - SHA-256: `CD155025BECBF5A50C7C2885DC74E434D1F3AA5E8712774023722ABA6E36C59A`
+- EXE avulso `player.exe`
+  - SHA-256: `D6D812F42FF414E864E500765290B6B54FDC777099852323D49E11B440A0462A`
+
+Os valores abaixo são do build de 24/10 (histórico).
+
 - `build/app/outputs/flutter-apk/app-release.apk`
   (97.823.968 bytes, build da RC1 em `4d2d4fb`)
   - SHA-256:
