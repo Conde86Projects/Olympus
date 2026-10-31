@@ -8,10 +8,15 @@ class PlayerTraversalPolicy extends ReadingOrderTraversalPolicy {
   PlayerTraversalPolicy({
     required this.controlsScope,
     required this.cornerScope,
+    this.modalFocus,
   });
 
   final FocusScopeNode controlsScope;
   final FocusScopeNode cornerScope;
+
+  /// No de primario do dialogo modal aberto (fim, erro, "Ver de novo"),
+  /// ou null sem modal. Destino de descer a partir dos cantos.
+  final FocusNode? Function()? modalFocus;
 
   @override
   bool inDirection(FocusNode currentNode, TraversalDirection direction) {
@@ -19,6 +24,13 @@ class PlayerTraversalPolicy extends ReadingOrderTraversalPolicy {
         currentNode.ancestors.contains(controlsScope);
     final downFromCorners = direction == TraversalDirection.down &&
         currentNode.ancestors.contains(cornerScope);
+    if (downFromCorners) {
+      final modal = modalFocus?.call();
+      if (modal != null && modal.canRequestFocus && modal.context != null) {
+        modal.requestFocus();
+        return true;
+      }
+    }
     if (upFromControls || downFromCorners) {
       final target = upFromControls
           ? _nearestAbove(currentNode)

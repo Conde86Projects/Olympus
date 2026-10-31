@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/routes.dart';
@@ -305,6 +306,44 @@ void main() {
 
       expect(harness.player.session.position, const Duration(minutes: 5));
       expect(find.widgetWithText(FocusableButton, 'Ver de novo'), findsNothing);
+    });
+  });
+
+  group('dialogo de fim com o D-pad', () {
+    testWidgets('dos cantos, a seta para baixo volta ao dialogo',
+        (tester) async {
+      final harness = _Harness();
+      await harness.pump(tester);
+      await _openPlayer(
+          tester,
+          harness,
+          _item(
+            id: 'fim',
+            lastPosition: const Duration(minutes: 1),
+            duration: const Duration(minutes: 10),
+          ));
+
+      harness.player.simulateStatus(PlaybackStatus.completed);
+      await tester.pumpAndSettle();
+      expect(find.text('Reprodução concluída'), findsOneWidget);
+
+      // Subir do dialogo leva aos cantos (fuga para cima)...
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      expect(
+        FocusManager.instance.primaryFocus?.context
+            ?.findAncestorWidgetOfExactType<FocusableButton>(),
+        isNull,
+      );
+
+      // ...e descer dos cantos volta ao dialogo (o bug da TCL).
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(
+        FocusManager.instance.primaryFocus?.context
+            ?.findAncestorWidgetOfExactType<FocusableButton>(),
+        isNotNull,
+      );
     });
   });
 }

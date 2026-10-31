@@ -208,6 +208,10 @@ class _PlayerScreenState extends State<PlayerScreen>
   late final PlayerTraversalPolicy _traversalPolicy = PlayerTraversalPolicy(
     controlsScope: _controlsScope,
     cornerScope: _cornerScope,
+    // Dialogo de fim/erro/"Ver de novo" aberto: a seta para baixo dos
+    // cantos leva ao botao primario dele (os controles estao excluidos).
+    modalFocus: () =>
+        _overlayUp || _replayOffer ? _overlayPrimaryFocus : null,
   );
 
   bool get _tvMode => widget.dependencies.preferencesService.current.tvMode;
