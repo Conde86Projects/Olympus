@@ -9,7 +9,6 @@ import 'package:player/app/routes.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/core/constants/app_constants.dart';
-import 'package:player/core/utils/hls_cold_probe.dart';
 import 'package:player/core/utils/hls_target.dart';
 import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
@@ -19,6 +18,7 @@ import 'package:player/features/open_media/open_media_screen.dart';
 import 'package:player/features/open_media/pick_video_file.dart';
 import 'package:player/features/player/hls_observer.dart';
 import 'package:player/features/player/hls_resume_probe.dart';
+import 'package:player/features/player/hls_cold_warmer.dart';
 import 'package:player/features/player/hls_session_state.dart';
 import 'package:player/features/player/player_volume_policy.dart';
 import 'package:player/features/player/player_widgets.dart';
@@ -153,7 +153,14 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// Redetecção fria (uma única tentativa posterior, limitada): só
   /// aquece [_hlsVariants] para o seletor; nunca reabre nem troca.
-  Timer? _hlsColdTimer;
+  late final HlsColdWarmer _hlsColdWarmer = HlsColdWarmer(
+    stillNeeded: () => _hlsVariants.isEmpty,
+    onVariants: (variants) {
+      if (mounted) setState(() => _hlsVariants = variants);
+    },
+    log: (stage, {detail}) => _probeHlsResume(
+        widget.dependencies.playerService, stage, detail),
+  );
   bool _hlsAutoDowngraded = false;
   DateTime? _obsAt;
   Duration? _obsPos;
@@ -404,8 +411,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _appliedSubtitles = false;
     _hlsAutoDowngraded = false;
     _hlsObserveTimer?.cancel();
-    _hlsColdTimer?.cancel();
-    _hlsColdTimer = null;
+    _hlsColdWarmer.cancel();
     _hls.positionProtect = false;
     _replayOffer = false;
     _replayOffer = false;
@@ -807,37 +813,15 @@ class _PlayerScreenState extends State<PlayerScreen>
     return within;
   }
 
-  /// Redetecção fria: tentativas posteriores espaçadas e limitadas
-  /// ([HlsColdProbe.warmDelays]), em segundo plano. Só aquece
-  /// [_hlsVariants] (o seletor
-  /// passa a oferecer qualidade); nunca chama open/seek, nunca muda
-  /// [_currentItem]/[_baseItem] e nunca escreve no histórico.
-  void _scheduleHlsColdWarm([int attempt = 0]) {
-    _hlsColdTimer?.cancel();
-    if (!_isCappedClass) return;
-    if (_currentItem.sourceType != MediaSourceType.url) return;
-    if (!isM3u8Url(_baseItem.source)) return;
-    if (attempt >= HlsColdProbe.warmDelays.length) return;
-    final player = widget.dependencies.playerService;
-    final source = _baseItem.source;
-    _hlsColdTimer = Timer(HlsColdProbe.warmDelays[attempt], () async {
-      _hlsColdTimer = null;
-      if (!mounted) return;
-      final result = await HlsColdProbe.probe(
-        source,
-        maxAttempts: 1,
-        log: (stage, {detail}) => _probeHlsResume(player, stage, detail),
-      );
-      // Outra midia ou outra abertura assumiu enquanto buscava.
-      if (!mounted || _baseItem.source != source) return;
-      if (result.variants.isNotEmpty && _hlsVariants.isEmpty) {
-        setState(() => _hlsVariants = result.variants);
-      } else if (result.outcome == HlsColdOutcome.failed &&
-          _hlsVariants.isEmpty &&
-          _hlsColdTimer == null) {
-        _scheduleHlsColdWarm(attempt + 1);
-      }
-    });
+  /// Rede fria: so a lista do seletor aquece depois, sem reabrir o video.
+  void _scheduleHlsColdWarm() {
+    if (!_isCappedClass ||
+        _currentItem.sourceType != MediaSourceType.url ||
+        !isM3u8Url(_baseItem.source)) {
+      _hlsColdWarmer.cancel();
+      return;
+    }
+    _hlsColdWarmer.start(_baseItem.source);
   }
 
   /// Inicia o observador de capacidade: so TV, so Automatica, so
@@ -1255,8 +1239,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _resumeTimer?.cancel();
     _resumeProbeTimer?.cancel();
     _hlsObserveTimer?.cancel();
-    _hlsColdTimer?.cancel();
-    _hlsColdTimer = null;
+    _hlsColdWarmer.cancel();
     _subscription?.cancel();
     _systemVolumeSub?.cancel();
     _chrome.removeListener(_scheduleSubtitleInset);
