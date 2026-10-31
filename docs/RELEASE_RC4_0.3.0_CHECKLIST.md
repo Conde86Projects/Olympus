@@ -21,7 +21,7 @@ Pré-release publicada em 31/10/2026, versão `0.3.0-rc.4+1005`. Substitui a rc.
 
 ## Limites conhecidos
 
-- "Tentar novamente" com a internet de volta não confirmado na TCL nem no Windows.
+- "Tentar novamente" com a internet de volta: confirmado pelo dono na TCL e no Windows.
 - Retomada em link leva alguns segundos a mais; em fonte que não anda, até 8 s.
 - Fonte muito lenta pode cair no limite de 15 s do `network-timeout` ou de 30 s
   do início.
