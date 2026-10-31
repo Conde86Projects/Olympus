@@ -6,11 +6,11 @@ class SubtitleStyle {
     this.fontSize = 55,
     this.textColor = 'FFFFFFFF',
     this.backColor = '80000000',
-    this.position = 100,
+    this.position = 85,
   });
 
   /// Padrao do projeto: texto branco, fundo preto semitransparente,
-  /// tamanho normal do mpv, embaixo da tela.
+  /// tamanho normal do mpv, um pouco acima da base (acima da barra de controles).
   static const defaults = SubtitleStyle();
 
   /// Tamanho em pontos do mpv (padrao do mpv: 55).

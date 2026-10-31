@@ -2,12 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:player/core/utils/subtitle_style.dart';
 
 void main() {
-  test('padrao: branco, fundo semitransparente, tamanho normal, embaixo', () {
+  test('padrao: branco, fundo semitransparente, tamanho normal, acima da base', () {
     expect(SubtitleStyle.defaults.toMpvProperties(), {
       'sub-font-size': '55',
       'sub-color': '#FFFFFFFF',
       'sub-back-color': '#80000000',
-      'sub-pos': '100',
+      'sub-pos': '85',
     });
   });
 
