@@ -31,6 +31,7 @@ class HomeScreen extends StatelessWidget {
     final mobile = MobileMode.of(context);
     return AppShell(
       title: 'Olympus',
+      showLogo: true,
       actions: [
         if (!mobile)
         IconButton(

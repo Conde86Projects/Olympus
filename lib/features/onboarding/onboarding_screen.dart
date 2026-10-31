@@ -18,6 +18,7 @@ class OnboardingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppShell(
       title: 'Olympus',
+      showLogo: true,
       // Janela baixa (compacto ~480x270): rola em vez de estourar.
       body: ScrollWhenShort(
         child: Center(

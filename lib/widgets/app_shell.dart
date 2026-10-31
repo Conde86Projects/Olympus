@@ -14,12 +14,16 @@ class AppShell extends StatelessWidget {
     required this.body,
     this.actions = const [],
     this.showBack = false,
+    this.showLogo = false,
   });
 
   final String title;
   final Widget body;
   final List<Widget> actions;
   final bool showBack;
+
+  /// Logo a esquerda do titulo (telas de marca: inicio e boas-vindas).
+  final bool showLogo;
 
   /// Margem lateral para [width]: 6% presa entre 16 e 96, com piso
   /// anti-overscan de 32 no modo TV. Pura para teste direto.
@@ -48,7 +52,22 @@ class AppShell extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: showBack,
-        title: Text(title),
+        title: showLogo
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'assets/branding/olympus-mark.png',
+                    height: 28,
+                    excludeFromSemantics: true,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(title, overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              )
+            : Text(title),
         actions: actions,
       ),
       // Celular: telas abertas por cima das abas reservam a barra de
