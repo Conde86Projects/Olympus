@@ -113,7 +113,8 @@ class FakeMobileChrome extends MobileChromeService {
   /// Avança o relógio determinístico do fake (F2): dispara o auto-hide
   /// sem bombear a tela nem esperar o tempo real.
   void advanceTime(Duration step) {
-    if (_consume(_hideRemaining, (d) => _hideRemaining = d, step) && _mayAutoHide()) {
+    if (_consume(_hideRemaining, (d) => _hideRemaining = d, step) &&
+        _mayAutoHide()) {
       _controlsVisible = false;
       notifyListeners();
       onControlsAutoHidden?.call();
@@ -125,7 +126,8 @@ class FakeMobileChrome extends MobileChromeService {
   }
 
   /// Desconta [step] do prazo; true = expirou (prazo consumido).
-  bool _consume(Duration? remaining, void Function(Duration?) save, Duration step) {
+  bool _consume(
+      Duration? remaining, void Function(Duration?) save, Duration step) {
     if (remaining == null) return false;
     final next = remaining - step;
     if (next <= Duration.zero) {
@@ -138,6 +140,28 @@ class FakeMobileChrome extends MobileChromeService {
 }
 
 void main() {
+  group('tela cheia inicial no celular (startInFullscreen)', () {
+    testWidgets('preferencia ligada: abre em tela cheia uma vez',
+        (tester) async {
+      final chrome = FakeMobileChrome();
+      await _openMobilePlayer(tester, chrome, startInFullscreen: true);
+      await tester.pumpAndSettle();
+
+      expect(chrome.calls.where((c) => c).length, 1);
+      expect(chrome.isFullscreen, isTrue);
+    });
+
+    testWidgets('preferencia desligada: nao entra em tela cheia sozinho',
+        (tester) async {
+      final chrome = FakeMobileChrome();
+      await _openMobilePlayer(tester, chrome);
+      await tester.pumpAndSettle();
+
+      expect(chrome.calls.where((c) => c), isEmpty);
+      expect(chrome.isFullscreen, isFalse);
+    });
+  });
+
   group('MobileChrome (passo 1: seam + fake)', () {
     test('entra e sai da cheia notificando uma vez por mudanca', () async {
       final chrome = FakeMobileChrome();
@@ -345,7 +369,8 @@ void main() {
       expect(calls, 1);
 
       // Parcial: ainda visivel.
-      fake.advanceTime(MobileChromeService.seekFlashDuration - const Duration(milliseconds: 1));
+      fake.advanceTime(MobileChromeService.seekFlashDuration -
+          const Duration(milliseconds: 1));
       expect(chrome.seekFlash, '-10 s');
 
       // Completa: apaga sem bombear tela alguma.
@@ -386,12 +411,12 @@ void main() {
     });
   });
 
-IconData cornerIcon(WidgetTester tester, String tip) => tester
-    .widget<RoundPlayerButton>(find.ancestor(
-      of: find.byTooltip(tip),
-      matching: find.byType(RoundPlayerButton),
-    ))
-    .icon;
+  IconData cornerIcon(WidgetTester tester, String tip) => tester
+      .widget<RoundPlayerButton>(find.ancestor(
+        of: find.byTooltip(tip),
+        matching: find.byType(RoundPlayerButton),
+      ))
+      .icon;
 
   group('fiacao dos gestos (F3: toque consome o modulo)', () {
     testWidgets('duplo toque busca por lado com flash do modulo',
@@ -417,11 +442,11 @@ IconData cornerIcon(WidgetTester tester, String tip) => tester
       expect(chrome.seekFlash, '-10 s');
       expect(chrome.seekFlashLeft, isTrue);
 
-      expect(harness.player.seeks, [AppConstants.seekStep, -AppConstants.seekStep]);
+      expect(harness.player.seeks,
+          [AppConstants.seekStep, -AppConstants.seekStep]);
     });
 
-    testWidgets('cinema no mobile mantem saida visivel',
-        (tester) async {
+    testWidgets('cinema no mobile mantem saida visivel', (tester) async {
       final fake = FakeMobileChrome();
       await _openMobilePlayer(tester, fake);
 
@@ -439,8 +464,7 @@ IconData cornerIcon(WidgetTester tester, String tip) => tester
       expect(cornerIcon(tester, 'Modo cinema'), Icons.theaters_outlined);
     });
 
-    testWidgets('tap alterna os controles via visibilidade',
-        (tester) async {
+    testWidgets('tap alterna os controles via visibilidade', (tester) async {
       final fake = FakeMobileChrome();
       final MobileChromeService chrome = fake;
       await _openMobilePlayer(tester, fake);
@@ -516,8 +540,13 @@ class _ChromeHarness {
 }
 
 Future<_ChromeHarness> _openMobilePlayer(
-    WidgetTester tester, MobileChromeService chrome) async {
+    WidgetTester tester, MobileChromeService chrome,
+    {bool startInFullscreen = false}) async {
   final harness = _ChromeHarness(chrome: chrome);
+  if (startInFullscreen) {
+    harness.preferences
+        .update(harness.preferences.current.copyWith(startInFullscreen: true));
+  }
   await tester.pumpWidget(harness.app);
   await tester.pumpAndSettle();
   final item = MediaItem(

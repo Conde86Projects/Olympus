@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,9 +15,11 @@ import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
 import 'package:player/core/utils/media_utils.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
+import 'package:player/features/open_media/pick_video_file.dart';
 import 'package:player/features/player/hls_observer.dart';
 import 'package:player/features/player/hls_resume_probe.dart';
 import 'package:player/features/player/hls_session_state.dart';
+import 'package:player/features/player/player_volume_policy.dart';
 import 'package:player/features/player/player_widgets.dart';
 import 'package:player/features/player/video_area.dart';
 import 'package:player/models/addon_catalog_item.dart';
@@ -33,7 +34,6 @@ import 'package:player/services/system_volume_service.dart';
 import 'package:player/services/thumbnail_service.dart';
 import 'package:player/widgets/confirm_dialog.dart';
 import 'package:player/widgets/focusable_button.dart';
-import 'package:player/core/utils/volume_step.dart';
 import 'package:player/widgets/player_controls.dart';
 import 'package:player/widgets/player_settings_panel.dart';
 import 'package:player/widgets/tv_player_controls.dart';
@@ -68,6 +68,22 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _systemSilent = false;
   StreamSubscription<SystemVolumeState>? _systemVolumeSub;
 
+  /// Último volume do sistema visto: detecta quando ele sobe.
+  double? _lastSystemVolume;
+
+  /// Último estado silencioso do sistema visto: detecta quando zera.
+  bool? _lastSystemSilent;
+
+  /// startInFullscreen aplicado no celular nesta sessão (uma vez só).
+  bool _startFullscreenApplied = false;
+
+  /// Volume interno (desktop): passos das setas ocultas e salvamento.
+  late final PlayerVolumePolicy _volume = PlayerVolumePolicy(
+    player: widget.dependencies.playerService,
+    currentVolume: () => _session.volume,
+    savePreference: _persistVolume,
+  );
+
   /// Gravacao no X do sistema (Windows). Referencia estavel para
   /// remover so a deste player no dispose.
   late final Future<void> Function() _saveOnWindowClose = _saveSession;
@@ -91,6 +107,10 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// Saida intencional em curso (ver [_exitPlayer]).
   bool _exitRequested = false;
+
+  /// Saida real (pop) vs troca de item (replace): so a saida libera
+  /// o motor no dispose. Padrao desligado = _playNext nao zera nada.
+  bool _stopOnDispose = false;
 
   /// Oferta "Ver de novo" (spec 11, Fase 0.2.0): reabertura de item
   /// concluido comeca do inicio e mostra a acao; some ao usar,
@@ -328,13 +348,26 @@ class _PlayerScreenState extends State<PlayerScreen>
       final volumes = widget.dependencies.systemVolumeService;
       unawaited(volumes.current().then((state) {
         if (!mounted) return;
+        _lastSystemVolume = state.volume;
+        _lastSystemSilent = state.isSilent;
         setState(() => _systemSilent = state.isSilent);
       }));
       _systemVolumeSub = volumes.watch().listen((state) {
         if (!mounted) return;
+        // Regra do aparelho (TV e celular): o app muta quando o volume do
+        // sistema chega a zero (ou ao mudo do aparelho) e desmuta quando ele
+        // sobe. Só transições: a abertura não muta sozinha.
+        final rose =
+            _lastSystemVolume != null && state.volume > _lastSystemVolume!;
+        final fellSilent = _lastSystemSilent == false && state.isSilent;
+        _lastSystemVolume = state.volume;
+        _lastSystemSilent = state.isSilent;
         setState(() => _systemSilent = state.isSilent);
-        if (!state.isSilent && _session.isMuted) {
-          unawaited(widget.dependencies.playerService.setMuted(false));
+        final player = widget.dependencies.playerService;
+        if (fellSilent && !_session.isMuted) {
+          unawaited(player.setMuted(true));
+        } else if (rose && !state.isSilent && _session.isMuted) {
+          unawaited(player.setMuted(false));
         }
       });
     }
@@ -1210,6 +1243,13 @@ class _PlayerScreenState extends State<PlayerScreen>
     _controlsScope.dispose();
     _cornerScope.dispose();
     _overlayPrimaryFocus.dispose();
+    // Libera o decodificador ao sair (pos-save): sem o stop, o mpv
+    // segue carregado com a superficie destruida e o finalizador
+    // nativo derruba o processo na TV (SIGSEGV). So na saida real:
+    // na troca de item (_playNext) a sessao do proximo ja esta no
+    // ar e o stop a zeraria. Nenhum listener local segue vivo aqui,
+    // entao o reset nao reconstrui nada no meio da transicao.
+    if (_stopOnDispose) unawaited(_stopPlayback());
     super.dispose();
   }
 
@@ -1238,6 +1278,16 @@ class _PlayerScreenState extends State<PlayerScreen>
     _dense = !_tvMode &&
         MediaQuery.sizeOf(context).height < PlayerControls.denseMaxHeight;
     _mobile = !_tvMode && MobileMode.of(context);
+    // startInFullscreen no celular (ADR-0002: cheia só manual, mas a
+    // preferência abre cheia): aplicada uma vez, depois do primeiro quadro.
+    if (_mobile && !_startFullscreenApplied) {
+      _startFullscreenApplied = true;
+      if (widget.dependencies.preferencesService.current.startInFullscreen) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) unawaited(_chrome.setFullscreen(true));
+        });
+      }
+    }
     final edge = TvLayout.isTv(context)
         ? TvLayout.safeMarginOf(context)
         : (_dense ? 8.0 : 16.0);
@@ -1250,8 +1300,15 @@ class _PlayerScreenState extends State<PlayerScreen>
     final modalUp = _overlayUp || _replayOffer;
     if (modalUp && !_wasOverlayUp) {
       _wasOverlayUp = true;
+      // Frame UNICO (observavel no pumpAndSettle) + reivindica SEMPRE
+      // na transicao de abertura: o dialogo acabou de montar neste frame,
+      // entao nenhuma escolha explicita pode existir dentro dele ainda.
+      // O condicional anterior via foco valido nos cantos e nao roubava,
+      // mas o D-pad dali nunca alcanca os botoes do dialogo (foco preso
+      // em cima, dialogo morto embaixo — visto na TCL).
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && modalUp) _overlayPrimaryFocus.requestFocus();
+        if (!mounted || !(_overlayUp || _replayOffer)) return;
+        _overlayPrimaryFocus.requestFocus();
       });
     } else if (!modalUp) {
       _wasOverlayUp = false;
@@ -1282,6 +1339,8 @@ class _PlayerScreenState extends State<PlayerScreen>
           }
           _exitRequested = false;
           await _saveSession();
+          // Saida real (nao troca de item): libera o motor no dispose.
+          _stopOnDispose = true;
           if (!context.mounted) return;
           setState(() => _allowPop = true);
           Navigator.of(context).pop();
@@ -1536,13 +1595,15 @@ class _PlayerScreenState extends State<PlayerScreen>
     // essa tecla.
     if (event.logicalKey == LogicalKeyboardKey.audioVolumeUp ||
         event.logicalKey == LogicalKeyboardKey.audioVolumeDown) {
+      // Só VOL+ despluga o mudo do app (glossário); VOL− só ajusta o aparelho.
       final context = _screenFocus.context;
-      if (context != null &&
+      if (event.logicalKey == LogicalKeyboardKey.audioVolumeUp &&
+          context != null &&
           ModalRoute.of(context)?.isCurrent == true &&
           !_panelOpen &&
           !_overlayUp &&
           _session.isMuted) {
-        widget.dependencies.playerService.setMuted(false);
+        unawaited(widget.dependencies.playerService.setMuted(false));
       }
       return false;
     }
@@ -1715,10 +1776,11 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// Setas com controles ocultos no desktop/Windows: passo de 0,05,
   /// salvo como volume inicial. No celular e na TV nunca chega aqui.
+  /// Setas rápidas partem do último alvo pedido (não do volume da
+  /// sessão, que chega pela stream nativa) e a persistência espera o
+  /// volume aplicado.
   void _stepVolume(int direction) {
-    final next = steppedVolume(_session.volume, direction);
-    widget.dependencies.playerService.setVolume(next);
-    _persistVolume(next);
+    unawaited(_volume.step(direction));
   }
 
   /// Toque no video (celular): oculta se visivel, reexibe se oculto.
@@ -1752,9 +1814,15 @@ class _PlayerScreenState extends State<PlayerScreen>
       if (!_mobile) _windowFullscreen = next;
     });
     // Os cantos ocultam/exibem: o foco pode ter morrido com eles.
-    // Ancorar no no raiz mataria as setas (nada fora de um retangulo
-    // de tela cheia), entao restaura num controle de verdade.
-    _restoreFocusIfLost();
+    // Restore apos o frame do rebuild (post-frame duplo: este mais o
+    // interno do restore): restaurar no frame atual mira a arvore
+    // velha e a primeira seta se perde. Ancorar no no raiz mataria
+    // as setas (nada fora de um retangulo de tela cheia), entao
+    // restaura num controle de verdade.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _restoreFocusIfLost();
+    });
   }
 
   Future<void> _toggleCompact() async {
@@ -1985,11 +2053,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// atualiza o MESMO item (titulo e fonte zeram; posicao idem) e tenta
   /// de novo sem sair da tela. Nada e copiado nem apagado.
   Future<void> _relocate() async {
-    final files = await FilePicker.pickFiles(
-      type: FileType.video,
-      dialogTitle: 'Localizar arquivo',
-    );
-    final path = files.singleOrNull?.path;
+    final path = await pickVideoFile(context, title: 'Localizar arquivo');
+    if (!mounted) return;
     if (path == null || path.isEmpty) return;
     final updated = await widget.dependencies.libraryService.upsert(
       _currentItem.copyWith(
@@ -2043,6 +2108,16 @@ class _PlayerScreenState extends State<PlayerScreen>
         initialValue: _currentItem.source,
       ),
     );
+  }
+
+  /// Para a reproducao ao sair do player (pos-save). Falha nativa vira
+  /// nada: a navegacao de saida nao pode travar.
+  Future<void> _stopPlayback() async {
+    try {
+      await widget.dependencies.playerService.stop();
+    } catch (_) {
+      // No-op: a saida segue mesmo se o motor falhar ao parar.
+    }
   }
 
   /// Salva a posicao e pausa (spec 11, 19). Chamado pelo PopScope antes

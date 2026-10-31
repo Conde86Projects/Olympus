@@ -98,8 +98,7 @@ class _Harness {
         startupGuard: guard,
         diagnosticsService: diagnostics,
         mobilePlatform: mobilePlatform,
-        systemVolumeService:
-            systemVolume ?? const NoOpSystemVolumeService(),
+        systemVolumeService: systemVolume ?? const NoOpSystemVolumeService(),
         mobileChromeService: SystemMobileChrome(),
       );
 }
@@ -123,8 +122,8 @@ Future<_Harness> _openPlayer(
   double playerVolume = 1.0,
   SystemVolumeService? systemVolume,
 }) async {
-  final harness = _Harness(
-      mobilePlatform: mobilePlatform, systemVolume: systemVolume);
+  final harness =
+      _Harness(mobilePlatform: mobilePlatform, systemVolume: systemVolume);
   await harness.preferences.update(harness.preferences.current
       .copyWith(tvMode: tvMode, initialVolume: initialVolume));
   await harness.player.setMuted(false);
@@ -295,7 +294,7 @@ void main() {
       });
     });
 
-    testWidgets('desktop: VOL− despluga o mudo sem consumir a tecla',
+    testWidgets('desktop: VOL− não despluga o mudo (só VOL+ despluga)',
         (tester) async {
       await _withPlatform(TargetPlatform.windows, () async {
         final harness = await _openPlayer(tester);
@@ -306,7 +305,7 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.audioVolumeDown);
         await tester.pumpAndSettle();
 
-        expect(harness.player.session.isMuted, isFalse);
+        expect(harness.player.session.isMuted, isTrue);
       });
     });
   });
@@ -332,7 +331,9 @@ void main() {
     testWidgets('celular: sistema aumentou despluga o mudo do app',
         (tester) async {
       await _withPlatform(TargetPlatform.android, () async {
-        final volumes = _FakeSystemVolume();
+        // Parte de um volume baixo: subir é o que despluga.
+        final volumes = _FakeSystemVolume(
+            const SystemVolumeState(volume: 0.2, muted: false));
         final harness = await _openPlayer(
           tester,
           mobilePlatform: true,
@@ -347,6 +348,61 @@ void main() {
 
         expect(harness.player.session.isMuted, isFalse);
         expect(find.byTooltip('Silenciar'), findsOneWidget);
+      });
+    });
+
+    testWidgets('celular: sistema zerou muta o app', (tester) async {
+      await _withPlatform(TargetPlatform.android, () async {
+        final volumes = _FakeSystemVolume(
+            const SystemVolumeState(volume: 0.5, muted: false));
+        final harness = await _openPlayer(
+          tester,
+          mobilePlatform: true,
+          systemVolume: volumes,
+        );
+        expect(harness.player.session.isMuted, isFalse);
+
+        volumes.emit(const SystemVolumeState(volume: 0.0, muted: false));
+        await tester.pumpAndSettle();
+
+        expect(harness.player.session.isMuted, isTrue);
+      });
+    });
+
+    testWidgets('TV: sistema zerou muta o app', (tester) async {
+      await _withPlatform(TargetPlatform.android, () async {
+        final volumes = _FakeSystemVolume(
+            const SystemVolumeState(volume: 0.5, muted: false));
+        final harness = await _openPlayer(
+          tester,
+          tvMode: true,
+          systemVolume: volumes,
+        );
+
+        volumes.emit(const SystemVolumeState(volume: 0.0, muted: false));
+        await tester.pumpAndSettle();
+
+        expect(harness.player.session.isMuted, isTrue);
+      });
+    });
+
+    testWidgets('celular: sistema baixou mantém o mudo do app', (tester) async {
+      await _withPlatform(TargetPlatform.android, () async {
+        final volumes = _FakeSystemVolume(
+            const SystemVolumeState(volume: 0.5, muted: false));
+        final harness = await _openPlayer(
+          tester,
+          mobilePlatform: true,
+          systemVolume: volumes,
+        );
+        await harness.player.setMuted(true);
+        await tester.pumpAndSettle();
+
+        volumes.emit(const SystemVolumeState(volume: 0.2, muted: false));
+        await tester.pumpAndSettle();
+
+        expect(harness.player.session.isMuted, isTrue);
+        expect(find.byTooltip('Ativar som'), findsOneWidget);
       });
     });
 

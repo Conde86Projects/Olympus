@@ -65,7 +65,8 @@ Celular (`MobileShell.destinations`, 360 dp):
 - Desktop: volume sai no sistema; `Volume inicial` aplicado na abertura
   e ajustável nas Setas ocultas (passo 0,05, 0,0–1,0), salvo como inicial.
 - Mudo do app preserva/restaura o nível anterior.
-- VOL+/VOL− com app mudado Despluga o mudo sem consumir a tecla.
+- Sistema zera ou fica mudo → app muta; sistema sobe → app desmuta (TV e celular, via canal do aparelho).
+- VOL+ com app mudado despluga o mudo sem consumir a tecla; VOL− só ajusta o aparelho (não despluga).
 - Sistema zerado/mudo reflete no ícone via canal nativo
   (`MainActivity` + `SystemVolumeService`, NoOp fora do Android).
 

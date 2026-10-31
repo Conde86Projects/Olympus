@@ -14,6 +14,9 @@ _Avoid_: silêncio do sistema, mudo da TV
 
 **Desplugar o mudo**:
 Sair do mudo do app automaticamente quando o volume do sistema sobe.
+
+**Mutar com o sistema**:
+Entrar no mudo do app automaticamente quando o volume do sistema zera (ou o mudo do aparelho é ativado). Vale na TV e no celular; a abertura do player não muta sozinha.
 _Avoid_: desmutar, unmute
 
 **Trilho**:
