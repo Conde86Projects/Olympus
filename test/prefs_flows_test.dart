@@ -266,6 +266,9 @@ void main() {
               lastPosition: const Duration(minutes: 5),
               duration: const Duration(minutes: 10)));
 
+      // Em link, o seek so sai depois da prontidao (ou do teto dela).
+      await tester.pump(const Duration(seconds: 12));
+      await tester.pumpAndSettle();
       expect(harness.player.session.position,
           const Duration(minutes: 5));
     });
@@ -323,6 +326,9 @@ void main() {
       await tester.tap(find.widgetWithText(FocusableButton, 'Próximo'));
       await tester.pumpAndSettle();
       expect(find.text('Vídeo B'), findsOneWidget);
+      // Em link, o seek so sai depois da prontidao (ou do teto dela).
+      await tester.pump(const Duration(seconds: 12));
+      await tester.pumpAndSettle();
       expect(harness.player.session.position,
           const Duration(seconds: 42));
     });
@@ -337,6 +343,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Reprodução concluída'), findsNothing);
       expect(find.text('Vídeo B'), findsOneWidget);
+      // Em link, o seek so sai depois da prontidao (ou do teto dela).
+      await tester.pump(const Duration(seconds: 12));
+      await tester.pumpAndSettle();
     });
   });
 

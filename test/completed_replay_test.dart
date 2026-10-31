@@ -304,6 +304,9 @@ void main() {
             duration: const Duration(minutes: 10),
           ));
 
+      // Em link, o seek so sai depois da prontidao (ou do teto dela).
+      await tester.pump(const Duration(seconds: 12));
+      await tester.pumpAndSettle();
       expect(harness.player.session.position, const Duration(minutes: 5));
       expect(find.widgetWithText(FocusableButton, 'Ver de novo'), findsNothing);
     });

@@ -8,6 +8,7 @@ import 'package:player/app/routes.dart';
 import 'package:player/core/storage/local_store.dart';
 import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/models/media_item.dart';
+import 'package:player/models/playback_state.dart';
 import 'package:player/services/diagnostics_service.dart';
 import 'package:player/services/history_service.dart';
 import 'package:player/services/library_service.dart';
@@ -287,6 +288,51 @@ void main() {
       expect(find.text('Não foi possível reproduzir'), findsNothing);
       await _revealControls(tester);
       expect(find.byTooltip('Fechar'), findsWidgets);
+    });
+
+    testWidgets('link sem HLS: cobre o inicio e descobre depois do seek',
+        (tester) async {
+      final harness = await _openPlayer(
+        tester,
+        item: _item(source: 'https://midia.test/v.mp4'),
+      );
+      expect(harness.player.opened, hasLength(1));
+
+      await _driveVerify(tester);
+      expect(harness.player.seeks, contains(_resume));
+      expect(find.text('Ajustando a posição…'), findsNothing);
+    });
+
+    testWidgets('master sem resposta e sem internet nao prende a capa',
+        (tester) async {
+      HlsVariants.debugFetchOverride =
+          (_) => throw const SocketException('sem rede');
+      final harness = await _openPlayer(
+        tester,
+        configure: (player) => player.hangSeeks = true,
+      );
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+      expect(harness.player.seeks, isNotEmpty);
+      expect(find.text('Ajustando a posição…'), findsNothing);
+    });
+
+    testWidgets('erro aparece acima da capa de retomada', (tester) async {
+      HlsVariants.debugFetchOverride = (_) async => _master;
+      final harness = await _openPlayer(
+        tester,
+        configure: (player) => player.hangSeeks = true,
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Ajustando a posição…'), findsOneWidget);
+
+      harness.player.simulateError(PlaybackErrorKind.network);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ajustando a posição…'), findsNothing);
+      expect(find.text('Não foi possível reproduzir'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('seek que nunca conclui nao prende a capa de retomada',

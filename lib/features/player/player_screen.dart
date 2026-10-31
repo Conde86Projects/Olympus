@@ -457,9 +457,15 @@ class _PlayerScreenState extends State<PlayerScreen>
       openItem = _baseItem.copyWith(source: target);
       _currentItem = openItem;
     }
+    // Toda retomada comeca coberta: o seek so sai depois da duracao chegar
+    // e, sem a capa, o inicio do video aparece antes do pulo (visto na TCL).
+    final wasCompleted = widget.dependencies.historyService
+            .latestFor(_currentItem.id)
+            ?.completed ??
+        false;
     final coverResume =
         widget.dependencies.preferencesService.current.resumeAutomatically &&
-            isM3u8Url(_baseItem.source) &&
+            !wasCompleted &&
             (_currentItem.lastPosition ?? Duration.zero) > Duration.zero;
     if (coverResume) _beginReposition(player);
     await player.open(openItem);
@@ -479,10 +485,6 @@ class _PlayerScreenState extends State<PlayerScreen>
     await _applyPreferredSubtitles(player.session);
     // Item concluido (spec 11, Fase 0.2.0): reabre do inicio, sem
     // buscar a posicao final; a oferta "Ver de novo" aparece no overlay.
-    final wasCompleted = widget.dependencies.historyService
-            .latestFor(_currentItem.id)
-            ?.completed ??
-        false;
     if (wasCompleted && mounted) {
       setState(() {
         _replayOffer = true;
@@ -497,13 +499,21 @@ class _PlayerScreenState extends State<PlayerScreen>
       // arquivo quebrado: o erro segue o fluxo normal).
       await _waitForDuration(player, const Duration(seconds: 5));
       if (!mounted) return;
-      if (await _isHlsMaster()) {
-        // Master HLS: seek com verificacao da posicao real e no
-        // maximo UMA correcao (resume HLS). Os demais fluxos
-        // seguem exatamente como estavam.
+      // A deteccao tambem aquece o seletor; precisa rodar mesmo em link.
+      final hlsMaster = await _isHlsMaster();
+      if (hlsMaster || _currentItem.sourceType == MediaSourceType.url) {
+        // Rede: seek so com o video andando, verificacao da posicao real e
+        // no maximo UMA correcao. Seek antes disso e descartado em silencio
+        // e o video seguia do inicio (visto na TCL).
         await _resumeHlsMaster(player, resume);
       } else {
-        await player.seek(resume);
+        try {
+          await player.seek(resume).timeout(HlsVariants.hlsSeekTimeout);
+        } catch (_) {
+          // Sem resposta (fonte fora do ar): a verificacao tenta de novo.
+        }
+        if (!mounted) return;
+        unawaited(_endRepositionWhenLanded(player, resume));
         _verifyResume(player, resume);
       }
     }
