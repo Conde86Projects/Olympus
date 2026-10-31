@@ -45,6 +45,15 @@ abstract final class HlsColdProbe {
   /// Espera antes da tentativa posterior (segundo plano, sem travar).
   static const retryDelay = Duration(seconds: 3);
 
+  /// Esperas das redetecções depois da abertura. Limitadas: quem desiste
+  /// cedo demais deixava o seletor sem qualidade até reabrir (U11).
+  static const warmDelays = [
+    Duration(seconds: 3),
+    Duration(seconds: 10),
+    Duration(seconds: 30),
+    Duration(seconds: 60),
+  ];
+
   /// Teto de cada busca textual (master cabe folgado).
   static const fetchTimeout = Duration(seconds: 4);
 

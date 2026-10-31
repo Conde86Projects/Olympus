@@ -297,7 +297,7 @@ void main() {
       final harness = await _openPlayer(tester);
       expect(harness.player.opened.single.source, _masterUrl);
 
-      // A única tentativa posterior, limitada e em segundo plano.
+      // Primeira tentativa posterior, limitada e em segundo plano.
       await tester.pump(HlsColdProbe.retryDelay + const Duration(seconds: 1));
       await tester.pumpAndSettle();
       expect(calls, 2);
@@ -313,11 +313,41 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Qualidade'), findsOneWidget);
 
-      // E para por aí: nenhuma terceira tentativa.
-      await tester.pump(const Duration(seconds: 10));
+      // Recuperou: para por aí, nenhuma tentativa a mais.
+      await tester.pump(const Duration(minutes: 3));
       await tester.pumpAndSettle();
       expect(calls, 2);
       expect(harness.player.opened, hasLength(1));
+    });
+
+    testWidgets('master que volta tarde ainda aquece o seletor',
+        (tester) async {
+      var calls = 0;
+      var online = false;
+      HlsVariants.debugFetchOverride = (_) async {
+        calls++;
+        if (!online) throw const SocketException('rede fria');
+        return _master;
+      };
+      final harness = await _openPlayer(tester);
+      for (final delay in HlsColdProbe.warmDelays.take(3)) {
+        await tester.pump(delay + const Duration(seconds: 1));
+        await tester.pumpAndSettle();
+      }
+      expect(calls, 4);
+
+      online = true;
+      await tester.pump(
+          HlsColdProbe.warmDelays.last + const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(calls, 5);
+      expect(harness.player.opened, hasLength(1));
+      expect(harness.player.opened.single.source, _masterUrl);
+      expect(harness.history.entries, isEmpty);
+      await _revealControls(tester);
+      await tester.tap(find.byTooltip('Configurações'));
+      await tester.pumpAndSettle();
+      expect(find.text('Qualidade'), findsOneWidget);
     });
 
     testWidgets('falha permanente: segue no master, sem novas tentativas',
@@ -328,15 +358,17 @@ void main() {
         throw const SocketException('sem rede');
       };
       final harness = await _openPlayer(tester);
-      await tester.pump(HlsColdProbe.retryDelay + const Duration(seconds: 1));
-      await tester.pumpAndSettle();
+      for (final delay in HlsColdProbe.warmDelays) {
+        await tester.pump(delay + const Duration(seconds: 1));
+        await tester.pumpAndSettle();
+      }
       expect(harness.player.opened, hasLength(1));
       expect(harness.player.opened.single.source, _masterUrl);
-      // Inicial + a única posterior: nada além disso.
-      expect(calls, 2);
-      await tester.pump(const Duration(seconds: 10));
+      // Inicial + as posteriores limitadas: nada além disso.
+      expect(calls, 1 + HlsColdProbe.warmDelays.length);
+      await tester.pump(const Duration(minutes: 5));
       await tester.pumpAndSettle();
-      expect(calls, 2);
+      expect(calls, 1 + HlsColdProbe.warmDelays.length);
       expect(harness.player.opened, hasLength(1));
       await _revealControls(tester);
       await tester.tap(find.byTooltip('Configurações'));

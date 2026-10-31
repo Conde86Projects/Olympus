@@ -807,27 +807,35 @@ class _PlayerScreenState extends State<PlayerScreen>
     return within;
   }
 
-  /// Redetecção fria: UMA tentativa posterior, limitada por
-  /// timeout, em segundo plano. Só aquece [_hlsVariants] (o seletor
+  /// Redetecção fria: tentativas posteriores espaçadas e limitadas
+  /// ([HlsColdProbe.warmDelays]), em segundo plano. Só aquece
+  /// [_hlsVariants] (o seletor
   /// passa a oferecer qualidade); nunca chama open/seek, nunca muda
   /// [_currentItem]/[_baseItem] e nunca escreve no histórico.
-  void _scheduleHlsColdWarm() {
+  void _scheduleHlsColdWarm([int attempt = 0]) {
     _hlsColdTimer?.cancel();
     if (!_isCappedClass) return;
     if (_currentItem.sourceType != MediaSourceType.url) return;
     if (!isM3u8Url(_baseItem.source)) return;
+    if (attempt >= HlsColdProbe.warmDelays.length) return;
     final player = widget.dependencies.playerService;
-    _hlsColdTimer = Timer(HlsColdProbe.retryDelay, () async {
+    final source = _baseItem.source;
+    _hlsColdTimer = Timer(HlsColdProbe.warmDelays[attempt], () async {
       _hlsColdTimer = null;
       if (!mounted) return;
       final result = await HlsColdProbe.probe(
-        _baseItem.source,
+        source,
         maxAttempts: 1,
         log: (stage, {detail}) => _probeHlsResume(player, stage, detail),
       );
-      if (!mounted) return;
+      // Outra midia ou outra abertura assumiu enquanto buscava.
+      if (!mounted || _baseItem.source != source) return;
       if (result.variants.isNotEmpty && _hlsVariants.isEmpty) {
         setState(() => _hlsVariants = result.variants);
+      } else if (result.outcome == HlsColdOutcome.failed &&
+          _hlsVariants.isEmpty &&
+          _hlsColdTimer == null) {
+        _scheduleHlsColdWarm(attempt + 1);
       }
     });
   }
