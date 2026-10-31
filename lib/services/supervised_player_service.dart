@@ -59,6 +59,7 @@ class SupervisedPlayerService implements MediaPlayerService {
 
   Timer? _loadTimer;
   Timer? _bufferTimer;
+  Timer? _startTimer;
   int _generation = 0;
 
   /// Erro injetado pelo supervisor (pre-checagem/timeout): segura o
@@ -202,7 +203,8 @@ class SupervisedPlayerService implements MediaPlayerService {
   }
 
   void _onInner(PlaybackSession session) {
-    if (_latched != null && session.status != _latchedFrom) {
+    if (_latched != null &&
+        (session.status != _latchedFrom || _startedAfterStall(session))) {
       // Sinal de vida depois do erro injetado: o motor se recuperou
       // sozinho, o espelho volta a segui-lo.
       _latched = null;
@@ -217,7 +219,38 @@ class SupervisedPlayerService implements MediaPlayerService {
     }
     _mirror = mirror;
     _retime(mirror.status);
+    _retimeStart(mirror);
     _emit();
+  }
+
+  /// Vigia tocando no zero disparou, mas o video enfim avancou.
+  bool _startedAfterStall(PlaybackSession session) =>
+      _latchedFrom == PlaybackStatus.playing &&
+      session.status == PlaybackStatus.playing &&
+      session.position > Duration.zero;
+
+  /// Motor em "tocando" sem nunca sair do zero (rede caiu antes do primeiro
+  /// quadro): nao ha buffering para o [bufferTimeout] pegar e a tela ficava
+  /// preta para sempre. Mesmo prazo da carga.
+  void _retimeStart(PlaybackSession session) {
+    if (session.status != PlaybackStatus.playing ||
+        session.position > Duration.zero) {
+      _startTimer?.cancel();
+      _startTimer = null;
+      return;
+    }
+    if (_startTimer != null) return;
+    final generation = _generation;
+    _startTimer = Timer(loadTimeout, () {
+      _startTimer = null;
+      if (generation != _generation) return;
+      if (_mirror.status != PlaybackStatus.playing ||
+          _mirror.position > Duration.zero) {
+        return;
+      }
+      _logEvent('timeout-start', outcome: 'fired');
+      _fail(PlaybackErrorKind.timeout, generation);
+    });
   }
 
   /// Erro do supervisor: trava o espelho ate a proxima abertura, parada
@@ -269,6 +302,8 @@ class SupervisedPlayerService implements MediaPlayerService {
     _loadTimer = null;
     _bufferTimer?.cancel();
     _bufferTimer = null;
+    _startTimer?.cancel();
+    _startTimer = null;
   }
 
   /// Sonda de diagnostico da retomada HLS (instrumentacao, sem

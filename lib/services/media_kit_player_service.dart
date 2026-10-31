@@ -113,7 +113,8 @@ class MediaKitPlayerService implements MediaPlayerService {
         }());
       }),
       _player.stream.error.listen((message) {
-        _errorMessage = message.isEmpty ? null : message;
+        _errorMessage =
+            message.isEmpty ? null : mergePlaybackError(_errorMessage, message);
         // Diagnostico de aparelho (debug): a mensagem nativa nunca vai
         // para a tela nem para o log tecnico (pode conter URL), so para
         // o logcat em build debug.

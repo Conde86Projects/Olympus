@@ -237,10 +237,101 @@ void main() {
         inner.emitStatus(PlaybackStatus.buffering);
         async.flushMicrotasks();
         async.elapse(const Duration(seconds: 14));
-        inner.emitStatus(PlaybackStatus.playing);
+        inner.emit(inner.session.copyWith(
+          status: PlaybackStatus.playing,
+          position: const Duration(seconds: 1),
+        ));
         async.flushMicrotasks();
         async.elapse(const Duration(minutes: 5));
         expect(player.session.status, PlaybackStatus.playing);
+      });
+    });
+
+    test('erro de decodificacao nao esconde a queda de rede anterior', () {
+      const network = 'tcp: Failed to resolve hostname exemplo.com';
+      expect(mergePlaybackError(network, 'Error decoding audio.'), network);
+      expect(
+          classifyPlaybackError(
+              mergePlaybackError(network, 'Error decoding audio.')),
+          PlaybackErrorKind.network);
+      expect(mergePlaybackError(null, 'Error decoding audio.'),
+          'Error decoding audio.');
+      expect(mergePlaybackError(network, 'HTTP error 404'), 'HTTP error 404');
+    });
+
+    test('tocando parado no zero vira erro de timeout', () {
+      fakeAsync((async) {
+        final inner = _ScriptedPlayer();
+        final player = SupervisedPlayerService(
+          inner,
+          loadTimeout: const Duration(seconds: 30),
+          bufferTimeout: const Duration(seconds: 15),
+        );
+        unawaited(player.open(urlItem()));
+        async.flushMicrotasks();
+        inner.emitStatus(PlaybackStatus.playing);
+        async.flushMicrotasks();
+
+        async.elapse(const Duration(seconds: 29));
+        expect(player.session.status, PlaybackStatus.playing);
+        async.elapse(const Duration(seconds: 1));
+        expect(player.session.status, PlaybackStatus.error);
+        expect(player.session.errorKind, PlaybackErrorKind.timeout);
+      });
+    });
+
+    test('primeiro avanco cancela o vigia e pausa nao dispara', () {
+      fakeAsync((async) {
+        final inner = _ScriptedPlayer();
+        final player = SupervisedPlayerService(
+          inner,
+          loadTimeout: const Duration(seconds: 30),
+          bufferTimeout: const Duration(seconds: 15),
+        );
+        unawaited(player.open(urlItem()));
+        async.flushMicrotasks();
+        inner.emitStatus(PlaybackStatus.playing);
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 20));
+        inner.emitStatus(PlaybackStatus.paused);
+        async.flushMicrotasks();
+        async.elapse(const Duration(minutes: 5));
+        expect(player.session.status, PlaybackStatus.paused);
+
+        inner.emitStatus(PlaybackStatus.playing);
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 20));
+        inner.emit(inner.session.copyWith(
+          position: const Duration(milliseconds: 500),
+        ));
+        async.flushMicrotasks();
+        async.elapse(const Duration(minutes: 5));
+        expect(player.session.status, PlaybackStatus.playing);
+      });
+    });
+
+    test('video que comeca depois do vigia sai do erro sozinho', () {
+      fakeAsync((async) {
+        final inner = _ScriptedPlayer();
+        final player = SupervisedPlayerService(
+          inner,
+          loadTimeout: const Duration(seconds: 30),
+          bufferTimeout: const Duration(seconds: 15),
+        );
+        unawaited(player.open(urlItem()));
+        async.flushMicrotasks();
+        inner.emitStatus(PlaybackStatus.playing);
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 30));
+        expect(player.session.status, PlaybackStatus.error);
+
+        inner.emit(inner.session.copyWith(
+          status: PlaybackStatus.playing,
+          position: const Duration(seconds: 1),
+        ));
+        async.flushMicrotasks();
+        expect(player.session.status, PlaybackStatus.playing);
+        expect(player.session.errorKind, isNull);
       });
     });
 

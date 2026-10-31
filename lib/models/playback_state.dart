@@ -67,6 +67,16 @@ PlaybackErrorKind classifyPlaybackError(String? message) {
   return PlaybackErrorKind.unknown;
 }
 
+/// Mensagem que vale depois de um novo erro nativo. Sem rede, o motor esgota
+/// os dados e termina em "Error decoding audio": a falha de decodificacao e
+/// consequencia e nao pode esconder o erro de conexao que veio antes.
+String mergePlaybackError(String? previous, String next) {
+  final masksNetwork = previous != null &&
+      classifyPlaybackError(previous) == PlaybackErrorKind.network &&
+      classifyPlaybackError(next) == PlaybackErrorKind.decoder;
+  return masksNetwork ? previous : next;
+}
+
 /// Rotulo curto e neutro do tipo (diagnostico e exportacao): sem
 /// caminhos, URLs ou detalhes da mensagem original.
 String playbackErrorKindLabel(PlaybackErrorKind kind) => switch (kind) {
