@@ -462,7 +462,14 @@ Não coloque tokens, senhas ou chaves no repositório.
 
 ## Política de fontes reais
 
-Uma fonte real só deve ser integrada quando existirem:
+O Olympus é um player descentralizado: reproduz o que o próprio usuário
+informa (link, endereço de manifesto ou arquivo local). O app não
+hospeda, não indexa e não recomenda catálogos de terceiros, e a
+responsabilidade pelo conteúdo é do usuário. Fontes integradas pelo
+projeto (adaptadores em `lib/services/sources/`) seguem os critérios
+abaixo.
+
+Uma fonte integrada pelo projeto só deve ser integrada quando existirem:
 
 ```text
 URL ou endpoint
