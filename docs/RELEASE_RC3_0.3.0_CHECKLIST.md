@@ -41,3 +41,17 @@ Pré-release publicada em 31/10/2026, versão `0.3.0-rc.3+1004`. Substitui a rc.
   - SHA-256: `cea86010f6d9e9c75979b1f484cb56f27223df50d8b1e0097dc0854c9d132b35`
 - `Olympus-0.3.0-rc.3-windows.zip`
   - SHA-256: `badb92b3203120f282fa204b71c80a916cfc58b68993dc93b8241380b4212208`
+
+## Teste de queda na TCL (depois da publicação)
+
+Fonte derrubada por `adb reverse`, sem cortar o Wi-Fi da TV.
+
+- Queda durante a reprodução: erro com "Tentar novamente" apareceu, mas o tempo
+  até o erro não foi medido. O mpv pulou os segmentos que faltavam e, quando a
+  fonte voltou, seguiu sozinho atrás da tela de erro, adiantado no vídeo.
+- Abertura com posição salva e fonte fora do ar: **a interface congela** em
+  "Ajustando a posição…" e não responde ao controle. Voltou só com a fonte de
+  volta. Causa não encontrada; pode ser efeito do `adb reverse`.
+- `Tentar novamente` não confirmado na TCL.
+- Prazo de 5 s no seek da retomada (commit local) cobre o caso em teste, mas não
+  resolveu esse congelamento.

@@ -1030,9 +1030,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     final beforeMs = player.session.position.inMilliseconds;
     final seekAt = _now();
     try {
-      await player.seek(target);
+      await player.seek(target).timeout(HlsVariants.hlsSeekTimeout);
     } catch (_) {
-      // Seek recusado: a verificacao abaixo e a correcao unica.
+      // Seek recusado ou sem resposta: a verificacao abaixo e a
+      // correcao unica.
     }
     final afterSeek = player.session;
     _probeHlsResume(

@@ -124,6 +124,10 @@ abstract final class HlsVariants {
   static const hlsReadyPoll = Duration(milliseconds: 250);
   static const hlsReadyMaxSamples = 32;
 
+  /// Teto do seek da retomada: com a fonte fora do ar o motor nunca
+  /// conclui o comando e a capa "Ajustando a posição" ficava para sempre.
+  static const hlsSeekTimeout = Duration(seconds: 5);
+
   /// Verificação da posição após o seek (estabilização).
   static const hlsVerifyDelay = Duration(seconds: 2);
 

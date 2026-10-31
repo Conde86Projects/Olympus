@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -53,6 +54,9 @@ class _SeekPlayer extends NoOpMediaPlayerService {
   /// Onde o seek realmente pousa (tentativa 1-based).
   Duration Function(Duration target, int attempt)? landing;
 
+  /// Seek que nunca conclui, como o mpv com a fonte fora do ar.
+  bool hangSeeks = false;
+
   @override
   Future<void> open(MediaItem item) async {
     opened.add(item);
@@ -62,6 +66,7 @@ class _SeekPlayer extends NoOpMediaPlayerService {
   @override
   Future<void> seek(Duration position) async {
     seeks.add(position);
+    if (hangSeeks) return Completer<void>().future;
     if (seeks.length <= throwFirstSeeks) {
       throw StateError('seek indisponível');
     }
@@ -282,6 +287,22 @@ void main() {
       expect(find.text('Não foi possível reproduzir'), findsNothing);
       await _revealControls(tester);
       expect(find.byTooltip('Fechar'), findsWidgets);
+    });
+
+    testWidgets('seek que nunca conclui nao prende a capa de retomada',
+        (tester) async {
+      HlsVariants.debugFetchOverride = (_) async => _master;
+      final harness = await _openPlayer(
+        tester,
+        configure: (player) => player.hangSeeks = true,
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Ajustando a posição…'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+      expect(find.text('Ajustando a posição…'), findsNothing);
+      expect(harness.player.opened, hasLength(1));
     });
 
     testWidgets('master no desktop: abre o master e corrige uma vez',
