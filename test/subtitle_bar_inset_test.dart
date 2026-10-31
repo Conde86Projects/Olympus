@@ -29,6 +29,13 @@ Future<void> _pump(WidgetTester tester, SubtitleBarInset subject,
   ));
 }
 
+/// A medida sai no fim de um quadro; a tela real sempre tem um a caminho.
+Future<void> _measure(WidgetTester tester, SubtitleBarInset subject) async {
+  subject.schedule();
+  tester.binding.scheduleFrame();
+  await tester.pump();
+}
+
 void main() {
   testWidgets('barra visivel: mede do topo dela ate a base do video',
       (tester) async {
@@ -36,8 +43,7 @@ void main() {
     addTearDown(subject.dispose);
     await _pump(tester, subject);
 
-    subject.schedule();
-    await tester.pump();
+    await _measure(tester, subject);
     expect(subject.inset.value, 110);
   });
 
@@ -46,12 +52,11 @@ void main() {
     final subject = SubtitleBarInset(barVisible: () => visible);
     addTearDown(subject.dispose);
     await _pump(tester, subject);
-    subject.schedule();
-    await tester.pump();
+    await _measure(tester, subject);
+    expect(subject.inset.value, 110);
 
     visible = false;
-    subject.schedule();
-    await tester.pump();
+    await _measure(tester, subject);
     expect(subject.inset.value, 0);
   });
 
@@ -60,8 +65,7 @@ void main() {
     addTearDown(subject.dispose);
     await _pump(tester, subject, withBar: false);
 
-    subject.schedule();
-    await tester.pump();
+    await _measure(tester, subject);
     expect(subject.inset.value, 0);
   });
 
@@ -71,6 +75,7 @@ void main() {
 
     subject.schedule();
     subject.dispose();
+    tester.binding.scheduleFrame();
     await tester.pump();
     expect(tester.takeException(), isNull);
   });
