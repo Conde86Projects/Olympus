@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:player/models/media_item.dart';
+import 'package:player/services/thumbnail_service.dart';
 
 /// Biblioteca local do usuario (spec 15.1). Notifica ouvintes a cada mudanca.
 /// Remover um item nunca apaga o arquivo original (spec 15.2).
@@ -24,6 +27,11 @@ abstract class LibraryService extends ChangeNotifier {
 /// Implementacao em memoria para o prototipo (Fase 1).
 class InMemoryLibraryService extends ChangeNotifier
     implements LibraryService {
+  InMemoryLibraryService({this.thumbnailService = const ThumbnailService()});
+
+  /// Servico usado so para apagar <id>.jpg no remove/clear.
+  final ThumbnailService thumbnailService;
+
   final Map<String, MediaItem> _items = {};
 
   @override
@@ -81,12 +89,19 @@ class InMemoryLibraryService extends ChangeNotifier
   @override
   Future<void> remove(String id) async {
     if (_items.remove(id) != null) notifyListeners();
+    // O arquivo sai em segundo plano: a entrada do mapa nunca espera
+    // pelo disco (o pumpAndSettle dos testes tambem nao espera).
+    unawaited(ThumbnailService.deleteFor(id, service: thumbnailService));
   }
 
   @override
   Future<void> clear() async {
     if (_items.isEmpty) return;
+    final ids = _items.keys.toList();
     _items.clear();
     notifyListeners();
+    for (final id in ids) {
+      unawaited(ThumbnailService.deleteFor(id, service: thumbnailService));
+    }
   }
 }

@@ -123,6 +123,17 @@ void main() {
       });
     }
 
+    testWidgets('trocar de aba ancora o foco (primeira seta nao se perde)',
+        (tester) async {
+      await _boot(tester, _portrait);
+      await tester.tap(find.text('Biblioteca'));
+      await tester.pumpAndSettle();
+
+      final focused = FocusManager.instance.primaryFocus;
+      expect(focused, isNotNull);
+      expect(focused!.context, isNotNull);
+    });
+
     testWidgets('Inicio so mostra o Historico no topo', (tester) async {
       await _boot(tester, _portrait);
       Finder topo(String tip) => find.descendant(

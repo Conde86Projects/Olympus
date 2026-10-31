@@ -183,6 +183,10 @@ class MediaKitPlayerService implements MediaPlayerService {
   bool _buffering = false;
   bool _muted = false;
   double _preMuteVolume = 1.0;
+
+  // Fila de transicoes de mudo: toques rapidos executam na ordem dos
+  // pedidos, sem concluir fora de ordem (o ultimo pedido vence).
+  Future<void> _muteQueue = Future.value();
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   double _volume = 1.0;
@@ -268,7 +272,15 @@ class MediaKitPlayerService implements MediaPlayerService {
   }
 
   @override
-  Future<void> setMuted(bool muted) async {
+  Future<void> setMuted(bool muted) {
+    final next = _muteQueue.then((_) => _applyMuted(muted));
+    // A fila segue saudavel mesmo se um passo falhar; o erro chega a
+    // quem chamou pelo [next] devolvido.
+    _muteQueue = next.catchError((Object _) {});
+    return next;
+  }
+
+  Future<void> _applyMuted(bool muted) async {
     // O media_kit nao expoe mudo: emula com volume zero e restauracao.
     if (muted == _muted) return;
     _muted = muted;
