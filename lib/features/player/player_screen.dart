@@ -1427,7 +1427,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                               ),
                             ),
                           ),
-                          if (_repositioning) const RepositionCover(),
+                          if (_repositioning && !_overlayUp) const RepositionCover(),
                           if (_seekFlash != null)
                             SeekFlash(label: _seekFlash!, left: _seekFlashLeft),
                           // Cantos flutuantes (Showtime): tela cheia a esquerda;
