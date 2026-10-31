@@ -71,6 +71,6 @@ Fonte derrubada por `adb reverse`, sem cortar o Wi-Fi da TV.
   salvo, sem mostrar o início.
 - Emulador sem internet: erro de conexão em vez da capa presa; "Tentar novamente"
   com a rede de volta retomou o vídeo.
-- Windows: build novo gerado, ainda sem conferência do dono.
+- Windows sem internet (dono, 31/10): mensagem de erro com opção de tentar de novo.
 - Limite: a retomada em link leva alguns segundos a mais, porque espera o vídeo
   andar antes do seek. Em fonte que nunca anda, espera até 8 s.
