@@ -1,4 +1,4 @@
-package com.example.player
+package com.conde86.olympus
 
 import android.Manifest
 import android.app.UiModeManager

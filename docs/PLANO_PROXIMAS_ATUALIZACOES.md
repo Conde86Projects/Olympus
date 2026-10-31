@@ -3,8 +3,8 @@
 > **Atualização após a v0.3.0 (31/10/2026):** a tabela abaixo é o retrato de antes
 > dessa versão. Entraram na 0.3.0: U01, U02, U05, U06 (não reproduzido), U07, U11,
 > U13 a U18, U30 e U32. U09 ficou validado só em um PC. Seguem abertos: U08, U10,
-> U19 a U21, U25, U27 a U29 e U31. Decisão nova: nome do pacote Android, ainda
-> `com.example.player`; trocar exige reinstalar e perde os dados salvos.
+> U19 a U21, U25, U27 a U29 e U31. Pacote Android definido depois da 0.3.0:
+> `com.conde86.olympus`; instala separado do antigo e não leva os dados salvos.
 
 Data: 2026-10-31
 Repositório: `player` (app Flutter "Olympus"), branch `main`, HEAD `c39140a`.

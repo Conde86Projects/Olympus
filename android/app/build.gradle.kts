@@ -7,7 +7,7 @@ plugins {
 import java.util.Properties
 
 android {
-    namespace = "com.example.player"
+    namespace = "com.conde86.olympus"
     // 36: exigido pelo file_picker (AGP checkDebugAarMetadata); o padrao
     // do Flutter (35) falha. Revisar a cada upgrade do Flutter.
     compileSdk = 36
@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.player"
+        applicationId = "com.conde86.olympus"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

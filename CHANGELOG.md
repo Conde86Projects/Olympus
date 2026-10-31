@@ -6,7 +6,15 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
-Nada por enquanto.
+### Alterado
+
+- Android: o pacote passa a ser `com.conde86.olympus`. O app instala separado do
+  antigo `com.example.player` e começa sem biblioteca, histórico nem ajustes.
+  Windows não muda.
+
+### Corrigido
+
+- Modo TV em tela estreita: os botões da barra não se sobrepõem mais.
 
 ## [0.3.0] - 2026-10-31
 
