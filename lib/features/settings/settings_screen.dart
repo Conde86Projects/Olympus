@@ -338,7 +338,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   title: Text('Olympus'),
                   subtitle:
-                      Text('Versão ${AppConstants.appVersion} — protótipo'),
+                      Text('Versão ${AppConstants.appVersion}'),
                 ),
               ]),
             ],

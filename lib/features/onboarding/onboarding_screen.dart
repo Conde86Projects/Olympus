@@ -27,10 +27,10 @@ class OnboardingScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.play_circle_outline,
-                  size: 72,
-                  color: Colors.white70,
+                Image.asset(
+                  'assets/branding/olympus-mark.png',
+                  height: 96,
+                  excludeFromSemantics: true,
                 ),
                 const SizedBox(height: 24),
                 Text(
