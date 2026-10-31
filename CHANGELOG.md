@@ -28,6 +28,36 @@ se importa). Detalhes de implementação ficam nos documentos em
   master) com suíte 512/512 e `dart analyze` limpo. Prepara a
   próxima RC; a tag `v0.1.0-rc.2` permanece imutável.
 
+## [0.3.0] - 2026-10-31
+
+### Adicionado
+
+- Celular e TV usam o volume do aparelho e mostram só o mudo; Windows tem volume
+  interno lembrado. Volume do sistema em zero muta o app, e subir tira o mudo.
+- Seletor de qualidade no Big Buck Bunny em HLS, nas três plataformas.
+- Navegador de vídeos próprio na TV, para Procurar arquivo e Localizar.
+- Legendas com tamanho, cor, posição e fundo em Ajustes, desenhadas acima da
+  barra de controles.
+- Seletor de qualidade aparece sozinho quando o master volta depois de uma rede
+  fria.
+
+### Corrigido
+
+- TV: o foco agora aparece em Ajustes, no painel do player e nos menus, e os
+  botões dos diálogos respondem ao controle.
+- Retomada: o vídeo fica coberto até o ponto salvo, sem mostrar o início.
+- Sem internet: erro de conexão com "Tentar novamente", em vez de tela preta ou
+  "Ajustando a posição…" preso.
+- Arranque no Android sem flash branco.
+- Celular: "Iniciar em tela cheia" passa a valer.
+
+### Limites conhecidos
+
+- Fonte muito lenta pode cair no limite de 15 s de rede ou de 30 s do início.
+- 4K testado só com clipe sintético de 30 s, no PC do dono e na TCL, sem medir
+  quadros perdidos.
+- Modo TV ligado à mão em tela de celular: a engrenagem encosta no botão +10.
+
 ## [0.1.0] - 2026-10-14
 
 Versão final: player local completo, validado em hardware real
