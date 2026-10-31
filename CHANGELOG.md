@@ -6,11 +6,17 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
+Nada por enquanto.
+
+## [0.3.1] - 2026-10-31
+
 ### Alterado
 
+- O app passa a se chamar Olympus e ganha logo própria no ícone do Android, no
+  banner da TV e no ícone do Windows.
 - Android: o pacote passa a ser `com.conde86.olympus`. O app instala separado do
-  antigo `com.example.player` e começa sem biblioteca, histórico nem ajustes.
-  Windows não muda.
+  antigo `com.example.player` e começa sem biblioteca, histórico nem ajustes. O app
+  antigo pode ser removido; remover apaga os dados dele. Windows mantém os dados.
 
 ### Corrigido
 
