@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:player/core/constants/app_constants.dart';
+import 'package:player/core/utils/subtitle_style.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_player_service.dart';
@@ -37,6 +38,10 @@ class MediaKitPlayerService implements MediaPlayerService {
       'network-timeout',
       '${AppConstants.bufferTimeout.inSeconds}',
     ));
+    // Legendas no padrao do projeto (F6); troca futura via SubtitleStyle.
+    for (final entry in SubtitleStyle.defaults.toMpvProperties().entries) {
+      unawaited(_native.setProperty(entry.key, entry.value));
+    }
     _subscriptions.addAll([
       _player.stream.playing.listen((playing) {
         _playing = playing;
