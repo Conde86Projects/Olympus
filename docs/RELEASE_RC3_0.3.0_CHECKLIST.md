@@ -64,3 +64,13 @@ Fonte derrubada por `adb reverse`, sem cortar o Wi-Fi da TV.
 - Com a internet de volta, o Big Buck Bunny abriu e retomou perto de 3:25.
 - `Tentar novamente` com a internet de volta segue sem confirmação direta.
 - Item de teste `master` não carrega fora dos testes: aponta para o servidor local.
+
+## Retomada corrigida depois da rc.3 (`115bfb4`, `436ac83`)
+
+- TCL, gravação da tela: Big Buck Bunny retomou em 0:26 e 2:41 coberto até o ponto
+  salvo, sem mostrar o início.
+- Emulador sem internet: erro de conexão em vez da capa presa; "Tentar novamente"
+  com a rede de volta retomou o vídeo.
+- Windows: build novo gerado, ainda sem conferência do dono.
+- Limite: a retomada em link leva alguns segundos a mais, porque espera o vídeo
+  andar antes do seek. Em fonte que nunca anda, espera até 8 s.
