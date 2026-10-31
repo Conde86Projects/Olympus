@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:player/features/open_media/pick_video_file.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/app/theme.dart';
@@ -234,11 +234,8 @@ class _OpenMediaScreenState extends State<OpenMediaScreen> {
   /// Seletor nativo de arquivos (Fase 2). O caminho digitado continua
   /// disponivel como alternativa e e o que os testes exercitam.
   Future<void> _browseFile() async {
-    final files = await FilePicker.pickFiles(
-      type: FileType.video,
-      dialogTitle: 'Escolher vídeo',
-    );
-    final path = files.singleOrNull?.path;
+    final path = await pickVideoFile(context, title: 'Escolher vídeo');
+    if (!mounted) return;
     if (path == null || path.isEmpty) return;
     _fileController.text = path;
     await _openFile();
