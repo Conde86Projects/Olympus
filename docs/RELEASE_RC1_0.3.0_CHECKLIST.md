@@ -49,7 +49,7 @@ preparada em `4d2d4fb` (20/10/2026, sem tag).
 ### Celular
 
 - [x] versionName correto (Sobre: 0.3.0-rc.1, `dumpsys`, 24/10)
-- [ ] retrato
+- [x] retrato (emulador, 31/10, rotação travada em retrato)
 - [ ] paisagem
 - [x] botão físico de volume (despluga o mudo, 24/10)
 - [x] botão mudo (sem barra, sem +, sem −, sem gesto)
@@ -58,7 +58,7 @@ preparada em `4d2d4fb` (20/10/2026, sem tag).
 - [x] play/pausa
 - [x] seek
 - [x] retomada
-- [ ] tela cheia
+- [x] tela cheia (dono, 31/10: a tela vira)
 - [x] voltar
 - [x] histórico
 - [x] Qualidade: Automática · efetiva no painel (dono, 24/10)
@@ -67,7 +67,7 @@ preparada em `4d2d4fb` (20/10/2026, sem tag).
 
 ### TCL
 
-- [ ] versionName correto (0.3.0-rc.1)
+- [x] versionName correto (0.3.0-rc.1, `dumpsys`, 31/10)
 - [x] VOL+ aumenta volume do sistema (3 → 5)
 - [x] VOL− diminui volume do sistema
 - [x] mudo do aplicativo funciona (volume_off)
@@ -90,15 +90,15 @@ preparada em `4d2d4fb` (20/10/2026, sem tag).
 - [x] rede fria: abre e lista Qualidade (dono, 24/10)
 - [x] fileira só com mudo, sem trilho (novo build, dono, 24/10)
 - [x] setas ocultas com persistência (dono, 24/10)
-- [ ] janela normal
-- [ ] janela pequena
-- [ ] minimizar
-- [ ] fechar pelo X
-- [ ] mudo
-- [ ] persistência
-- [ ] catálogo
-- [ ] reprodução
-- [ ] retomada
+- [x] janela normal (confirmado na sessão anterior)
+- [x] janela pequena (confirmado na sessão anterior)
+- [x] minimizar (confirmado na sessão anterior)
+- [x] fechar pelo X (confirmado na sessão anterior)
+- [x] mudo (confirmado na sessão anterior)
+- [x] persistência (confirmado na sessão anterior)
+- [x] catálogo (dono, 31/10: funcionou)
+- [x] reprodução (dono, 31/10)
+- [x] retomada (dono, 31/10: funcionou)
 
 ## Critério para criar a tag `v0.3.0-rc.1`
 
