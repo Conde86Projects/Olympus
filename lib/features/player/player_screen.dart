@@ -1736,7 +1736,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     // Ancorar no no da tela: sem isso o foco cai no escopo da rota
     // e a primeira seta do D-pad se perde. Com overlay modal, nao
     // rouba: o autofocus do botao primario vale (F2, Fase 4b).
-    if (!_overlayUp) _screenFocus.requestFocus();
+    // Também com o cartão "Ver de novo" (_replayOffer): ele é modal como o
+    // overlay e não pode perder o foco para o canto da tela.
+    if (!_overlayUp && !_replayOffer) _screenFocus.requestFocus();
   }
 
   /// Saida pedida de proposito (X, Fechar do overlay, Q): sai salvando

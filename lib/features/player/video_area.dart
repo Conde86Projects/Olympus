@@ -78,59 +78,63 @@ class VideoArea extends StatelessWidget {
   Widget _replayOfferCard(BuildContext context) {
     final isTv = TvLayout.isTv(context);
     final tokens = isTv ? TvLayout.tokensOf(context) : null;
-    return Center(
-      child: Container(
-        padding: isTv
-            ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
-            : const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: PlayerSettingsPanel.panelColor,
-          borderRadius: BorderRadius.circular(isTv ? tokens!.panelRadius : 12),
-          border: isTv
-              ? Border.all(color: Colors.white.withValues(alpha: 0.08))
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Você já concluiu este vídeo',
-                style: isTv
-                    ? TextStyle(
-                        color: PlayerTheme.primaryText,
-                        fontSize: tokens!.textBody,
-                        fontWeight: FontWeight.w600,
-                      )
-                    : const TextStyle(color: PlayerTheme.primaryText)),
-            const SizedBox(height: 4),
-            Text('Começa do início.',
-                style: isTv
-                    ? TextStyle(
-                        color: PlayerTheme.secondaryText,
-                        fontSize: tokens!.textCaption,
-                      )
-                    : const TextStyle(color: PlayerTheme.secondaryText)),
-            SizedBox(height: isTv ? 8 : 12),
-            Wrap(
-              spacing: isTv ? 8 : 12,
-              runSpacing: isTv ? 8 : 12,
-              alignment: WrapAlignment.center,
-              children: [
-                FocusableButton(
-                  label: 'Ver de novo',
-                  focusNode: primaryFocus,
-                  icon: Icons.replay,
-                  primary: true,
-                  autofocus: true,
-                  onPressed: onWatchAgain!,
-                ),
-                FocusableButton(
-                  label: 'Fechar',
-                  icon: Icons.close,
-                  onPressed: onDismissReplay!,
-                ),
-              ],
-            ),
-          ],
+    return _FocusOnMount(
+      focusNode: primaryFocus,
+      child: Center(
+        child: Container(
+          padding: isTv
+              ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
+              : const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            color: PlayerSettingsPanel.panelColor,
+            borderRadius:
+                BorderRadius.circular(isTv ? tokens!.panelRadius : 12),
+            border: isTv
+                ? Border.all(color: Colors.white.withValues(alpha: 0.08))
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Você já concluiu este vídeo',
+                  style: isTv
+                      ? TextStyle(
+                          color: PlayerTheme.primaryText,
+                          fontSize: tokens!.textBody,
+                          fontWeight: FontWeight.w600,
+                        )
+                      : const TextStyle(color: PlayerTheme.primaryText)),
+              const SizedBox(height: 4),
+              Text('Começa do início.',
+                  style: isTv
+                      ? TextStyle(
+                          color: PlayerTheme.secondaryText,
+                          fontSize: tokens!.textCaption,
+                        )
+                      : const TextStyle(color: PlayerTheme.secondaryText)),
+              SizedBox(height: isTv ? 8 : 12),
+              Wrap(
+                spacing: isTv ? 8 : 12,
+                runSpacing: isTv ? 8 : 12,
+                alignment: WrapAlignment.center,
+                children: [
+                  FocusableButton(
+                    label: 'Ver de novo',
+                    focusNode: primaryFocus,
+                    icon: Icons.replay,
+                    primary: true,
+                    autofocus: true,
+                    onPressed: onWatchAgain!,
+                  ),
+                  FocusableButton(
+                    label: 'Fechar',
+                    icon: Icons.close,
+                    onPressed: onDismissReplay!,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -343,3 +347,29 @@ class VideoArea extends StatelessWidget {
 /// de progresso (faixa de largura total que capturaria todo raio
 /// para cima e bipartiria a tela). Sem cantos (cinema) ou fora das
 /// setas para cima, vale o padrao. Tab segue a ordem de leitura.
+
+/// Pede o foco ao montar (uma vez): o cartão de "Ver de novo" aparece
+/// depois da transição de abertura, então o foco precisa ser transferido
+/// quando ele existe de fato.
+class _FocusOnMount extends StatefulWidget {
+  const _FocusOnMount({required this.focusNode, required this.child});
+
+  final FocusNode focusNode;
+  final Widget child;
+
+  @override
+  State<_FocusOnMount> createState() => _FocusOnMountState();
+}
+
+class _FocusOnMountState extends State<_FocusOnMount> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.focusNode.requestFocus();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
