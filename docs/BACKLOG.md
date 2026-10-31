@@ -24,9 +24,12 @@ Atualizacao 18/10/2026: `NativePlayer.setProperty` (media_kit
 1.2.6) e publico e ja e usado pela saida direta MediaCodec; os
 `sub-*` podem ser aplicados por ele. Reavaliar esta pendencia.
 
-Reavaliado em 31/10/2026: a premissa acima está superada (`setProperty` é
-público e já é usado no código). A pendência segue aberta apenas por falta
-de implementação (ver docs/PLANO_PROXIMAS_ATUALIZACOES.md, F6).
+Reavaliado em 31/10/2026: `sub-*` não é o caminho. Com `libass` desligado, o
+media_kit usa `sub-visibility=no` e a legenda é desenhada pelo Flutter. O
+estilo padrão agora está em `SubtitleOverlay` (10% acima da base, fonte
+proporcional). Falta a tela de ajustes para o usuário trocar cor, tamanho e
+posição, e a legenda fica coberta enquanto a barra de controles está visível
+em paisagem.
 
 ## Fora da fase atual (confirmado)
 

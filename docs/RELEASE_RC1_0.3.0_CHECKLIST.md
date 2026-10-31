@@ -1,8 +1,12 @@
 # Release Checklist — v0.3.0-rc.1
 
 Candidata a release do ciclo 0.3.0 (política de volume por plataforma).
-Base: commit `a2e8bb2` (tag `v0.3.0-rc.1` criada 24/10/2026). RC1
-preparada em `4d2d4fb` (20/10/2026, sem tag).
+Tag `v0.3.0-rc.1`: criada em 24/10/2026 e movida em 31/10/2026 para
+`09afc3b`, a pedido do dono. RC1 preparada em `4d2d4fb` (20/10/2026,
+sem tag).
+
+Corrigido depois da tag (fora dos artefatos publicados): foco invisível
+em Ajustes e no painel na TV (`ba06866`) e posição da legenda (`9781a33`).
 
 ## Versões (sincronizadas)
 
@@ -62,7 +66,7 @@ Os valores abaixo são do build de 24/10 (histórico).
 
 - [x] versionName correto (Sobre: 0.3.0-rc.1, `dumpsys`, 24/10)
 - [x] retrato (emulador, 31/10, rotação travada em retrato)
-- [ ] paisagem
+- [x] paisagem (emulador, 31/10, ao entrar em tela cheia, `ROTATION_90`)
 - [x] botão físico de volume (despluga o mudo, 24/10)
 - [x] botão mudo (sem barra, sem +, sem −, sem gesto)
 - [x] catálogo definitivo (Fonte Própria, Big Buck Bunny)
