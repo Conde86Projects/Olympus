@@ -206,6 +206,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     )),
                   ),
                 ),
+                _SubtitleChoice<SubtitleSize>(
+                  title: 'Tamanho',
+                  value: current.subtitleSize,
+                  labels: const {
+                    SubtitleSize.small: 'Pequeno',
+                    SubtitleSize.medium: 'Médio',
+                    SubtitleSize.large: 'Grande',
+                  },
+                  onChanged: (v) =>
+                      prefs.update(current.copyWith(subtitleSize: v)),
+                ),
+                _SubtitleChoice<SubtitleColor>(
+                  title: 'Cor',
+                  value: current.subtitleColor,
+                  labels: const {
+                    SubtitleColor.white: 'Branca',
+                    SubtitleColor.yellow: 'Amarela',
+                    SubtitleColor.cyan: 'Ciano',
+                  },
+                  onChanged: (v) =>
+                      prefs.update(current.copyWith(subtitleColor: v)),
+                ),
+                _SubtitleChoice<SubtitlePosition>(
+                  title: 'Posição',
+                  value: current.subtitlePosition,
+                  labels: const {
+                    SubtitlePosition.low: 'Baixa',
+                    SubtitlePosition.normal: 'Normal',
+                    SubtitlePosition.high: 'Alta',
+                  },
+                  onChanged: (v) =>
+                      prefs.update(current.copyWith(subtitlePosition: v)),
+                ),
+                SwitchListTile(
+                  title: const Text('Fundo atrás do texto'),
+                  value: current.subtitleBackground,
+                  onChanged: (v) =>
+                      prefs.update(current.copyWith(subtitleBackground: v)),
+                ),
               ]),
               _Section('Áudio', [
                 // Volume interno (initialVolume) só vale no desktop/Windows.
@@ -403,6 +442,38 @@ class _Section extends StatelessWidget {
             child,
         const Divider(),
       ],
+    );
+  }
+}
+
+/// Linha com lista de opcoes da aparencia da legenda.
+class _SubtitleChoice<T> extends StatelessWidget {
+  const _SubtitleChoice({
+    required this.title,
+    required this.value,
+    required this.labels,
+    required this.onChanged,
+  });
+
+  final String title;
+  final T value;
+  final Map<T, String> labels;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(title),
+      trailing: DropdownButton<T>(
+        value: value,
+        items: [
+          for (final entry in labels.entries)
+            DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+        ],
+        onChanged: (v) {
+          if (v != null) onChanged(v);
+        },
+      ),
     );
   }
 }

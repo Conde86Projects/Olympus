@@ -10,6 +10,10 @@ class UserPreferences {
     this.defaultSubtitle,
     this.defaultAudio,
     this.subtitlesByDefault = false,
+    this.subtitleSize = SubtitleSize.medium,
+    this.subtitleColor = SubtitleColor.white,
+    this.subtitlePosition = SubtitlePosition.normal,
+    this.subtitleBackground = true,
     this.initialVolume = 1.0,
     this.animations = true,
     this.alwaysOnTop = false,
@@ -47,6 +51,12 @@ class UserPreferences {
 
   /// Liga legendas por padrao na abertura (spec 16). Desligado por padrao.
   final bool subtitlesByDefault;
+
+  /// Aparencia da legenda (F6, U01).
+  final SubtitleSize subtitleSize;
+  final SubtitleColor subtitleColor;
+  final SubtitlePosition subtitlePosition;
+  final bool subtitleBackground;
 
   /// Volume aplicado a cada abertura (0.0-1.0).
   final double initialVolume;
@@ -91,6 +101,10 @@ class UserPreferences {
     String? Function()? defaultSubtitle,
     String? Function()? defaultAudio,
     bool? subtitlesByDefault,
+    SubtitleSize? subtitleSize,
+    SubtitleColor? subtitleColor,
+    SubtitlePosition? subtitlePosition,
+    bool? subtitleBackground,
     double? initialVolume,
     bool? animations,
     bool? alwaysOnTop,
@@ -117,6 +131,10 @@ class UserPreferences {
           defaultSubtitle != null ? defaultSubtitle() : this.defaultSubtitle,
       defaultAudio: defaultAudio != null ? defaultAudio() : this.defaultAudio,
       subtitlesByDefault: subtitlesByDefault ?? this.subtitlesByDefault,
+      subtitleSize: subtitleSize ?? this.subtitleSize,
+      subtitleColor: subtitleColor ?? this.subtitleColor,
+      subtitlePosition: subtitlePosition ?? this.subtitlePosition,
+      subtitleBackground: subtitleBackground ?? this.subtitleBackground,
       initialVolume: initialVolume ?? this.initialVolume,
       animations: animations ?? this.animations,
       alwaysOnTop: alwaysOnTop ?? this.alwaysOnTop,
@@ -148,6 +166,10 @@ class UserPreferences {
         'defaultSubtitle': defaultSubtitle,
         'defaultAudio': defaultAudio,
         'subtitlesByDefault': subtitlesByDefault,
+        'subtitleSize': subtitleSize.name,
+        'subtitleColor': subtitleColor.name,
+        'subtitlePosition': subtitlePosition.name,
+        'subtitleBackground': subtitleBackground,
         'initialVolume': initialVolume,
         'animations': animations,
         'alwaysOnTop': alwaysOnTop,
@@ -175,6 +197,13 @@ class UserPreferences {
       defaultSubtitle: map['defaultSubtitle'] as String?,
       defaultAudio: map['defaultAudio'] as String?,
       subtitlesByDefault: (map['subtitlesByDefault'] ?? false) as bool,
+      subtitleSize: _byName(
+          SubtitleSize.values, map['subtitleSize'], SubtitleSize.medium),
+      subtitleColor: _byName(
+          SubtitleColor.values, map['subtitleColor'], SubtitleColor.white),
+      subtitlePosition: _byName(SubtitlePosition.values,
+          map['subtitlePosition'], SubtitlePosition.normal),
+      subtitleBackground: (map['subtitleBackground'] ?? true) as bool,
       initialVolume: ((map['initialVolume'] ?? 1.0) as num).toDouble(),
       animations: (map['animations'] ?? true) as bool,
       alwaysOnTop: (map['alwaysOnTop'] ?? false) as bool,
@@ -195,3 +224,17 @@ class UserPreferences {
 }
 
 enum AppThemeMode { dark, system }
+
+enum SubtitleSize { small, medium, large }
+
+enum SubtitleColor { white, yellow, cyan }
+
+enum SubtitlePosition { low, normal, high }
+
+/// Valor salvo desconhecido (versao futura ou dado corrompido) cai no padrao.
+T _byName<T extends Enum>(List<T> values, Object? name, T fallback) {
+  for (final value in values) {
+    if (value.name == name) return value;
+  }
+  return fallback;
+}

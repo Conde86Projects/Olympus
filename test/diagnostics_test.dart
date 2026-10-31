@@ -480,7 +480,7 @@ class _WidgetHarness {
   }
 
   Future<void> pump(WidgetTester tester) async {
-    await tester.binding.setSurfaceSize(const Size(1080, 2600));
+    await tester.binding.setSurfaceSize(const Size(1080, 3200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(PlayerApp(
       preferencesService: preferences,

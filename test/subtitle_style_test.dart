@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/core/utils/subtitle_style.dart';
+import 'package:player/models/preferences.dart';
 import 'package:player/widgets/subtitle_overlay.dart';
 
 Future<void> _pump(WidgetTester tester, Size area, List<String> lines,
@@ -36,7 +37,80 @@ void main() {
     });
   });
 
+  group('escolhas de Ajustes', () {
+    test('o padrao das preferencias e o estilo padrao', () {
+      final style = SubtitleStyle.fromPreferences(const UserPreferences());
+      const area = Size(960, 540);
+      expect(style.textColor, SubtitleStyle.defaults.textColor);
+      expect(style.backgroundColor, SubtitleStyle.defaults.backgroundColor);
+      expect(style.bottomFor(area), SubtitleStyle.defaults.bottomFor(area));
+      expect(style.fontSizeFor(area), SubtitleStyle.defaults.fontSizeFor(area));
+    });
+
+    test('tamanho, cor, posicao e fundo mudam o estilo', () {
+      final style = SubtitleStyle.fromPreferences(const UserPreferences(
+        subtitleSize: SubtitleSize.large,
+        subtitleColor: SubtitleColor.yellow,
+        subtitlePosition: SubtitlePosition.high,
+        subtitleBackground: false,
+      ));
+      const area = Size(960, 540);
+      expect(style.textColor, const Color(0xFFFFEB3B));
+      expect(style.backgroundColor.a, 0);
+      expect(style.bottomFor(area), 108);
+      expect(style.fontSizeFor(area), closeTo(31.59, 0.01));
+    });
+
+    test('salva e recupera; valor desconhecido cai no padrao', () {
+      const prefs = UserPreferences(
+        subtitleSize: SubtitleSize.small,
+        subtitleColor: SubtitleColor.cyan,
+        subtitlePosition: SubtitlePosition.low,
+        subtitleBackground: false,
+      );
+      final back = UserPreferences.fromMap(prefs.toMap());
+      expect(back.subtitleSize, SubtitleSize.small);
+      expect(back.subtitleColor, SubtitleColor.cyan);
+      expect(back.subtitlePosition, SubtitlePosition.low);
+      expect(back.subtitleBackground, isFalse);
+
+      final old = UserPreferences.fromMap(const {'subtitleSize': 'gigante'});
+      expect(old.subtitleSize, SubtitleSize.medium);
+      expect(old.subtitleBackground, isTrue);
+    });
+  });
+
   group('SubtitleOverlay', () {
+    testWidgets('sobe acima da barra visivel e volta quando ela some',
+        (tester) async {
+      final inset = ValueNotifier<double>(0);
+      addTearDown(inset.dispose);
+      await tester.pumpWidget(MaterialApp(
+        home: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: 640,
+            height: 360,
+            child: SubtitleScope(
+              style: SubtitleStyle.defaults,
+              bottomInset: inset,
+              child: const SubtitleOverlay(lines: ['Legenda']),
+            ),
+          ),
+        ),
+      ));
+      expect(tester.getRect(find.text('Legenda')).bottom, closeTo(324, 0.01));
+
+      inset.value = 100;
+      await tester.pumpAndSettle();
+      expect(tester.getRect(find.text('Legenda')).bottom,
+          closeTo(360 - 100 - SubtitleOverlay.barGap, 0.01));
+
+      inset.value = 10;
+      await tester.pumpAndSettle();
+      expect(tester.getRect(find.text('Legenda')).bottom, closeTo(324, 0.01));
+    });
+
     testWidgets('fica acima da base na fracao do estilo', (tester) async {
       await _pump(tester, const Size(640, 360), const ['Legenda']);
 

@@ -14,6 +14,7 @@ import 'package:player/core/utils/hls_target.dart';
 import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
 import 'package:player/core/utils/media_utils.dart';
+import 'package:player/core/utils/subtitle_style.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
 import 'package:player/features/open_media/pick_video_file.dart';
 import 'package:player/features/player/hls_observer.dart';
@@ -36,6 +37,7 @@ import 'package:player/widgets/confirm_dialog.dart';
 import 'package:player/widgets/focusable_button.dart';
 import 'package:player/widgets/player_controls.dart';
 import 'package:player/widgets/player_settings_panel.dart';
+import 'package:player/widgets/subtitle_overlay.dart';
 import 'package:player/widgets/tv_player_controls.dart';
 
 /// Tela do player (spec 11, 12): video ao centro, controles flutuantes com
@@ -199,6 +201,12 @@ class _PlayerScreenState extends State<PlayerScreen>
   final _overlayPrimaryFocus = FocusNode(debugLabel: 'overlay-primary');
   bool _wasOverlayUp = false;
 
+  /// Altura que a barra de controles ocupa sobre o video: a legenda sobe
+  /// para nao ficar coberta enquanto a barra esta visivel.
+  final _subtitleInset = ValueNotifier<double>(0);
+  final _videoAreaKey = GlobalKey();
+  final _controlsCardKey = GlobalKey();
+
   /// Ultimo controle focado antes do hide (F5, Fase 4b): o poke
   /// restaura nele, nao no primeiro da ordem (cantos).
   FocusNode? _lastControlFocus;
@@ -273,6 +281,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     // gancho de foco após ocultar no disparo.
     _chrome.autoHideGuard = () => mounted && !_panelOpen && !_overlayUp;
     _chrome.onControlsAutoHidden = _anchorFocusOnHide;
+    _chrome.addListener(_scheduleSubtitleInset);
     _sourceQuality = ValueNotifier<String?>(null);
     _hls = HlsSessionState();
     // Ao sair da barra no modo TV, rearma o auto-hide (e so).
@@ -1241,6 +1250,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     _hlsColdTimer = null;
     _subscription?.cancel();
     _systemVolumeSub?.cancel();
+    _chrome.removeListener(_scheduleSubtitleInset);
+    _subtitleInset.dispose();
     _screenFocus.dispose();
     _sourceQuality.dispose();
     _hls.dispose();
@@ -1319,6 +1330,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     // A tela assina o chrome (ADR-0002): qualquer mudança no módulo
     // reconstrói via ListenableBuilder, sem cópia local de estado.
+    _scheduleSubtitleInset();
     return ListenableBuilder(
       listenable: _chrome,
       builder: (context, _) => PopScope(
@@ -1381,7 +1393,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                                 : null,
                             onDoubleTap:
                                 _mobile && !modalUp ? _seekByDoubleTap : null,
-                            child: VideoArea(
+                            child: SubtitleScope(
+                              style: SubtitleStyle.fromPreferences(widget
+                                  .dependencies.preferencesService.current),
+                              bottomInset: _subtitleInset,
+                              child: VideoArea(
+                              key: _videoAreaKey,
                               player: widget.dependencies.playerService,
                               session: _session,
                               isLocal: _currentItem.sourceType ==
@@ -1415,6 +1432,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                               },
                               onDismissReplay: () =>
                                   setState(() => _replayOffer = false),
+                              ),
                             ),
                           ),
                           if (_repositioning) const RepositionCover(),
@@ -1538,6 +1556,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                     node: _controlsScope,
                                     child: Center(
                                       child: ConstrainedBox(
+                                        key: _controlsCardKey,
                                         constraints:
                                             const BoxConstraints(maxWidth: 880),
                                         child: _tvMode
@@ -1580,6 +1599,29 @@ class _PlayerScreenState extends State<PlayerScreen>
         ),
       ),
     );
+  }
+
+  void _scheduleSubtitleInset() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncSubtitleInset());
+  }
+
+  /// Mede quanto a barra visivel cobre da base do video.
+  void _syncSubtitleInset() {
+    if (!mounted) return;
+    var inset = 0.0;
+    final area = _videoAreaKey.currentContext?.findRenderObject();
+    final card = _controlsCardKey.currentContext?.findRenderObject();
+    if (_controlsVisible &&
+        !_overlayUp &&
+        area is RenderBox &&
+        card is RenderBox &&
+        area.hasSize &&
+        card.hasSize) {
+      final areaBottom = area.localToGlobal(Offset(0, area.size.height)).dy;
+      final cardTop = card.localToGlobal(Offset.zero).dy;
+      inset = (areaBottom - cardTop).clamp(0.0, area.size.height);
+    }
+    _subtitleInset.value = inset;
   }
 
   /// D-pad/teclado com a barra oculta (F1, Fase 4b, spec 18): setas
