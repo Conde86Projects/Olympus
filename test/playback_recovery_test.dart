@@ -67,6 +67,9 @@ class _ScriptedPlayer implements MediaPlayerService {
   Widget buildVideoView() => const SizedBox();
 
   @override
+  Future<void> addExternalSubtitle(String path) async {}
+
+  @override
   Future<void> open(MediaItem item) async {
     openCount++;
     if (openHook != null) await openHook!();

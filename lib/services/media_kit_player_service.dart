@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -113,6 +114,9 @@ class MediaKitPlayerService implements MediaPlayerService {
         }());
       }),
       _player.stream.error.listen((message) {
+        // Legenda ruim nao e erro de reproducao: o video segue e quem pediu
+        // recebe a falha em [addExternalSubtitle].
+        if (_addingSubtitle || isExternalSubtitleError(message)) return;
         _errorMessage =
             message.isEmpty ? null : mergePlaybackError(_errorMessage, message);
         // Diagnostico de aparelho (debug): a mensagem nativa nunca vai
@@ -153,6 +157,9 @@ class MediaKitPlayerService implements MediaPlayerService {
   /// Arquivo atual caiu no modo compativel (`vo=gpu`); o proximo
   /// [open] volta para a saida direta.
   bool _compatOutput = false;
+
+  /// Abrindo legenda externa: erro do motor nesse intervalo e da legenda.
+  bool _addingSubtitle = false;
 
   NativePlayer get _native => _player.platform as NativePlayer;
 
@@ -337,6 +344,51 @@ class MediaKitPlayerService implements MediaPlayerService {
     await _player.setSubtitleTrack(match ?? SubtitleTrack(trackId, null, null));
   }
 
+  /// Id da faixa selecionada na lista do motor. A legenda externa fica
+  /// selecionada pelo endereco, mas entra na lista com id numerico.
+  @visibleForTesting
+  static String selectedSubtitleTrackId(
+    SubtitleTrack selected,
+    List<SubtitleTrack> available,
+  ) {
+    if (!selected.uri) return selected.id;
+    for (final track in available) {
+      if (track.title == selected.title && !track.uri) return track.id;
+    }
+    return selected.id;
+  }
+
+  @override
+  Future<void> addExternalSubtitle(String path) async {
+    if (!await File(path).exists()) {
+      throw FileSystemException('Legenda nao encontrada', path);
+    }
+    var failed = false;
+    final log = _player.stream.log.listen((entry) {
+      if (entry.text.contains('sub-add')) failed = true;
+    });
+    _addingSubtitle = true;
+    try {
+      await _player.setSubtitleTrack(SubtitleTrack.uri(
+        Uri.file(path).toString(),
+        title: path.split(RegExp(r'[\\/]')).last,
+      ));
+      // Os erros do motor chegam pelos streams logo depois do comando.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    } finally {
+      _addingSubtitle = false;
+      await log.cancel();
+    }
+    if (failed) {
+      await _player.setSubtitleTrack(SubtitleTrack.no());
+      throw StateError('Legenda nao carregada');
+    }
+  }
+
+  @visibleForTesting
+  static bool isExternalSubtitleError(String message) =>
+      message.toLowerCase().contains('external file');
+
   @override
   Future<void> selectVideo(String? trackId) async {
     if (trackId == null) {
@@ -398,8 +450,12 @@ class MediaKitPlayerService implements MediaPlayerService {
         .toList();
     final subtitleTracks = _tracks.subtitle
         .where((t) => isReal(t.id))
-        .map((t) =>
-            MediaTrack(id: t.id, label: _label(t), language: t.language))
+        .map((t) => MediaTrack(
+              id: t.id,
+              label: _label(t),
+              // Legenda externa chega com o idioma "auto": nao e um idioma.
+              language: t.language == 'auto' ? null : t.language,
+            ))
         .toList();
     final videoTracks = _tracks.video
         .where((t) => isReal(t.id))
@@ -418,7 +474,8 @@ class MediaKitPlayerService implements MediaPlayerService {
       subtitleTracks: subtitleTracks,
       videoTracks: videoTracks,
       selectedAudioId: _selectedId(_track.audio.id),
-      selectedSubtitleId: _selectedId(_track.subtitle.id),
+      selectedSubtitleId:
+          _selectedId(selectedSubtitleTrackId(_track.subtitle, _tracks.subtitle)),
       selectedVideoId: _selectedId(_track.video.id),
       repeatMode: _repeatMode,
       rotation: _rotation,

@@ -14,6 +14,9 @@ class TvFileBrowserScreen extends StatefulWidget {
     this.roots = tvBrowseRoots,
     this.list = listVideoFolder,
     this.ensureAccess,
+    this.title = 'Escolher vídeo',
+    this.emptyMessage = 'Nenhum vídeo nesta pasta. Conceda acesso aos arquivos '
+        'ou escolha outra pasta.',
   });
 
   /// Pastas de partida (só as que existem aparecem).
@@ -24,6 +27,10 @@ class TvFileBrowserScreen extends StatefulWidget {
 
   /// Pede acesso aos arquivos (padrão: permissão do Android).
   final Future<bool> Function()? ensureAccess;
+
+  /// Título na raiz e aviso de pasta sem o que procurar.
+  final String title;
+  final String emptyMessage;
 
   @override
   State<TvFileBrowserScreen> createState() => _TvFileBrowserScreenState();
@@ -95,7 +102,7 @@ class _TvFileBrowserScreenState extends State<TvFileBrowserScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_folder ?? 'Escolher vídeo'),
+          title: Text(_folder ?? widget.title),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: _up,
@@ -104,12 +111,11 @@ class _TvFileBrowserScreenState extends State<TvFileBrowserScreen> {
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : _entries.isEmpty
-                ? const Center(
+                ? Center(
                     child: Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
                       child: Text(
-                        'Nenhum vídeo nesta pasta. Conceda acesso aos arquivos '
-                        'ou escolha outra pasta.',
+                        widget.emptyMessage,
                         textAlign: TextAlign.center,
                       ),
                     ),

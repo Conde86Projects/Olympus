@@ -8,6 +8,7 @@ import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/extensions/duration_extensions.dart';
 import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
+import 'package:player/features/open_media/pick_subtitle_file.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/widgets/player_panel_options.dart';
@@ -31,9 +32,13 @@ class PlayerSettingsPanel extends StatefulWidget {
     this.initialView = PlayerPanelView.main,
     this.transitionDuration = AppConstants.shortTransition,
     this.maxHeight,
+    this.pickSubtitle = pickSubtitleFile,
   });
 
   final MediaPlayerService player;
+
+  /// Escolha do arquivo de legenda (injetavel nos testes).
+  final Future<String?> Function(BuildContext context) pickSubtitle;
 
   /// Sessao inicial; atualizacoes chegam pelo stream do player.
   final PlaybackSession session;
@@ -280,11 +285,63 @@ class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
                 onViewChanged: (view) => setState(() => _view = view),
                 transitionDuration: widget.transitionDuration,
                 maxHeight: widget.maxHeight,
+                pickSubtitle: widget.pickSubtitle,
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Abre uma legenda em arquivo; falha vira aviso e o video segue.
+class _OpenSubtitleAction extends StatefulWidget {
+  const _OpenSubtitleAction({required this.player, required this.pick});
+
+  final MediaPlayerService player;
+  final Future<String?> Function(BuildContext context) pick;
+
+  @override
+  State<_OpenSubtitleAction> createState() => _OpenSubtitleActionState();
+}
+
+class _OpenSubtitleActionState extends State<_OpenSubtitleAction> {
+  bool _failed = false;
+
+  Future<void> _open() async {
+    final path = await widget.pick(context);
+    if (path == null || !mounted) return;
+    var failed = false;
+    try {
+      await widget.player.addExternalSubtitle(path);
+    } catch (_) {
+      failed = true;
+    }
+    if (mounted) setState(() => _failed = failed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Divider(height: 1),
+        if (_failed)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text(
+              'Não foi possível abrir esta legenda.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ListTile(
+          dense: true,
+          leading: const Icon(Icons.subtitles_outlined, size: 20),
+          title: const Text('Abrir arquivo de legenda…'),
+          onTap: _open,
+        ),
+      ],
     );
   }
 }
@@ -296,6 +353,7 @@ class _PanelBody extends StatelessWidget {
     required this.view,
     required this.onViewChanged,
     required this.transitionDuration,
+    required this.pickSubtitle,
     this.videoTitle,
     this.preferredAudio,
     this.preferredSubtitle,
@@ -317,6 +375,7 @@ class _PanelBody extends StatelessWidget {
   final ValueChanged<PlayerPanelView> onViewChanged;
   final Duration transitionDuration;
   final double? maxHeight;
+  final Future<String?> Function(BuildContext context) pickSubtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -344,6 +403,7 @@ class _PanelBody extends StatelessWidget {
             allowNone: true,
             noneLabel: 'Desativadas',
             onSelect: player.selectSubtitle,
+            footer: _OpenSubtitleAction(player: player, pick: pickSubtitle),
           ),
         PlayerPanelView.quality => _qualitySubView(context),
         PlayerPanelView.repeat => _repeatSubView(context),
@@ -472,6 +532,7 @@ class _PanelBody extends StatelessWidget {
     String? preferredLanguage,
     bool allowNone = false,
     String noneLabel = '',
+    Widget? footer,
   }) {
     // Aviso quando o preferido nao existe (spec 26.12): aparece mesmo
     // com a lista vazia, e nunca tira o usuario do player.
@@ -505,6 +566,7 @@ class _PanelBody extends StatelessWidget {
           noneLabel: noneLabel,
           onSelect: onSelect,
         ),
+        if (footer != null) footer,
       ],
     );
   }

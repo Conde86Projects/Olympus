@@ -189,6 +189,10 @@ class SupervisedPlayerService implements MediaPlayerService {
       _inner.selectSubtitle(trackId);
 
   @override
+  Future<void> addExternalSubtitle(String path) =>
+      _inner.addExternalSubtitle(path);
+
+  @override
   Future<void> selectVideo(String? trackId) => _inner.selectVideo(trackId);
 
   @override

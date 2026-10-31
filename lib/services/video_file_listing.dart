@@ -11,6 +11,9 @@ const videoExtensions = {
   '.ts'
 };
 
+/// Extensões de legenda aceitas ao abrir um arquivo externo.
+const subtitleExtensions = {'.srt', '.vtt', '.ass'};
+
 /// Pastas padrão onde a TV procura vídeos (Android).
 const tvBrowseRoots = [
   '/sdcard/Download',
@@ -32,16 +35,30 @@ class BrowserEntry {
 }
 
 /// Só vídeos pela extensão (sem diferenciar maiúsculas).
-bool isVideoFileName(String name) {
+bool isVideoFileName(String name) => _hasExtension(name, videoExtensions);
+
+/// Só legendas pela extensão (sem diferenciar maiúsculas).
+bool isSubtitleFileName(String name) =>
+    _hasExtension(name, subtitleExtensions);
+
+bool _hasExtension(String name, Set<String> extensions) {
   final dot = name.lastIndexOf('.');
   if (dot < 0) return false;
-  return videoExtensions.contains(name.substring(dot).toLowerCase());
+  return extensions.contains(name.substring(dot).toLowerCase());
 }
 
 /// Conteúdo visível de uma pasta: subpastas primeiro, depois vídeos, em
 /// ordem alfabética. Ocultos (começam com ".") ficam fora. Pasta
 /// inexistente ou sem leitura devolve lista vazia em vez de falhar.
-Future<List<BrowserEntry>> listVideoFolder(String dirPath) async {
+Future<List<BrowserEntry>> listVideoFolder(String dirPath) =>
+    _listFolder(dirPath, isVideoFileName);
+
+/// Igual a [listVideoFolder], mostrando legendas em vez de vídeos.
+Future<List<BrowserEntry>> listSubtitleFolder(String dirPath) =>
+    _listFolder(dirPath, isSubtitleFileName);
+
+Future<List<BrowserEntry>> _listFolder(
+    String dirPath, bool Function(String name) wanted) async {
   final dir = Directory(dirPath);
   final folders = <BrowserEntry>[];
   final videos = <BrowserEntry>[];
@@ -52,7 +69,7 @@ Future<List<BrowserEntry>> listVideoFolder(String dirPath) async {
       if (entity is Directory) {
         folders.add(
             BrowserEntry(name: name, path: entity.path, isDirectory: true));
-      } else if (entity is File && isVideoFileName(name)) {
+      } else if (entity is File && wanted(name)) {
         videos.add(
             BrowserEntry(name: name, path: entity.path, isDirectory: false));
       }

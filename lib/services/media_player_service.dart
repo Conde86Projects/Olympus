@@ -46,6 +46,10 @@ abstract class MediaPlayerService {
   Future<void> selectAudio(String trackId);
   Future<void> selectSubtitle(String? trackId);
 
+  /// Abre um arquivo de legenda e o seleciona. Falha nunca derruba o video:
+  /// lanca para quem pediu avisar.
+  Future<void> addExternalSubtitle(String path);
+
   /// Qualidade de vídeo (spec 13): `trackId` null volta ao automático.
   /// A UI só oferece quando a fonte informa múltiplas faixas.
   Future<void> selectVideo(String? trackId);
@@ -151,6 +155,16 @@ class NoOpMediaPlayerService implements MediaPlayerService {
   @override
   Future<void> selectSubtitle(String? trackId) async =>
       _emit(session.copyWith(selectedSubtitleId: () => trackId));
+
+  @override
+  Future<void> addExternalSubtitle(String path) async {
+    final track =
+        MediaTrack(id: path, label: path.split(RegExp(r'[\\/]')).last);
+    _emit(session.copyWith(
+      subtitleTracks: [...session.subtitleTracks, track],
+      selectedSubtitleId: () => track.id,
+    ));
+  }
 
   @override
   Future<void> selectVideo(String? trackId) async =>
