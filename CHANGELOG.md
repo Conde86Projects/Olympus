@@ -6,27 +6,7 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
-### Adicionado
-
-- Item concluído (Fase 0.2.0, item 1): fração assistida >= 97%
-  marca o histórico como concluído; concluídos saem do "Continuar
-  assistindo" mas permanecem em biblioteca e histórico; reabrir
-  começa em 0:00 com a ação "Ver de novo"; sair sem assistir
-  preserva o concluído. Retomada de não concluídos intacta.
-  Validado na TCL com suíte 548/548 e `dart analyze` limpo.
-
-### Corrigido
-
-- Preservação de posição na troca de qualidade HLS (TV): a
-  reabertura em outra variante reutiliza o gate de prontidão da
-  retomada (primeiro avanço real, fora de buffering), valida o
-  pouso e tenta no máximo uma correção validada; se o pouso
-  continuar incorreto, retorna de forma controlada à qualidade
-  anterior, e se o retorno também falhar, pausa e protege o
-  histórico sem salvar o ponto errado. Validado na TCL (troca
-  para 720p, retorno à Automática, retomada fria e fallback
-  master) com suíte 512/512 e `dart analyze` limpo. Prepara a
-  próxima RC; a tag `v0.1.0-rc.2` permanece imutável.
+Nada por enquanto.
 
 ## [0.3.0] - 2026-10-31
 
@@ -57,6 +37,30 @@ se importa). Detalhes de implementação ficam nos documentos em
 - 4K testado só com clipe sintético de 30 s, no PC do dono e na TCL, sem medir
   quadros perdidos.
 - Modo TV ligado à mão em tela de celular: a engrenagem encosta no botão +10.
+
+## Itens de 0.1.x e 0.2.x sem seção própria
+
+### Adicionado
+
+- Item concluído (Fase 0.2.0, item 1): fração assistida >= 97%
+  marca o histórico como concluído; concluídos saem do "Continuar
+  assistindo" mas permanecem em biblioteca e histórico; reabrir
+  começa em 0:00 com a ação "Ver de novo"; sair sem assistir
+  preserva o concluído. Retomada de não concluídos intacta.
+  Validado na TCL com suíte 548/548 e `dart analyze` limpo.
+
+### Corrigido
+
+- Preservação de posição na troca de qualidade HLS (TV): a
+  reabertura em outra variante reutiliza o gate de prontidão da
+  retomada (primeiro avanço real, fora de buffering), valida o
+  pouso e tenta no máximo uma correção validada; se o pouso
+  continuar incorreto, retorna de forma controlada à qualidade
+  anterior, e se o retorno também falhar, pausa e protege o
+  histórico sem salvar o ponto errado. Validado na TCL (troca
+  para 720p, retorno à Automática, retomada fria e fallback
+  master) com suíte 512/512 e `dart analyze` limpo. Prepara a
+  próxima RC; a tag `v0.1.0-rc.2` permanece imutável.
 
 ## [0.1.0] - 2026-10-14
 

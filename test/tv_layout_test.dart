@@ -290,6 +290,17 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    testWidgets('tela estreita: botoes nao se sobrepoem', (tester) async {
+      await pumpTv(tester, surface: const Size(360, 640));
+
+      final forward = tester.getRect(find.byTooltip('Avançar 10 segundos'));
+      final settings = tester.getRect(find.byTooltip('Configurações'));
+      final play = tester.getRect(find.byTooltip('Reproduzir'));
+      expect(forward.right, lessThanOrEqualTo(settings.left));
+      expect(play.right, lessThanOrEqualTo(forward.left));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('perfil compacto: 7 elementos, sem chips', (tester) async {
       await pumpTv(
         tester,

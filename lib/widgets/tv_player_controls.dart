@@ -75,7 +75,11 @@ class TvPlayerControls extends StatelessWidget {
           // Perfil compacto (spec 27.6): metade da largura ate 460.
           // Na TCL (880 uteis apos a safe area e o teto da tela) = 440,
           // uns 46% do viewport logico de 960.
-          final maxWidth = (constraints.maxWidth * 0.50).clamp(0.0, 460.0);
+          // Piso: os cinco botoes mais o respiro do cartao, para nao se
+          // sobreporem com o modo TV em tela estreita.
+          final floor = (5 * _buttonSize + 2 * gap + 2)
+              .clamp(0.0, constraints.maxWidth);
+          final maxWidth = (constraints.maxWidth * 0.50).clamp(floor, 460.0);
           TvPanelMetrics.record(constraints, maxWidth);
           if (kDebugMode && _loggedPanelWidth != maxWidth) {
             _loggedPanelWidth = maxWidth;
