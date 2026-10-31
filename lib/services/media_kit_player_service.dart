@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:player/core/constants/app_constants.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_player_service.dart';
@@ -29,6 +30,13 @@ class MediaKitPlayerService implements MediaPlayerService {
         _guard = directOutputGuard {
     _videoController =
         VideoController(_player, configuration: videoConfiguration);
+    // Leitura parada por mais tempo que o bufferTimeout vira erro de
+    // rede do mpv, no mesmo limite do supervisor (que ja cobre o caso
+    // com erro de tempo esgotado).
+    unawaited(_native.setProperty(
+      'network-timeout',
+      '${AppConstants.bufferTimeout.inSeconds}',
+    ));
     _subscriptions.addAll([
       _player.stream.playing.listen((playing) {
         _playing = playing;
