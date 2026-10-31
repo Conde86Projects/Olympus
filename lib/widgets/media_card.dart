@@ -251,16 +251,18 @@ class _OverflowMenu extends StatelessWidget {
       itemBuilder: (_) => [
         if (onRestart != null && item.isResumable)
           const PopupMenuItem(
-              value: 'restart', child: Text('Recomeçar do zero')),
+              value: 'restart', child: _MenuItemLabel('Recomeçar do zero')),
         if (onToggleFavorite != null)
           PopupMenuItem(
             value: 'favorite',
-            child: Text(item.isFavorite
+            child: _MenuItemLabel(item.isFavorite
                 ? 'Remover dos favoritos'
                 : 'Adicionar aos favoritos'),
           ),
         if (onRemove != null)
-          const PopupMenuItem(value: 'remove', child: Text('Remover')),
+          const PopupMenuItem(
+              value: 'remove',
+              child: _MenuItemLabel('Remover', destructive: true)),
       ],
     );
   }
@@ -299,4 +301,42 @@ class _FocusCardState extends State<_FocusCard> {
         },
         child: widget.builder(_focused),
       );
+}
+
+/// Rótulo de item do menu com foco visível (controle remoto e teclado): a
+/// borda e o fundo acompanham o foco, como nos botões do app. Sem isso, o
+/// destaque padrão do menu some na TV. A ação destrutiva fica vermelha.
+class _MenuItemLabel extends StatelessWidget {
+  const _MenuItemLabel(this.label, {this.destructive = false});
+
+  final String label;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    // O foco do item é o do InkWell do PopupMenuItem, o Focus mais próximo.
+    final node = Focus.of(context);
+    final color = destructive ? PlayerTheme.error : PlayerTheme.accent;
+    return ListenableBuilder(
+      listenable: node,
+      builder: (context, _) {
+        final focused = node.hasFocus;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: focused ? color.withValues(alpha: 0.22) : null,
+            borderRadius: BorderRadius.circular(8),
+            border: focused ? Border.all(color: color, width: 2) : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: focused ? Colors.white : PlayerTheme.primaryText,
+              fontWeight: focused ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
