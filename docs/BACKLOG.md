@@ -27,9 +27,9 @@ Atualizacao 18/10/2026: `NativePlayer.setProperty` (media_kit
 Reavaliado em 31/10/2026: `sub-*` não é o caminho. Com `libass` desligado, o
 media_kit usa `sub-visibility=no` e a legenda é desenhada pelo Flutter. O
 estilo padrão agora está em `SubtitleOverlay` (10% acima da base, fonte
-proporcional). Falta a tela de ajustes para o usuário trocar cor, tamanho e
-posição, e a legenda fica coberta enquanto a barra de controles está visível
-em paisagem.
+proporcional). Ajustes tem tamanho, cor, posição e fundo, e a legenda sobe
+acima da barra de controles (`5be75a8`). Falta conferir essa versão no
+Windows.
 
 ## Fora da fase atual (confirmado)
 
@@ -252,6 +252,10 @@ Honestas e registradas, sem bloquear a revisão:
   aquecimento posterior da detecção — sem atrasar a abertura, sem
   reiniciar reprodução e sem alterar histórico/ID. Não bloqueia a
   retomada já aprovada.
+  Resolvido em 31/10/2026 (`3a80efb`): reproduzido com servidor local
+  que derruba só o master do app. O app desistia em cerca de 10 s; agora
+  tenta em 3, 10, 30 e 60 s e o seletor aparece sem reabrir o vídeo. O
+  teto da classe segue sem engajar nessa abertura (sem troca silenciosa).
 - [Falha registrada na RC2, sem bloqueio do que passou] Seek
   pós-troca de variante no mpv frio (12/10/2026, TCL): o seek de
   preservação de posição após reabrir em outra variante falha no
