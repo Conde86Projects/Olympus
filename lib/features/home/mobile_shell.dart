@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/main_navigation.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/features/addons/addons_screen.dart';
 import 'package:player/features/favorites/favorites_screen.dart';
@@ -55,6 +56,29 @@ class _MobileShellState extends State<MobileShell> {
 
   /// Abas ja visitadas: montadas sob demanda e mantidas vivas depois.
   final _visited = <int>{0};
+
+  @override
+  void initState() {
+    super.initState();
+    MainNavigation.request.addListener(_onRequest);
+  }
+
+  @override
+  void dispose() {
+    MainNavigation.request.removeListener(_onRequest);
+    super.dispose();
+  }
+
+  /// Pedido vindo de fora (fim do video): troca para a aba pedida.
+  void _onRequest() {
+    final destination = MainNavigation.request.value;
+    if (destination == null) return;
+    MainNavigation.request.value = null;
+    _select(switch (destination) {
+      MainDestination.home => 0,
+      MainDestination.library => 1,
+    });
+  }
 
   Widget _page(int index) {
     final deps = widget.dependencies;
