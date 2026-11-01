@@ -1752,7 +1752,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final modalUp = _panelOpen || _overlayUp;
     final prefs = widget.dependencies.preferencesService.current;
     LogicalKeyboardKey keyOf(ShortcutAction a) => prefs.keyFor(a);
-    final guarded = guardedByTextField;
+    const guarded = guardedByTextField;
     return {
       // Espaco visivel alterna play/pause; oculto, o handler global
       // cuida (so um dos dois existe por vez: sem disparo duplo).
