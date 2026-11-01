@@ -8,6 +8,15 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 Nada por enquanto.
 
+## [0.3.5] - 2026-11-01
+
+### Adicionado
+
+- Windows: miniatura nos cartões de vídeo local. O próprio app tira o quadro, sem
+  precisar instalar nada, para mp4, mkv, webm, avi e 4K. Só áudio ou arquivo
+  ilegível continuam com o ícone de play. Vídeos que já estavam na biblioteca
+  ganham a miniatura na próxima vez que são abertos.
+
 ## [0.3.4] - 2026-11-01
 
 ### Adicionado
