@@ -543,15 +543,21 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pumpAndSettle();
       expect(_focusedOverlayLabel(tester), 'Editar link');
-      // Editar e Fechar dividem a linha: lateral anda, baixo fica.
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      // Informações técnicas vem antes de Fechar (ticket 20).
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(_focusedOverlayLabel(tester), 'Ver informações técnicas');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pumpAndSettle();
       expect(_focusedOverlayLabel(tester), 'Fechar');
       // No último botão: descer não escapa para o nó da tela.
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pumpAndSettle();
       expect(_focusedOverlayLabel(tester), 'Fechar');
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      expect(_focusedOverlayLabel(tester), 'Ver informações técnicas');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pumpAndSettle();
       expect(_focusedOverlayLabel(tester), 'Editar link');
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);

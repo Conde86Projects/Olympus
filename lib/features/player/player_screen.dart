@@ -9,13 +9,13 @@ import 'package:player/app/routes.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/core/constants/app_constants.dart';
+import 'package:player/core/utils/error_details.dart';
 import 'package:player/core/utils/hls_target.dart';
 import 'package:player/core/utils/hls_variants.dart';
 import 'package:player/core/utils/language_names.dart';
 import 'package:player/core/utils/media_utils.dart';
 import 'package:player/core/utils/subtitle_style.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
-import 'package:player/features/open_media/pick_video_file.dart';
 import 'package:player/features/player/hls_observer.dart';
 import 'package:player/features/player/hls_resume_probe.dart';
 import 'package:player/features/player/hls_cold_warmer.dart';
@@ -1418,6 +1418,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                               onPlayNext:
                                   next == null ? null : () => _playNext(next),
                               onClose: _exitPlayer,
+                              onShowDetails: _showErrorDetails,
+                              onPickOther: _pickOtherVideo,
                               onBackToAutomatic: _hlsVariants.isNotEmpty &&
                                       _hls.quality.value !=
                                           HlsVariants.autoQualityId
@@ -2080,7 +2082,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// atualiza o MESMO item (titulo e fonte zeram; posicao idem) e tenta
   /// de novo sem sair da tela. Nada e copiado nem apagado.
   Future<void> _relocate() async {
-    final path = await pickVideoFile(context, title: 'Localizar arquivo');
+    final path = await widget.dependencies
+        .pickVideo(context, title: 'Localizar arquivo');
     if (!mounted) return;
     if (path == null || path.isEmpty) return;
     final updated = await widget.dependencies.libraryService.upsert(
@@ -2105,6 +2108,69 @@ class _PlayerScreenState extends State<PlayerScreen>
       _hls.positionProtect = false;
     });
     await _open();
+  }
+
+  /// Informações técnicas do erro (spec 17): sem caminhos, endereços
+  /// completos nem credenciais. Fecha com Voltar.
+  Future<void> _showErrorDetails() async {
+    final rows = buildErrorDetails(
+      kind: _session.errorKind,
+      item: _currentItem,
+      engineMessage: _session.errorMessage,
+    );
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Informações técnicas'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final row in rows)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text.rich(TextSpan(children: [
+                    TextSpan(
+                      text: '${row.key}: ',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    TextSpan(text: row.value),
+                  ])),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          FocusableButton(
+            label: 'Fechar',
+            autofocus: true,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Troca o vídeo com erro por outro arquivo local, sem sair do player.
+  /// Cancelar o seletor deixa a tela de erro como estava.
+  Future<void> _pickOtherVideo() async {
+    final path = await widget.dependencies.pickVideo(context,
+        title: 'Escolher vídeo');
+    if (!mounted) return;
+    if (path == null || path.isEmpty) return;
+    final saved = await widget.dependencies.libraryService.upsert(MediaItem(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      title: titleFromSource(path),
+      sourceType: MediaSourceType.local,
+      source: path,
+      addedAt: DateTime.now(),
+    ));
+    if (!mounted) return;
+    unawaited(ThumbnailService.backfill(
+        widget.dependencies.libraryService, saved));
+    Navigator.of(context)
+        .pushReplacementNamed(AppRoutes.player, arguments: saved);
   }
 
   /// Remove o item da biblioteca e do historico e sai (spec 17.5). O

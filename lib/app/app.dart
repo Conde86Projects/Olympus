@@ -6,6 +6,7 @@ import 'package:player/app/routes.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/app/tv_mode.dart';
+import 'package:player/features/open_media/pick_video_file.dart';
 import 'package:player/models/preferences.dart';
 import 'package:player/services/addon_service.dart';
 import 'package:player/services/diagnostics_service.dart';
@@ -36,7 +37,11 @@ class PlayerApp extends StatelessWidget {
     this.mobilePlatform = false,
     this.mobileChromeService,
     this.systemVolumeService = const NoOpSystemVolumeService(),
+    this.pickVideo,
   });
+
+  /// Seletor de vídeo injetável (testes); null usa [pickVideoFile].
+  final VideoPicker? pickVideo;
 
   final PreferencesService preferencesService;
   final LibraryService libraryService;
@@ -131,6 +136,7 @@ class PlayerApp extends StatelessWidget {
               videoOutputGuard: videoOutputGuard,
               systemVolumeService: systemVolumeService,
               mobileChromeService: mobileChromeService ?? NoOpMobileChrome(),
+              pickVideo: pickVideo ?? pickVideoFile,
             ),
           ),
           ),
@@ -155,7 +161,11 @@ class AppDependencies {
     this.videoOutputGuard,
     this.systemVolumeService = const NoOpSystemVolumeService(),
     required this.mobileChromeService,
+    this.pickVideo = pickVideoFile,
   });
+
+  /// Seletor de vídeo local (erro de reprodução e "Localizar arquivo").
+  final VideoPicker pickVideo;
 
   final PreferencesService preferencesService;
   final LibraryService libraryService;
