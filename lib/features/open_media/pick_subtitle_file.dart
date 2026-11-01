@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:player/app/tv_mode.dart';
@@ -20,12 +21,19 @@ Future<String?> pickSubtitleFile(BuildContext context) async {
       ),
     );
   }
+  final filter = subtitlePickerFiltersByExtension(defaultTargetPlatform);
   final files = await FilePicker.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: [
-      for (final extension in subtitleExtensions) extension.substring(1),
-    ],
+    type: filter ? FileType.custom : FileType.any,
+    allowedExtensions: filter
+        ? [for (final extension in subtitleExtensions) extension.substring(1)]
+        : null,
     dialogTitle: 'Abrir arquivo de legenda',
   );
   return files.singleOrNull?.path;
 }
+
+/// No Android o filtro vira tipo de arquivo, e `.vtt` e `.ass` nao tem tipo
+/// conhecido: ficam apagados no seletor. Quem abre confere a extensao.
+@visibleForTesting
+bool subtitlePickerFiltersByExtension(TargetPlatform platform) =>
+    platform != TargetPlatform.android;

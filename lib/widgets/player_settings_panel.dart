@@ -11,6 +11,7 @@ import 'package:player/core/utils/language_names.dart';
 import 'package:player/features/open_media/pick_subtitle_file.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_player_service.dart';
+import 'package:player/services/video_file_listing.dart';
 import 'package:player/widgets/player_panel_options.dart';
 
 /// Painel flutuante de configuracoes do player (spec 13), no espirito do
@@ -312,11 +313,13 @@ class _OpenSubtitleActionState extends State<_OpenSubtitleAction> {
   Future<void> _open() async {
     final path = await widget.pick(context);
     if (path == null || !mounted) return;
-    var failed = false;
-    try {
-      await widget.player.addExternalSubtitle(path);
-    } catch (_) {
-      failed = true;
+    var failed = !isSubtitleFileName(path);
+    if (!failed) {
+      try {
+        await widget.player.addExternalSubtitle(path);
+      } catch (_) {
+        failed = true;
+      }
     }
     if (mounted) setState(() => _failed = failed);
   }

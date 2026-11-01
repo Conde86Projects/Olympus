@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_kit/media_kit.dart' show SubtitleTrack, Track, Tracks;
+import 'package:player/features/open_media/pick_subtitle_file.dart';
 import 'package:player/features/open_media/tv_file_browser_screen.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_kit_player_service.dart';
@@ -88,6 +89,33 @@ void main() {
       expect(player.session.status, isNot(PlaybackStatus.error));
     });
 
+    testWidgets('arquivo que nao e legenda avisa e nao chega ao player',
+        (tester) async {
+      final player = _RecordingSubtitlePlayer();
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: PlayerSettingsPanel(
+            player: player,
+            session: player.session,
+            initialView: PlayerPanelView.subtitles,
+            pickSubtitle: (_) async => '/sdcard/Download/foto.jpg',
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Abrir arquivo de legenda…'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Não foi possível abrir esta legenda.'), findsOneWidget);
+      expect(player.added, isEmpty);
+    });
+
+    test('seletor filtra por extensao, menos no Android', () {
+      expect(subtitlePickerFiltersByExtension(TargetPlatform.windows), isTrue);
+      expect(subtitlePickerFiltersByExtension(TargetPlatform.android), isFalse);
+    });
+
     testWidgets('a acao so existe no painel de legendas', (tester) async {
       const player = NoOpMediaPlayerService();
       await tester.pumpWidget(MaterialApp(
@@ -143,6 +171,30 @@ void main() {
           MediaKitPlayerService.isExternalSubtitleError(
               'tcp: Failed to resolve hostname'),
           isFalse);
+    });
+
+    group('faixa no painel', () {
+      test('escolha automatica mostra a que o motor ligou', () {
+        expect(
+            MediaKitPlayerService.panelSubtitleId('auto', engineChoice: '3'),
+            '3');
+      });
+
+      test('automatica sem nada ligado fica desativada', () {
+        expect(
+            MediaKitPlayerService.panelSubtitleId('auto', engineChoice: null),
+            isNull);
+      });
+
+      test('desativada vence o que o motor informou antes', () {
+        expect(MediaKitPlayerService.panelSubtitleId('no', engineChoice: '3'),
+            isNull);
+      });
+
+      test('faixa escolhida fica como esta', () {
+        expect(MediaKitPlayerService.panelSubtitleId('2', engineChoice: '3'),
+            '2');
+      });
     });
 
     group('fim do video', () {
@@ -247,6 +299,13 @@ void main() {
       expect(find.text('Nenhuma legenda nesta pasta.'), findsOneWidget);
     });
   });
+}
+
+class _RecordingSubtitlePlayer extends NoOpMediaPlayerService {
+  final List<String> added = [];
+
+  @override
+  Future<void> addExternalSubtitle(String path) async => added.add(path);
 }
 
 class _FailingSubtitlePlayer extends NoOpMediaPlayerService {

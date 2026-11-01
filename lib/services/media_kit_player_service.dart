@@ -81,6 +81,7 @@ class MediaKitPlayerService implements MediaPlayerService {
         if (isEndOfFileReset(tracks, completed: _completed)) return;
         _tracks = tracks;
         _emit();
+        unawaited(_readEngineSubtitle());
       }),
       _player.stream.track.listen((track) {
         if (isEndOfFileReset(track, completed: _completed)) return;
@@ -162,6 +163,9 @@ class MediaKitPlayerService implements MediaPlayerService {
 
   /// Abrindo legenda externa: erro do motor nesse intervalo e da legenda.
   bool _addingSubtitle = false;
+
+  /// Legenda que o motor ligou sozinho; o media_kit segue dizendo "auto".
+  String? _engineSubtitle;
 
   /// Legendas externas ja abertas neste arquivo (caminhos).
   final Set<String> _externalSubtitles = {};
@@ -265,6 +269,7 @@ class MediaKitPlayerService implements MediaPlayerService {
     _position = Duration.zero;
     _duration = Duration.zero;
     _tracks = const Tracks();
+    _engineSubtitle = null;
     _externalSubtitles.clear();
     _emit(statusOverride: PlaybackStatus.loading);
     if (_compatOutput) await _restoreDirectOutput();
@@ -290,6 +295,7 @@ class MediaKitPlayerService implements MediaPlayerService {
     _position = Duration.zero;
     _duration = Duration.zero;
     _tracks = const Tracks();
+    _engineSubtitle = null;
     _externalSubtitles.clear();
     _errorMessage = null;
     await _guard?.playbackStopped();
@@ -400,6 +406,18 @@ class MediaKitPlayerService implements MediaPlayerService {
     }
     _externalSubtitles.add(path);
   }
+
+  Future<void> _readEngineSubtitle() async {
+    if (_track.subtitle.id != 'auto') return;
+    final id = await _native.getProperty('current-tracks/sub/id');
+    _engineSubtitle = id.isEmpty ? null : id;
+    _emit();
+  }
+
+  /// Faixa marcada no painel: em "auto", a que o motor ligou de fato.
+  @visibleForTesting
+  static String? panelSubtitleId(String selected, {String? engineChoice}) =>
+      selected == 'auto' ? engineChoice : _selectedId(selected);
 
   /// No fim do video o media_kit zera as faixas dele, mas o arquivo segue
   /// aberto no motor, que nao as envia de novo ao voltar a tocar.
@@ -520,8 +538,10 @@ class MediaKitPlayerService implements MediaPlayerService {
       subtitleTracks: subtitleTracks,
       videoTracks: videoTracks,
       selectedAudioId: _selectedId(_track.audio.id),
-      selectedSubtitleId:
-          _selectedId(selectedSubtitleTrackId(_track.subtitle, _tracks.subtitle)),
+      selectedSubtitleId: panelSubtitleId(
+        selectedSubtitleTrackId(_track.subtitle, _tracks.subtitle),
+        engineChoice: _engineSubtitle,
+      ),
       selectedVideoId: _selectedId(_track.video.id),
       repeatMode: _repeatMode,
       rotation: _rotation,
