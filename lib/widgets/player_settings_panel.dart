@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:flutter/services.dart';
@@ -34,12 +35,17 @@ class PlayerSettingsPanel extends StatefulWidget {
     this.transitionDuration = AppConstants.shortTransition,
     this.maxHeight,
     this.pickSubtitle = pickSubtitleFile,
+    this.localVideo = false,
   });
 
   final MediaPlayerService player;
 
   /// Escolha do arquivo de legenda (injetavel nos testes).
   final Future<String?> Function(BuildContext context) pickSubtitle;
+
+  /// Video de arquivo local: no celular, sem legenda achada, o painel
+  /// avisa que ela pode ser aberta a mao.
+  final bool localVideo;
 
   /// Sessao inicial; atualizacoes chegam pelo stream do player.
   final PlaybackSession session;
@@ -86,6 +92,7 @@ class PlayerSettingsPanel extends StatefulWidget {
     String? preferredAudio,
     String? preferredSubtitle,
     String? sourceLabel,
+    bool localVideo = false,
     SourceOptions? source,
     HlsOptions? hls,
     BuildContext? anchorContext,
@@ -161,6 +168,7 @@ class PlayerSettingsPanel extends StatefulWidget {
                   preferredAudio: preferredAudio,
                   preferredSubtitle: preferredSubtitle,
                   sourceLabel: sourceLabel,
+                  localVideo: localVideo,
                   source: source,
                   hls: hls,
                   initialView: initialView,
@@ -347,6 +355,7 @@ class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
                 transitionDuration: widget.transitionDuration,
                 maxHeight: widget.maxHeight,
                 pickSubtitle: widget.pickSubtitle,
+                localVideo: widget.localVideo,
               ),
             ),
             ),
@@ -425,6 +434,7 @@ class _PanelBody extends StatelessWidget {
     required this.onViewChanged,
     required this.transitionDuration,
     required this.pickSubtitle,
+    required this.localVideo,
     this.videoTitle,
     this.preferredAudio,
     this.preferredSubtitle,
@@ -447,6 +457,7 @@ class _PanelBody extends StatelessWidget {
   final Duration transitionDuration;
   final double? maxHeight;
   final Future<String?> Function(BuildContext context) pickSubtitle;
+  final bool localVideo;
 
   @override
   Widget build(BuildContext context) {
@@ -474,7 +485,23 @@ class _PanelBody extends StatelessWidget {
             allowNone: true,
             noneLabel: 'Desativadas',
             onSelect: player.selectSubtitle,
-            footer: _OpenSubtitleAction(player: player, pick: pickSubtitle),
+            footer: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_showSideSubtitleHint(context))
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: Text(
+                      'Legenda ao lado não encontrada. Se o vídeo tem uma '
+                      'legenda na mesma pasta, abra o arquivo à mão em '
+                      '"Abrir arquivo de legenda…".',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                _OpenSubtitleAction(player: player, pick: pickSubtitle),
+              ],
+            ),
           ),
         PlayerPanelView.quality => _qualitySubView(context),
         PlayerPanelView.repeat => _repeatSubView(context),
@@ -592,6 +619,16 @@ class _PanelBody extends StatelessWidget {
       ],
     );
   }
+
+  /// No Android recente a permissao de midia so deixa o motor ler arquivos
+  /// de video/audio/imagem; legendas .vtt/.ass ao lado podem nao ser vistas.
+  /// So no celular (TV e computador acham a legenda), so em video local e
+  /// so quando nenhuma legenda apareceu.
+  bool _showSideSubtitleHint(BuildContext context) =>
+      localVideo &&
+      defaultTargetPlatform == TargetPlatform.android &&
+      !TvLayout.isTv(context) &&
+      session.subtitleTracks.isEmpty;
 
   Widget _trackSubView(
     BuildContext context, {
