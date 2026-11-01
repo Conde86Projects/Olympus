@@ -6,6 +6,7 @@ import 'package:player/app/routes.dart';
 import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/playback_state.dart';
+import 'package:player/models/preferences.dart';
 import 'package:player/services/diagnostics_service.dart';
 import 'package:player/services/history_service.dart';
 import 'package:player/services/library_service.dart';
@@ -128,6 +129,22 @@ void main() {
     expect(find.text('Reprodução concluída'), findsNothing);
     expect(find.byTooltip('Configurações'), findsOneWidget);
   });
+
+  for (final mobile in [false, true]) {
+    testWidgets(
+        'Biblioteca escondida no Menu principal some do fim do video '
+        '(${mobile ? 'celular' : 'computador'})', (tester) async {
+      final h = _Harness(mobile: mobile);
+      h.preferences.update(h.preferences.current
+          .copyWith(hiddenDestinations: [MainDestination.library]));
+      await h.pump(tester);
+      await h.openAndFinish(tester);
+
+      expect(_button('Biblioteca'), findsNothing);
+      expect(_button('Início'), findsOneWidget);
+      expect(_button('Fechar'), findsOneWidget);
+    });
+  }
 
   testWidgets('Inicio salva a sessao e volta a tela inicial', (tester) async {
     final h = _Harness();

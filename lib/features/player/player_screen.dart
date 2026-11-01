@@ -28,6 +28,7 @@ import 'package:player/features/player/video_area.dart';
 import 'package:player/models/addon_catalog_item.dart';
 import 'package:player/models/history_entry.dart';
 import 'package:player/models/media_item.dart';
+import 'package:player/models/preferences.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/models/shortcut_action.dart';
 import 'package:player/services/media_permission_service.dart';
@@ -1458,8 +1459,16 @@ class _PlayerScreenState extends State<PlayerScreen>
                               onPlayNext:
                                   next == null ? null : () => _playNext(next),
                               onClose: _exitPlayer,
-                              onGoLibrary: () =>
-                                  _exitPlayer(ExitTarget.library),
+                              // Biblioteca escondida no Menu principal: o
+                              // botao some (no celular a aba nao existe).
+                              onGoLibrary: widget
+                                      .dependencies
+                                      .preferencesService
+                                      .current
+                                      .hiddenDestinations
+                                      .contains(MainDestination.library)
+                                  ? null
+                                  : () => _exitPlayer(ExitTarget.library),
                               onGoHome: () =>
                                   _exitPlayer(ExitTarget.home),
                               onShowDetails: _showErrorDetails,
