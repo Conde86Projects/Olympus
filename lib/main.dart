@@ -12,6 +12,7 @@ import 'package:player/services/diagnostics_service.dart';
 import 'package:player/services/local_addon_service.dart';
 import 'package:player/services/media_kit_player_service.dart';
 import 'package:player/services/mobile_chrome_service.dart';
+import 'package:player/services/mpv_frame_grabber.dart';
 import 'package:player/services/persistent_history_service.dart';
 import 'package:player/services/persistent_library_service.dart';
 import 'package:player/services/shared_preferences_service.dart';
@@ -43,6 +44,9 @@ Future<void> main() async {
 Future<void> _boot(void Function(StartupGuard) onGuard) async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  // Miniaturas fora do Android saem do proprio motor; no Android o channel
+  // nativo cuida e este caminho nem e consultado.
+  MpvFrameGrabber.enabled = !Platform.isAndroid;
 
   final preferences = SharedPreferencesPreferencesService();
   await preferences.load();

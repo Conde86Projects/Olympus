@@ -62,6 +62,95 @@ void main() {
       expect(seen['maxWidth'], 160);
     });
 
+    group('sem o channel (Windows): quadro pelo motor', () {
+      late Directory tmp;
+      late File source;
+
+      setUp(() async {
+        tmp = await Directory.systemTemp.createTemp('thumb_fallback');
+        addTearDown(() => tmp.delete(recursive: true));
+        source = File('${tmp.path}/in.mp4')..writeAsBytesSync([1]);
+        messenger.setMockMethodCallHandler(channel, null);
+      });
+
+      test('grava o quadro devolvido e passa caminho e largura', () async {
+        String? seenPath;
+        int? seenWidth;
+        final service = ThumbnailService(
+          directoryProvider: () async => tmp,
+          fallbackFrame: (path, maxWidth) async {
+            seenPath = path;
+            seenWidth = maxWidth;
+            return Uint8List.fromList([4, 2]);
+          },
+        );
+
+        final path = await service.generateFor(localItem(source.path),
+            maxWidth: 200);
+
+        expect(File(path!).readAsBytesSync(), [4, 2]);
+        expect(seenPath, source.path);
+        expect(seenWidth, 200);
+      });
+
+      test('sem quadro, erro ou quadro vazio viram null e nada e gravado',
+          () async {
+        for (final grab in <Future<Uint8List?> Function(String, int)>[
+          (_, __) async => null,
+          (_, __) async => Uint8List(0),
+          (_, __) async => throw StateError('motor falhou'),
+        ]) {
+          final service = ThumbnailService(
+            directoryProvider: () async => tmp,
+            fallbackFrame: grab,
+          );
+          expect(await service.generateFor(localItem(source.path)), isNull);
+        }
+        expect(
+            tmp.listSync().where((e) => e.path.endsWith('.jpg')), isEmpty);
+      });
+
+      test('com o channel presente, o motor nao e chamado', () async {
+        var calls = 0;
+        messenger.setMockMethodCallHandler(
+            channel, (call) async => Uint8List.fromList([1]));
+        final service = ThumbnailService(
+          directoryProvider: () async => tmp,
+          fallbackFrame: (_, __) async {
+            calls++;
+            return Uint8List.fromList([2]);
+          },
+        );
+
+        await service.generateFor(localItem(source.path));
+
+        expect(calls, 0);
+      });
+
+      test('link e arquivo ausente nao chamam o motor', () async {
+        var calls = 0;
+        final service = ThumbnailService(
+          directoryProvider: () async => tmp,
+          fallbackFrame: (_, __) async {
+            calls++;
+            return Uint8List.fromList([2]);
+          },
+        );
+        final url = MediaItem(
+          id: 'u1',
+          title: 'Link',
+          sourceType: MediaSourceType.url,
+          source: 'https://exemplo.com/v.mp4',
+          addedAt: DateTime(2026, 1, 1),
+        );
+
+        expect(await service.generateFor(url), isNull);
+        expect(await service.generateFor(localItem('/nao/existe.mp4')),
+            isNull);
+        expect(calls, 0);
+      });
+    });
+
     test('link não gera nem chama o channel', () async {
       var calls = 0;
       messenger.setMockMethodCallHandler(
@@ -136,6 +225,55 @@ void main() {
       final stored = library.findById(saved.id)!;
       expect(stored.thumbnailPath, endsWith('v1.jpg'));
       expect(File(stored.thumbnailPath!).existsSync(), isTrue);
+    });
+
+    test('dois pedidos juntos para o mesmo item geram uma vez so', () async {
+      final tmp = await Directory.systemTemp.createTemp('thumb_bf_dup');
+      addTearDown(() => tmp.delete(recursive: true));
+      final source = File('${tmp.path}/in.mp4')..writeAsBytesSync([1]);
+      messenger.setMockMethodCallHandler(channel, null);
+      var grabs = 0;
+      final service = ThumbnailService(
+        directoryProvider: () async => tmp,
+        fallbackFrame: (_, __) async {
+          grabs++;
+          await Future<void>.delayed(const Duration(milliseconds: 30));
+          return Uint8List.fromList([3, 3]);
+        },
+      );
+      final library = InMemoryLibraryService();
+      final saved = await library.upsert(localItem(source.path));
+
+      await Future.wait([
+        ThumbnailService.backfill(library, saved, service: service),
+        ThumbnailService.backfill(library, saved, service: service),
+      ]);
+
+      expect(grabs, 1);
+      expect(library.findById(saved.id)!.thumbnailPath, isNotNull);
+    });
+
+    test('depois de terminar, um novo pedido para item sem miniatura tenta de novo',
+        () async {
+      final tmp = await Directory.systemTemp.createTemp('thumb_bf_retry');
+      addTearDown(() => tmp.delete(recursive: true));
+      final source = File('${tmp.path}/in.mp4')..writeAsBytesSync([1]);
+      messenger.setMockMethodCallHandler(channel, null);
+      var grabs = 0;
+      final service = ThumbnailService(
+        directoryProvider: () async => tmp,
+        fallbackFrame: (_, __) async {
+          grabs++;
+          return null;
+        },
+      );
+      final library = InMemoryLibraryService();
+      final saved = await library.upsert(localItem(source.path));
+
+      await ThumbnailService.backfill(library, saved, service: service);
+      await ThumbnailService.backfill(library, saved, service: service);
+
+      expect(grabs, 2);
     });
 
     test('não-op quando já tem miniatura ou é link', () async {
