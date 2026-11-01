@@ -28,6 +28,7 @@ import 'package:player/models/addon_catalog_item.dart';
 import 'package:player/models/history_entry.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/playback_state.dart';
+import 'package:player/models/shortcut_action.dart';
 import 'package:player/services/media_permission_service.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/services/mobile_chrome_service.dart';
@@ -1697,6 +1698,18 @@ class _PlayerScreenState extends State<PlayerScreen>
     // subarvore. Com painel ou overlay modal, nada de seek/espaco: as
     // teclas pertencem ao dialogo (Enter ativa o botao focado).
     final modalUp = _panelOpen || _overlayUp;
+    final prefs = widget.dependencies.preferencesService.current;
+    LogicalKeyboardKey keyOf(ShortcutAction a) => prefs.keyFor(a);
+    VoidCallback guarded(VoidCallback action) => () {
+          final focus = FocusManager.instance.primaryFocus?.context;
+          if (focus != null &&
+              (focus.widget is EditableText ||
+                  focus.findAncestorWidgetOfExactType<EditableText>() !=
+                      null)) {
+            return;
+          }
+          action();
+        };
     return {
       // Espaco visivel alterna play/pause; oculto, o handler global
       // cuida (so um dos dois existe por vez: sem disparo duplo).
@@ -1707,28 +1720,30 @@ class _PlayerScreenState extends State<PlayerScreen>
               : player.play();
           _poke();
         },
-      const SingleActivator(LogicalKeyboardKey.keyM): () {
+      // Teclas das acoes configuraveis vem das preferencias (padrao:
+      // M, F, I, S, A, C, Q). Nao disparam enquanto se digita num campo.
+      SingleActivator(keyOf(ShortcutAction.mute)): guarded(() {
         player.setMuted(!_session.isMuted);
         _poke();
-      },
-      const SingleActivator(LogicalKeyboardKey.keyF): _toggleFullscreen,
-      const SingleActivator(LogicalKeyboardKey.keyI): () =>
-          _openSettingsAt(PlayerPanelView.info),
-      const SingleActivator(LogicalKeyboardKey.keyS): () =>
-          _openSettingsAt(PlayerPanelView.subtitles),
-      const SingleActivator(LogicalKeyboardKey.keyA): () =>
-          _openSettingsAt(PlayerPanelView.audio),
-      // C alterna o cinema: nao esta na tabela da spec 12.3, mas o modo
-      // precisa de entrada por teclado quando a barra some (Esc sai).
-      const SingleActivator(LogicalKeyboardKey.keyC): () {
+      }),
+      SingleActivator(keyOf(ShortcutAction.fullscreen)):
+          guarded(_toggleFullscreen),
+      SingleActivator(keyOf(ShortcutAction.info)):
+          guarded(() => _openSettingsAt(PlayerPanelView.info)),
+      SingleActivator(keyOf(ShortcutAction.subtitles)):
+          guarded(() => _openSettingsAt(PlayerPanelView.subtitles)),
+      SingleActivator(keyOf(ShortcutAction.audio)):
+          guarded(() => _openSettingsAt(PlayerPanelView.audio)),
+      // O cinema alterna por teclado quando a barra some (Esc sai).
+      SingleActivator(keyOf(ShortcutAction.cinema)): guarded(() {
         _toggleCinema();
         _poke();
-      },
+      }),
       const SingleActivator(LogicalKeyboardKey.escape): _onBack,
-      const SingleActivator(LogicalKeyboardKey.keyQ): () {
+      SingleActivator(keyOf(ShortcutAction.closePlayer)): guarded(() {
         // A saida passa pelo PopScope, que salva a sessao antes de fechar.
         if (!_panelOpen) _exitPlayer();
-      },
+      }),
     };
   }
 

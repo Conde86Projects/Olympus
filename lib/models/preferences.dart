@@ -1,3 +1,7 @@
+import 'package:flutter/services.dart';
+
+import 'shortcut_action.dart';
+
 /// Preferencias do usuario (spec 5.3, 16). Imutavel.
 class UserPreferences {
   const UserPreferences({
@@ -27,6 +31,7 @@ class UserPreferences {
     this.librarySort = LibrarySort.recent,
     this.textSize = TextSizeOption.normal,
     this.hiddenDestinations = const [],
+    this.shortcuts = const {},
     this.windowX,
     this.windowY,
     this.windowWidth,
@@ -98,6 +103,14 @@ class UserPreferences {
   /// Inicio e Configuracoes nao existem em [MainDestination]: nunca saem.
   final List<MainDestination> hiddenDestinations;
 
+  /// Teclas escolhidas para os atalhos do player. Acao ausente usa o
+  /// padrao ([ShortcutAction.defaultKey]).
+  final Map<ShortcutAction, LogicalKeyboardKey> shortcuts;
+
+  /// Tecla efetiva da [action]: a escolhida ou a padrao.
+  LogicalKeyboardKey keyFor(ShortcutAction action) =>
+      shortcuts[action] ?? action.defaultKey;
+
   /// Geometria salva da janela (spec 14.1). Null = primeira execucao.
   final double? windowX;
   final double? windowY;
@@ -131,6 +144,7 @@ class UserPreferences {
     LibrarySort? librarySort,
     TextSizeOption? textSize,
     List<MainDestination>? hiddenDestinations,
+    Map<ShortcutAction, LogicalKeyboardKey>? shortcuts,
     double? Function()? windowX,
     double? Function()? windowY,
     double? Function()? windowWidth,
@@ -166,6 +180,7 @@ class UserPreferences {
       librarySort: librarySort ?? this.librarySort,
       textSize: textSize ?? this.textSize,
       hiddenDestinations: hiddenDestinations ?? this.hiddenDestinations,
+      shortcuts: shortcuts ?? this.shortcuts,
       windowX: windowX != null ? windowX() : this.windowX,
       windowY: windowY != null ? windowY() : this.windowY,
       windowWidth:
@@ -202,6 +217,9 @@ class UserPreferences {
         'librarySort': librarySort.name,
         'textSize': textSize.name,
         'hiddenDestinations': [for (final d in hiddenDestinations) d.name],
+        'shortcuts': {
+          for (final e in shortcuts.entries) e.key.name: e.value.keyId,
+        },
         'windowX': windowX,
         'windowY': windowY,
         'windowWidth': windowWidth,
@@ -242,6 +260,7 @@ class UserPreferences {
       textSize: _byName(
           TextSizeOption.values, map['textSize'], TextSizeOption.normal),
       hiddenDestinations: _destinationsFrom(map['hiddenDestinations']),
+      shortcuts: shortcutsFrom(map['shortcuts']),
       windowX: (map['windowX'] as num?)?.toDouble(),
       windowY: (map['windowY'] as num?)?.toDouble(),
       windowWidth: (map['windowWidth'] as num?)?.toDouble(),
