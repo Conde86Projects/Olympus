@@ -1974,6 +1974,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       preferredAudio: prefs.defaultAudio,
       preferredSubtitle: prefs.defaultSubtitle,
       sourceLabel: sourceLabelFor(_currentItem),
+      localVideo: _currentItem.sourceType == MediaSourceType.local,
       source: SourceOptions(
         qualities: decodeSourceQualities(_baseItem.metadata['qualities']),
         selectedId: _sourceQuality.value,

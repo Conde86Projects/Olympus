@@ -1,8 +1,11 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_kit/media_kit.dart' show SubtitleTrack, Track, Tracks;
+import 'package:player/app/tv_mode.dart';
 import 'package:player/features/open_media/pick_subtitle_file.dart';
 import 'package:player/features/open_media/tv_file_browser_screen.dart';
 import 'package:player/models/playback_state.dart';
@@ -129,6 +132,71 @@ void main() {
       ));
       await tester.pumpAndSettle();
       expect(find.text('Abrir arquivo de legenda…'), findsNothing);
+    });
+  });
+
+  group('aviso de legenda ao lado nao encontrada', () {
+    const aviso = 'Legenda ao lado não encontrada';
+
+    Future<void> pumpAviso(
+      WidgetTester tester, {
+      required bool localVideo,
+      bool tv = false,
+      List<MediaTrack> tracks = const [],
+    }) async {
+      const player = NoOpMediaPlayerService();
+      await tester.pumpWidget(TvMode(
+        enabled: tv,
+        child: MaterialApp(
+          home: Scaffold(
+            body: PlayerSettingsPanel(
+              player: player,
+              session: PlaybackSession(subtitleTracks: tracks),
+              initialView: PlayerPanelView.subtitles,
+              localVideo: localVideo,
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('celular, video local, sem legenda: avisa', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      await pumpAviso(tester, localVideo: true);
+      expect(find.textContaining(aviso), findsOneWidget);
+      debugDefaultTargetPlatformOverride = null;
+      expect(find.textContaining('Abrir arquivo de legenda…'), findsWidgets);
+    });
+
+    testWidgets('com legenda encontrada, nao avisa', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      await pumpAviso(tester, localVideo: true, tracks: const [
+        MediaTrack(id: '2', label: 'filme.vtt', isExternal: true),
+      ]);
+      debugDefaultTargetPlatformOverride = null;
+      expect(find.textContaining(aviso), findsNothing);
+    });
+
+    testWidgets('video que nao e local, nao avisa', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      await pumpAviso(tester, localVideo: false);
+      debugDefaultTargetPlatformOverride = null;
+      expect(find.textContaining(aviso), findsNothing);
+    });
+
+    testWidgets('na TV, nao avisa', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      await pumpAviso(tester, localVideo: true, tv: true);
+      debugDefaultTargetPlatformOverride = null;
+      expect(find.textContaining(aviso), findsNothing);
+    });
+
+    testWidgets('no Windows, nao avisa', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      await pumpAviso(tester, localVideo: true);
+      debugDefaultTargetPlatformOverride = null;
+      expect(find.textContaining(aviso), findsNothing);
     });
   });
 
