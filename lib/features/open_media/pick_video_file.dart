@@ -4,6 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:player/app/tv_mode.dart';
 import 'package:player/features/open_media/tv_file_browser_screen.dart';
 
+/// Forma do seletor de vídeo, para poder trocá-lo nos testes.
+typedef VideoPicker = Future<String?> Function(
+  BuildContext context, {
+  required String title,
+});
+
 /// Escolhe um vídeo local. Na TV usa o navegador próprio (o seletor do
 /// sistema não abre no Google TV); no celular e no desktop, o seletor nativo.
 /// Devolve o caminho ou null quando o usuário desiste.
