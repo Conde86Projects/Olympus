@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:player/core/errors/app_error.dart';
 import 'package:player/core/storage/local_store.dart';
@@ -53,6 +54,9 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
   @override
   bool get unknownSourcesAllowed => _allowUnknownSources();
   final String _platform;
+
+  @override
+  String get platform => _platform;
 
   /// Ids que simulam defeito (isolamento, §26.14). Costura de teste: na
   /// Fase 6 o defeito vira de excecoes reais da integracao.
@@ -339,6 +343,57 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     notifyListeners();
     await _save();
     return info;
+  }
+
+  /// Pacote de repositorio (T4): baixa, confere e instala. O portao e
+  /// o mesmo do pacote avulso; a conferencia (checksum/id/versao)
+  /// acontece antes de tocar o disco de pacotes, entao a recusa nao
+  /// deixa pasta nem registro.
+  @override
+  Future<AddonInfo> installPackageFromRepo(
+    AddonManifest manifest, {
+    required bool originTrusted,
+    void Function(int received, int? total)? onProgress,
+    Future<void>? cancel,
+  }) async {
+    if (!_allowUnknownSources() && !originTrusted) {
+      throw const AddonError.unknownSourcesDisabled();
+    }
+    final packageUrl = manifest.packageUrl;
+    final packageSha256 = manifest.packageSha256;
+    if (packageUrl == null || packageSha256 == null) {
+      throw const AddonError.invalidManifest(
+        'Este item não tem pacote publicado para instalar.',
+      );
+    }
+    final bytes = await _fetcher.fetchBytes(
+      packageUrl,
+      onProgress: onProgress,
+      cancel: cancel,
+    );
+    if (sha256.convert(bytes).toString() != packageSha256) {
+      throw const AddonError.invalidManifest(
+        'Checksum do pacote não confere com o anunciado.',
+      );
+    }
+    final package = await compute(readAddonPackage, bytes);
+    if (package.manifest.id != manifest.id) {
+      throw const AddonError.invalidManifest(
+        'O pacote baixado não corresponde a este add-on.',
+      );
+    }
+    if (AddonManifest.compareVersions(
+            package.manifest.version, manifest.version) !=
+        0) {
+      throw AddonError.invalidManifest(
+        'O pacote baixado não é a versão anunciada (${manifest.version}).',
+      );
+    }
+    return installPackage(
+      package,
+      originTrusted: originTrusted,
+      packageOrigin: AddonPackageOrigin.repository,
+    );
   }
 
   /// Catálogo embutido do pacote, ou null quando não há (legado ou

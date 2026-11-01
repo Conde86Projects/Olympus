@@ -710,8 +710,14 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
                           .map(formatAddonPermission)
                           .join('\n'),
                 ),
-                if (_packageSha256 != null)
-                  _ReviewRow(title: 'SHA-256', value: _packageSha256!),
+                // Pacote do repositorio (T4): mostra o checksum
+                // anunciado, conferido contra o baixado na instalacao.
+                if (_packageSha256 != null ||
+                    manifest.packageSha256 != null)
+                  _ReviewRow(
+                    title: 'SHA-256',
+                    value: _packageSha256 ?? manifest.packageSha256!,
+                  ),
                 if (preview.feedItemCount != null) ...[
                   const SizedBox(height: 8),
                   _ReviewRow(
@@ -764,7 +770,18 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
             contentPadding: EdgeInsets.zero,
           ),
         if (_busy) ...[
-          const LinearProgressIndicator(),
+          if (_downloading) ...[
+            LinearProgressIndicator(
+              key: const Key('downloadProgress'),
+              value: _downloadTotal != null && _downloadTotal! > 0
+                  ? (_downloadReceived / _downloadTotal!).clamp(0.0, 1.0)
+                  : null,
+            ),
+            const SizedBox(height: 8),
+            Text(_downloadLabel, textAlign: TextAlign.center),
+          ] else ...[
+            const LinearProgressIndicator(),
+          ],
           const SizedBox(height: 16),
         ],
         Row(
@@ -915,6 +932,9 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
     if (manifest == null) return;
     setState(() {
       _busy = true;
+      _downloading = manifest.packageUrl != null && _package == null;
+      _downloadReceived = 0;
+      _downloadTotal = null;
       _error = null;
     });
     try {
@@ -922,6 +942,21 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
         await widget.dependencies.addonService.installPackage(
           _package!,
           originTrusted: _originTrusted,
+        );
+      } else if (manifest.packageUrl != null) {
+        // Pacote do repositorio (T4): baixa com progresso e instala
+        // com checksum, id e versao conferidos no servico.
+        await widget.dependencies.addonService.installPackageFromRepo(
+          manifest,
+          originTrusted: _originTrusted,
+          onProgress: (received, total) {
+            if (mounted) {
+              setState(() {
+                _downloadReceived = received;
+                _downloadTotal = total;
+              });
+            }
+          },
         );
       } else {
         await widget.dependencies.addonService
@@ -937,7 +972,12 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
         setState(() => _error = 'Não foi possível instalar o add-on.');
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _downloading = false;
+        });
+      }
     }
   }
 }

@@ -97,3 +97,35 @@ class AddonRepository {
     }
   }
 }
+
+/// Estado de um item publicado para a tela de repositorios (T4).
+enum RepoEntryState {
+  /// Mesma versao (ou mais nova) ja instalada.
+  installed,
+  /// Listagem mais nova que a instalada.
+  updateAvailable,
+  /// Plataforma fora de `supportedPlatforms`.
+  incompatible,
+  /// Pronto para instalar.
+  available,
+}
+
+/// Classifica um item da listagem (T4): instalado vence quando a
+/// versao local e igual ou mais nova que a anunciada; listagem mais
+/// nova vira atualizacao (a compatibilidade dela e checada ao
+/// aplicar, T5). Sem instalacao, plataforma fora de
+/// `supportedPlatforms` e incompativel.
+RepoEntryState resolveRepoEntryState({
+  required AddonManifest manifest,
+  required String? installedVersion,
+  required String platform,
+}) {
+  if (installedVersion != null) {
+    return AddonManifest.compareVersions(manifest.version, installedVersion) >
+            0
+        ? RepoEntryState.updateAvailable
+        : RepoEntryState.installed;
+  }
+  if (!manifest.supports(platform)) return RepoEntryState.incompatible;
+  return RepoEntryState.available;
+}

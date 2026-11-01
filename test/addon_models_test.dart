@@ -221,6 +221,91 @@ void main() {
         ..['updateUrl'] = 42;
       expectInvalid(typed, 'atualização');
     });
+
+    test('pacote com packageUrl e sha256 válidos é aceito', () {
+      final withPackage = Map<String, Object?>.of(validManifest())
+        ..['packageUrl'] = 'https://exemplo.com/demo.zip'
+        ..['sha256'] = 'f' * 64;
+      final manifest = AddonManifest.fromMap(withPackage);
+      expect(manifest.packageUrl, 'https://exemplo.com/demo.zip');
+      expect(manifest.packageSha256, 'f' * 64);
+      expect(manifest.toMap()['sha256'], 'f' * 64);
+    });
+
+    test('listagem sem pacote segue válida', () {
+      final manifest = AddonManifest.fromMap(validManifest());
+      expect(manifest.packageUrl, isNull);
+      expect(manifest.packageSha256, isNull);
+    });
+
+    test('packageUrl sem sha256 válido é rejeitado', () {
+      final missing = Map<String, Object?>.of(validManifest())
+        ..['packageUrl'] = 'https://exemplo.com/demo.zip';
+      expectInvalid(missing, 'checksum');
+
+      final shortSha = Map<String, Object?>.of(validManifest())
+        ..['packageUrl'] = 'https://exemplo.com/demo.zip'
+        ..['sha256'] = 'abc';
+      expectInvalid(shortSha, 'SHA-256');
+
+      final nonHex = Map<String, Object?>.of(validManifest())
+        ..['packageUrl'] = 'https://exemplo.com/demo.zip'
+        ..['sha256'] = 'z' * 64;
+      expectInvalid(nonHex, 'SHA-256');
+
+      final badUrl = Map<String, Object?>.of(validManifest())
+        ..['packageUrl'] = 'ftp://exemplo.com/demo.zip'
+        ..['sha256'] = 'f' * 64;
+      expectInvalid(badUrl, 'pacote');
+    });
+
+    test('sha256 sem packageUrl é rejeitado', () {
+      final orphan = Map<String, Object?>.of(validManifest())
+        ..['sha256'] = 'f' * 64;
+      expectInvalid(orphan, 'pacote');
+    });
+
+    test('resolveRepoEntryState cobre os quatro estados', () {
+      final base = AddonManifest.fromMap(validManifest());
+      expect(
+        resolveRepoEntryState(
+            manifest: base, installedVersion: null, platform: 'windows'),
+        RepoEntryState.available,
+      );
+      expect(
+        resolveRepoEntryState(
+            manifest: base, installedVersion: null, platform: 'android'),
+        RepoEntryState.incompatible,
+      );
+      expect(
+        resolveRepoEntryState(
+            manifest: base,
+            installedVersion: '1.2.3',
+            platform: 'windows'),
+        RepoEntryState.installed,
+      );
+      expect(
+        resolveRepoEntryState(
+            manifest: base, installedVersion: '1.0.0', platform: 'windows'),
+        RepoEntryState.updateAvailable,
+      );
+    });
+
+    test('listagem com pacote inválido é reprovada', () {
+      final bad = Map<String, Object?>.of(validManifest())
+        ..['packageUrl'] = 'https://exemplo.com/demo.zip';
+      try {
+        AddonRepository.parseListing(
+          jsonEncode({
+            'addons': [bad],
+          }),
+        );
+        fail('item inválido foi aceito');
+      } on AddonError catch (error) {
+        expect(error.code, 'addon.invalid-manifest');
+        expect(error.message, contains_('checksum'));
+      }
+    });
   });
 
   group('AddonInfo', () {

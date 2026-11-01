@@ -293,18 +293,25 @@ class _AddonReposScreenState extends State<AddonReposScreen> {
       itemBuilder: (context, index) {
         final manifest = listing[index];
         final installed =
-            widget.dependencies.addonService.findById(manifest.id) != null;
+            widget.dependencies.addonService.findById(manifest.id);
+        final state = resolveRepoEntryState(
+          manifest: manifest,
+          installedVersion: installed?.manifest.version,
+          platform: widget.dependencies.addonService.platform,
+        );
         return _RepoEntryTile(
           manifest: manifest,
-          installed: installed,
+          state: state,
           autofocus: index == 0,
-          onInstall: () => Navigator.of(context).pushNamed(
-            AppRoutes.addonInstall,
-            arguments: AddonInstallArgs(
-              manifest: manifest,
-              originTrusted: repo.trusted,
-            ),
-          ),
+          onInstall: state == RepoEntryState.available
+              ? () => Navigator.of(context).pushNamed(
+                    AppRoutes.addonInstall,
+                    arguments: AddonInstallArgs(
+                      manifest: manifest,
+                      originTrusted: repo.trusted,
+                    ),
+                  )
+              : null,
         );
       },
     );
@@ -467,23 +474,41 @@ class _RepoTile extends StatelessWidget {
   }
 }
 
-/// Item publicado: nome, versao, autor e instalar (ou "Instalado").
+/// Item publicado (T4): nome, versao, autor e o estado em icone +
+/// texto (Instalado, Atualizacao disponivel, Nao compativel ou
+/// Disponivel). So o disponivel oferece o botao instalar.
 class _RepoEntryTile extends StatelessWidget {
   const _RepoEntryTile({
     required this.manifest,
-    required this.installed,
-    required this.onInstall,
+    required this.state,
+    this.onInstall,
     this.autofocus = false,
   });
 
   final AddonManifest manifest;
-  final bool installed;
-  final VoidCallback onInstall;
+  final RepoEntryState state;
+  final VoidCallback? onInstall;
   final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final (icon, label) = switch (state) {
+      RepoEntryState.installed =>
+        (Icons.check_circle, 'Instalado'),
+      RepoEntryState.updateAvailable =>
+        (Icons.system_update, 'Atualização disponível'),
+      RepoEntryState.incompatible => (Icons.block, 'Não compatível'),
+      RepoEntryState.available =>
+        (Icons.extension_outlined, 'Disponível'),
+    };
+    final stateStyle = state == RepoEntryState.incompatible
+        ? theme.textTheme.bodyMedium
+            ?.copyWith(color: theme.colorScheme.error)
+        : theme.textTheme.bodyMedium;
+    final stateIconColor = state == RepoEntryState.incompatible
+        ? theme.colorScheme.error
+        : null;
     return Card(
       color: const Color(0xFF1C1C1E),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -512,15 +537,30 @@ class _RepoEntryTile extends StatelessWidget {
                 ],
               ),
             ),
-            if (installed)
-              Text('Instalado', style: theme.textTheme.bodyMedium)
-            else
-              FocusableButton(
-                label: 'Instalar',
-                icon: Icons.download,
-                autofocus: autofocus,
-                onPressed: onInstall,
-              ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 20, color: stateIconColor),
+                    const SizedBox(width: 6),
+                    Text(label, style: stateStyle),
+                  ],
+                ),
+                if (state == RepoEntryState.available &&
+                    onInstall != null) ...[
+                  const SizedBox(height: 8),
+                  FocusableButton(
+                    label: 'Instalar',
+                    icon: Icons.download,
+                    autofocus: autofocus,
+                    onPressed: onInstall,
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
       ),

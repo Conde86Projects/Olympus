@@ -48,6 +48,8 @@ class AddonManifest {
     required this.contentTypes,
     this.updateUrl,
     this.catalogUrl,
+    this.packageUrl,
+    this.packageSha256,
     required this.legalNotice,
     this.changelog,
   });
@@ -68,6 +70,16 @@ class AddonManifest {
   /// Feed de catalogo remoto (Fase 5): envelope `{"items": [...]}`.
   /// Opcional; sem ele o add-on serve o catalogo embutido.
   final String? catalogUrl;
+
+  /// Pacote instalável do repositório (T4): zip com o conteúdo do
+  /// add-on. Opcional; sem ele a listagem serve só o manifesto.
+  final String? packageUrl;
+
+  /// SHA-256 do pacote (64 hexadecimais, chave `sha256` na
+  /// listagem). Obrigatório com [packageUrl]: pacote sem checksum
+  /// conferido não instala.
+  final String? packageSha256;
+
   final String legalNotice;
 
   /// Novidades desta versao, exibidas na tela de atualizacao. Opcional,
@@ -89,6 +101,7 @@ class AddonManifest {
   static final _idPattern = RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]*$');
   static final _versionPattern =
       RegExp(r'^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$');
+  static final _sha256Pattern = RegExp(r'^[0-9a-fA-F]{64}$');
 
   /// O manifesto declara suporte a [platform] (ex. "windows").
   bool supports(String platform) => supportedPlatforms.contains(platform);
@@ -107,6 +120,8 @@ class AddonManifest {
         'contentTypes': contentTypes,
         'updateUrl': updateUrl,
         'catalogUrl': catalogUrl,
+        'packageUrl': packageUrl,
+        'sha256': packageSha256,
         'legalNotice': legalNotice,
         'changelog': changelog,
       };
@@ -226,6 +241,54 @@ class AddonManifest {
         catalogUrl = trimmed;
       }
     }
+    final rawPackageUrl = map['packageUrl'];
+    String? packageUrl;
+    if (rawPackageUrl != null) {
+      if (rawPackageUrl is! String) {
+        throw const AddonError.invalidManifest(
+          'Endereço do pacote inválido (use http/https).',
+        );
+      }
+      final trimmed = rawPackageUrl.trim();
+      if (trimmed.isNotEmpty) {
+        if (trimmed.length > maxUrl || !isSupportedUrl(trimmed)) {
+          throw AddonError.invalidManifest(
+              trimmed.length > maxUrl
+                  ? 'Campo "packageUrl" excede o tamanho máximo.'
+                  : 'Endereço do pacote inválido (use http/https).');
+        }
+        packageUrl = trimmed;
+      }
+    }
+    final rawPackageSha256 = map['sha256'];
+    String? packageSha256;
+    if (rawPackageSha256 != null) {
+      if (rawPackageSha256 is! String) {
+        throw const AddonError.invalidManifest(
+          'Checksum do pacote inválido (SHA-256 com 64 hexadecimais).',
+        );
+      }
+      final trimmed = rawPackageSha256.trim();
+      if (trimmed.isNotEmpty) {
+        if (!_sha256Pattern.hasMatch(trimmed)) {
+          throw const AddonError.invalidManifest(
+            'Checksum do pacote inválido (SHA-256 com 64 hexadecimais).',
+          );
+        }
+        packageSha256 = trimmed.toLowerCase();
+      }
+    }
+    if (packageUrl != null && packageSha256 == null) {
+      throw const AddonError.invalidManifest(
+        'Pacote sem checksum conferido: informe o SHA-256.',
+      );
+    }
+    if (packageSha256 != null && packageUrl == null) {
+      throw const AddonError.invalidManifest(
+        'Checksum sem pacote: informe o endereço do pacote.',
+      );
+    }
+
     final rawChangelog = map['changelog'];
     String? changelog;
     if (rawChangelog != null) {
@@ -257,6 +320,8 @@ class AddonManifest {
       contentTypes: contentTypes,
       updateUrl: updateUrl,
       catalogUrl: catalogUrl,
+      packageUrl: packageUrl,
+      packageSha256: packageSha256,
       legalNotice: text('legalNotice', 'Aviso legal do add-on ausente.',
           max: maxLongText),
       changelog: changelog,
@@ -265,6 +330,7 @@ class AddonManifest {
 
   /// Copia com outro feed. Usado pela edicao de endereco (5B); a
   /// validacao da URL nova acontece no servico antes de chegar aqui.
+  /// O pacote publicado viaja junto (T4).
   AddonManifest withCatalogUrl(String? catalogUrl) => AddonManifest(
         id: id,
         name: name,
@@ -279,6 +345,8 @@ class AddonManifest {
         contentTypes: contentTypes,
         updateUrl: updateUrl,
         catalogUrl: catalogUrl,
+        packageUrl: packageUrl,
+        packageSha256: packageSha256,
         legalNotice: legalNotice,
         changelog: changelog,
       );

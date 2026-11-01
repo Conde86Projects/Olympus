@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:player/core/errors/app_error.dart';
 import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/addon_info.dart';
+import 'package:player/models/addon_manifest.dart';
 import 'package:player/services/addon_fetcher.dart';
 import 'package:player/services/addon_package.dart';
 import 'package:player/services/demo_addons.dart';
@@ -426,6 +427,166 @@ void main() {
       }
       expect(await harness.packages.list().isEmpty, isTrue);
       expect(harness.addons.addons, isEmpty);
+    });
+  });
+
+  group('pacote de repositório (T4)', () {
+    AddonManifest listed(
+      Uint8List zipBytes, {
+      String? id,
+      String? version,
+    }) {
+      return AddonManifest.fromMap({
+        ...demoManifestJson(),
+        if (id != null) 'id': id,
+        if (version != null) 'version': version,
+        'packageUrl': 'https://exemplo.com/demo.zip',
+        'sha256': sha256.convert(zipBytes).toString(),
+      });
+    }
+
+    test('instala com checksum conferido e origem repository', () async {
+      final bytes = packageZip();
+      final harness = _Harness(byteBodies: {
+        'https://exemplo.com/demo.zip': bytes,
+      });
+      await harness.open();
+      final manifest = listed(bytes);
+      var progressCalls = 0;
+      final info = await harness.addons.installPackageFromRepo(
+        manifest,
+        originTrusted: false,
+        onProgress: (_, __) => progressCalls++,
+      );
+
+      expect(info.state, AddonState.inactive);
+      expect(info.packageOrigin, AddonPackageOrigin.repository);
+      expect(info.packageSha256, sha256.convert(bytes).toString());
+      expect(info.packageDir, isNotNull);
+      expect(await Directory(info.packageDir!).exists(), isTrue);
+      expect(progressCalls, greaterThan(0));
+    });
+
+    test('checksum diferente recusa sem instalar', () async {
+      final bytes = packageZip();
+      final tampered = Uint8List.fromList(bytes)..[10] = 0xFF ^ bytes[10];
+      final harness = _Harness(byteBodies: {
+        'https://exemplo.com/demo.zip': tampered,
+      });
+      await harness.open();
+
+      await expectLater(
+        () => harness.addons.installPackageFromRepo(
+          listed(bytes),
+          originTrusted: true,
+        ),
+        throwsA(isA<AddonError>()
+            .having((e) => e.code, 'code', 'addon.invalid-manifest')
+            .having((e) => e.message, 'message', contains('Checksum'))),
+      );
+      expect(harness.addons.addons, isEmpty);
+      expect(await harness.packages.list().isEmpty, isTrue);
+    });
+
+    test('id diferente recusa sem instalar', () async {
+      final bytes = packageZip();
+      final harness = _Harness(byteBodies: {
+        'https://exemplo.com/demo.zip': bytes,
+      });
+      await harness.open();
+
+      await expectLater(
+        () => harness.addons.installPackageFromRepo(
+          listed(bytes, id: 'outro.id'),
+          originTrusted: true,
+        ),
+        throwsA(isA<AddonError>()
+            .having((e) => e.code, 'code', 'addon.invalid-manifest')
+            .having((e) => e.message, 'message', contains('corresponde'))),
+      );
+      expect(harness.addons.addons, isEmpty);
+    });
+
+    test('versão diferente recusa sem instalar', () async {
+      final bytes = packageZip();
+      final harness = _Harness(byteBodies: {
+        'https://exemplo.com/demo.zip': bytes,
+      });
+      await harness.open();
+
+      await expectLater(
+        () => harness.addons.installPackageFromRepo(
+          listed(bytes, version: '9.9.9'),
+          originTrusted: true,
+        ),
+        throwsA(isA<AddonError>()
+            .having((e) => e.code, 'code', 'addon.invalid-manifest')
+            .having((e) => e.message, 'message', contains('versão'))),
+      );
+      expect(harness.addons.addons, isEmpty);
+    });
+
+    test('item sem pacote publicado recusa', () async {
+      final harness = _Harness();
+      await harness.open();
+
+      await expectLater(
+        () => harness.addons.installPackageFromRepo(
+          AddonManifest.fromMap(demoManifestJson()),
+          originTrusted: true,
+        ),
+        throwsA(isA<AddonError>().having(
+            (e) => e.code, 'code', 'addon.invalid-manifest')),
+      );
+      expect(harness.addons.addons, isEmpty);
+    });
+
+    test('botão desligado recusa origem não confiável', () async {
+      final bytes = packageZip();
+      final harness = _Harness(
+        byteBodies: {'https://exemplo.com/demo.zip': bytes},
+        allow: false,
+      );
+      await harness.open();
+
+      await expectLater(
+        () => harness.addons.installPackageFromRepo(
+          listed(bytes),
+          originTrusted: false,
+        ),
+        throwsA(isA<AddonError>().having((e) => e.code, 'code',
+            'addon.unknown-sources-disabled')),
+      );
+      final trusted = await harness.addons.installPackageFromRepo(
+        listed(bytes),
+        originTrusted: true,
+      );
+      expect(trusted.manifest.id, 'demo.catalogo');
+    });
+
+    test('cancelar no meio não instala', () async {
+      final bytes = packageZip();
+      final harness = _Harness(byteBodies: {
+        'https://exemplo.com/demo.zip': bytes,
+      });
+      await harness.open();
+      final cancel = Completer<void>()..complete();
+
+      await expectLater(
+        () => harness.addons.installPackageFromRepo(
+          listed(bytes),
+          originTrusted: true,
+          cancel: cancel.future,
+        ),
+        throwsA(isA<AddonError>()),
+      );
+      expect(harness.addons.addons, isEmpty);
+    });
+
+    test('plataforma usa o vocabulário de supportedPlatforms', () async {
+      final harness = _Harness();
+      await harness.open();
+      expect(harness.addons.platform, 'windows');
     });
   });
 }

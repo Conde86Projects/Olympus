@@ -61,6 +61,24 @@ abstract class AddonService extends ChangeNotifier {
     AddonPackageOrigin packageOrigin = AddonPackageOrigin.file,
   });
 
+  /// Plataforma atual no vocabulario de `supportedPlatforms`
+  /// (`windows`, `linux`, `macos`, `android`). A tela de
+  /// repositorios usa para o estado "Não compativel".
+  String get platform;
+
+  /// Baixa o pacote anunciado na listagem (`packageUrl` + `sha256`),
+  /// confere checksum, id e versao, e instala desativado com origem
+  /// de repositorio (T4). Recusa sem instalar quando o checksum, o
+  /// id ou a versao divergem, quando o item nao tem pacote ou quando
+  /// o botao desliga fontes desconhecidas e a origem nao e
+  /// confiavel. [onProgress]/[cancel] acompanham o download.
+  Future<AddonInfo> installPackageFromRepo(
+    AddonManifest manifest, {
+    required bool originTrusted,
+    void Function(int received, int? total)? onProgress,
+    Future<void>? cancel,
+  });
+
   Future<void> uninstall(String addonId);
 
   /// Apaga todos os add-ons, repositorios e a ultima alteracao.
