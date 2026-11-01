@@ -44,8 +44,10 @@ class SupervisedPlayerService implements MediaPlayerService {
     this.loadTimeout = AppConstants.loadTimeout,
     this.bufferTimeout = AppConstants.bufferTimeout,
     Future<bool> Function()? hasMediaAccess,
-  }) : _hasMediaAccess =
-            hasMediaAccess ?? (() => const MediaPermissionService().hasAccess) {
+    Future<bool> Function(String path)? canReadFile,
+  })  : _hasMediaAccess =
+            hasMediaAccess ?? (() => const MediaPermissionService().hasAccess),
+        _canReadFile = canReadFile ?? _defaultCanReadFile {
     _watchdog = PlaybackWatchdog(
       loadTimeout: loadTimeout,
       bufferTimeout: bufferTimeout,
@@ -60,7 +62,21 @@ class SupervisedPlayerService implements MediaPlayerService {
 
   final MediaPlayerService _inner;
   final Future<bool> Function() _hasMediaAccess;
+  final Future<bool> Function(String path) _canReadFile;
+
+  /// O arquivo existe e da para abrir para leitura (le 1 byte).
+  static Future<bool> _defaultCanReadFile(String path) async {
+    try {
+      final file = File(path);
+      if (!await file.exists()) return false;
+      await file.openRead(0, 1).drain<void>();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
   bool _openingLocal = false;
+  String _openingPath = '';
   final Duration loadTimeout;
   final Duration bufferTimeout;
 
@@ -101,6 +117,7 @@ class SupervisedPlayerService implements MediaPlayerService {
     _latched = null;
     _openStartedAt = DateTime.now();
     _openingLocal = item.sourceType == MediaSourceType.local;
+    _openingPath = item.source;
 
     if (item.sourceType == MediaSourceType.local &&
         !await File(item.source).exists()) {
@@ -152,7 +169,7 @@ class SupervisedPlayerService implements MediaPlayerService {
     } catch (error) {
       var kind = classifyPlaybackError(error.toString());
       if (item.sourceType == MediaSourceType.local && _maskedPermission(kind)) {
-        kind = await _refineLocalError(kind);
+        kind = await _refineLocalError(kind, item.source);
       }
       _logEvent('open', outcome: kind.name);
       _fail(kind, generation);
@@ -249,8 +266,9 @@ class SupervisedPlayerService implements MediaPlayerService {
       if (_openingLocal && _maskedPermission(kind)) {
         // Decide depois de consultar o acesso aos arquivos.
         final generation = _generation;
+        final path = _openingPath;
         unawaited(() async {
-          final refined = await _refineLocalError(kind);
+          final refined = await _refineLocalError(kind, path);
           if (generation != _generation || _latched != null) return;
           _applyInner(session, refined);
         }());
@@ -280,11 +298,15 @@ class SupervisedPlayerService implements MediaPlayerService {
       kind == PlaybackErrorKind.source ||
       kind == PlaybackErrorKind.unknown;
 
-  /// Em arquivo local, sem acesso aos arquivos o erro e de permissao.
-  /// Com acesso (ou plataforma que nao pede) o tipo segue como veio.
-  Future<PlaybackErrorKind> _refineLocalError(PlaybackErrorKind kind) async {
+  /// Em arquivo local, sem acesso aos arquivos o erro e de permissao, mas
+  /// so quando o arquivo NAO e legivel: se da para ler (ex.: copia do
+  /// seletor no cache do app), o tipo segue como o motor classificou.
+  Future<PlaybackErrorKind> _refineLocalError(
+      PlaybackErrorKind kind, String path) async {
     try {
-      if (!await _hasMediaAccess()) return PlaybackErrorKind.permission;
+      if (!await _hasMediaAccess() && !await _canReadFile(path)) {
+        return PlaybackErrorKind.permission;
+      }
     } catch (_) {
       // Sem resposta da plataforma: mantem o tipo classificado.
     }

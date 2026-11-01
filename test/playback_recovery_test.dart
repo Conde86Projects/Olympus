@@ -468,18 +468,22 @@ void main() {
     });
 
     Future<SupervisedPlayerService> abrirComErroDoMotor(
-        MediaItem item, bool acesso, String mensagem) async {
+        MediaItem item, bool acesso, String mensagem,
+        {bool? legivel}) async {
       final dir = Directory.systemTemp.createTempSync('motor_');
       addTearDown(() => dir.deleteSync(recursive: true));
       final inner = _ScriptedPlayer();
       final player = SupervisedPlayerService(inner,
-          hasMediaAccess: () async => acesso);
+          hasMediaAccess: () async => acesso,
+          canReadFile: legivel == null ? null : (_) async => legivel);
       addTearDown(player.dispose);
       await player.open(item);
       inner.emit(PlaybackSession(
           status: PlaybackStatus.error, errorMessage: mensagem));
-      await Future<void>.delayed(Duration.zero);
-      await Future<void>.delayed(Duration.zero);
+      // A leitura do arquivo e E/S real: espera o erro refinado chegar.
+      for (var i = 0; i < 100 && player.session.errorKind == null; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
       return player;
     }
 
@@ -492,9 +496,25 @@ void main() {
     }
 
     test('erro do motor em arquivo local sem acesso vira permissao', () async {
+      // Android 15: o arquivo existe, mas o app nao consegue le-lo.
       final player = await abrirComErroDoMotor(
-          arquivoReal(), false, 'Failed to open /sdcard/Movies/a.mp4');
+          arquivoReal(), false, 'Failed to open /sdcard/Movies/a.mp4',
+          legivel: false);
       expect(player.session.errorKind, PlaybackErrorKind.permission);
+    });
+
+    test('sem acesso, arquivo legivel e erro de fonte continua fonte',
+        () async {
+      final player = await abrirComErroDoMotor(
+          arquivoReal(), false, 'unable to open /cache/a.mp4');
+      expect(player.session.errorKind, PlaybackErrorKind.source);
+    });
+
+    test('sem acesso, arquivo legivel e erro desconhecido continua desconhecido',
+        () async {
+      final player = await abrirComErroDoMotor(
+          arquivoReal(), false, 'algo estranho');
+      expect(player.session.errorKind, PlaybackErrorKind.unknown);
     });
 
     test('erro do motor em arquivo local com acesso segue como antes',
