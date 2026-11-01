@@ -8,6 +8,15 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 Nada por enquanto.
 
+## [0.3.4] - 2026-11-01
+
+### Adicionado
+
+- Biblioteca: busca pelo título, sem diferenciar maiúsculas nem acentos, e ordem
+  por recentes, título ou duração. A ordem escolhida fica lembrada.
+- Na TV, o campo de busca só abre o teclado ao apertar OK, e as setas saem dele
+  para a lista e para o seletor de ordem.
+
 ## [0.3.3] - 2026-10-31
 
 ### Adicionado
