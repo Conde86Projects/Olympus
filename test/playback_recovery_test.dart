@@ -444,6 +444,46 @@ void main() {
       expect(inner.stopCount, 1);
     });
 
+    test('arquivo ausente sem acesso aos arquivos vira permissao', () async {
+      var consultas = 0;
+      final inner = _ScriptedPlayer();
+      final player = SupervisedPlayerService(inner, hasMediaAccess: () async {
+        consultas++;
+        return false;
+      });
+      await player.open(localItem(r'C:\nao\existe.mp4'));
+
+      expect(player.session.errorKind, PlaybackErrorKind.permission);
+      expect(inner.openCount, 0);
+      expect(consultas, 1);
+    });
+
+    test('arquivo ausente com acesso concedido continua sendo fonte',
+        () async {
+      final player = SupervisedPlayerService(_ScriptedPlayer(),
+          hasMediaAccess: () async => true);
+      await player.open(localItem(r'C:\nao\existe.mp4'));
+
+      expect(player.session.errorKind, PlaybackErrorKind.source);
+    });
+
+    test('arquivo existente nao consulta o acesso', () async {
+      final dir = Directory.systemTemp.createTempSync('precheck_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final file = File('${dir.path}${Platform.pathSeparator}v.mp4')
+        ..writeAsStringSync('x');
+      var consultas = 0;
+      final inner = _ScriptedPlayer();
+      final player = SupervisedPlayerService(inner, hasMediaAccess: () async {
+        consultas++;
+        return false;
+      });
+      await player.open(localItem(file.path));
+
+      expect(consultas, 0);
+      expect(inner.openCount, 1);
+    });
+
     test('arquivo existente passa na pre-checagem', () async {
       final dir = Directory.systemTemp.createTempSync('precheck_');
       addTearDown(() => dir.deleteSync(recursive: true));
