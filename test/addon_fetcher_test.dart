@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -256,6 +257,146 @@ void main() {
           reason: '$bad',
         );
       }
+    });
+  });
+
+  group('fetchBytes (T3)', () {
+    test('baixa os bytes de um 200 com progresso', () async {
+      final payload = List<int>.generate(4096, (i) => i % 256);
+      final server = await serve((request) async {
+        request.response
+          ..statusCode = HttpStatus.ok
+          ..headers.contentType = ContentType.binary
+          ..headers.contentLength = payload.length
+          ..add(payload);
+        await request.response.close();
+      });
+      addTearDown(server.close);
+
+      final seen = <String>[];
+      final bytes = await const HttpAddonFetcher(allowPrivate: true)
+          .fetchBytes(urlOf(server), onProgress: (received, total) {
+        seen.add('$received/$total');
+      });
+      expect(bytes, payload);
+      expect(seen, isNotEmpty);
+      expect(seen.last, '${payload.length}/${payload.length}');
+    });
+
+    test('rejeita URL invalida antes de abrir socket', () async {
+      const fetcher = HttpAddonFetcher();
+      for (final bad in [
+        'não é url',
+        'ftp://exemplo.com/p.zip',
+        '',
+      ]) {
+        try {
+          await fetcher.fetchBytes(bad);
+          fail('busca deveria ter falhado: $bad');
+        } on AddonError catch (error) {
+          expect(error.message, contains('inválido'), reason: bad);
+        }
+      }
+    });
+
+    test('redirect valido e seguido', () async {
+      final payload = List<int>.generate(1024, (i) => i % 251);
+      final target = await serve((request) async {
+        request.response
+          ..statusCode = HttpStatus.ok
+          ..add(payload);
+        await request.response.close();
+      });
+      addTearDown(target.close);
+      final source = await serve((request) async {
+        request.response
+          ..statusCode = HttpStatus.found
+          ..headers.set(HttpHeaders.locationHeader, urlOf(target, '/p.zip'));
+        await request.response.close();
+      });
+      addTearDown(source.close);
+
+      final bytes = await const HttpAddonFetcher(allowPrivate: true)
+          .fetchBytes(urlOf(source));
+      expect(bytes, payload);
+    });
+
+    test('content-length acima do teto recusa sem baixar', () async {
+      final server = await serve((request) async {
+        request.response
+          ..statusCode = HttpStatus.ok
+          ..headers.contentLength = 11 * 1024 * 1024
+          ..add([1, 2, 3]);
+        await request.response.flush();
+        // Segura a conexão: o cliente já recusou no precheck.
+        await Completer<void>().future;
+      });
+      addTearDown(() => server.close(force: true));
+
+      try {
+        await const HttpAddonFetcher(allowPrivate: true)
+            .fetchBytes(urlOf(server));
+        fail('busca deveria ter falhado');
+      } on AddonError catch (error) {
+        expect(error.message, 'O pacote é grande demais (limite de 10 MB).');
+      }
+    });
+
+    test('corpo acima de 10 MB e recusado durante o stream', () async {
+      final server = await serve((request) async {
+        try {
+          request.response.statusCode = HttpStatus.ok;
+          request.response.headers.chunkedTransferEncoding = true;
+          for (var i = 0; i < 11 * 1024; i++) {
+            request.response.add(List<int>.filled(1024, 0));
+            await request.response.flush();
+          }
+          await request.response.close();
+        } catch (_) {}
+      });
+      addTearDown(server.close);
+
+      try {
+        await const HttpAddonFetcher(allowPrivate: true)
+            .fetchBytes(urlOf(server));
+        fail('busca deveria ter falhado');
+      } on AddonError catch (error) {
+        expect(error.message, 'O pacote é grande demais (limite de 10 MB).');
+      }
+    });
+
+    test('cancelar no meio vira motivo proprio', () async {
+      final server = await serve((request) async {
+        try {
+          request.response.statusCode = HttpStatus.ok;
+          request.response.headers.chunkedTransferEncoding = true;
+          for (var i = 0; i < 50; i++) {
+            await Future<void>.delayed(const Duration(milliseconds: 50));
+            request.response.add(List<int>.filled(64 * 1024, 7));
+            await request.response.flush();
+          }
+          await request.response.close();
+        } catch (_) {}
+      });
+      addTearDown(server.close);
+
+      final cancel = Completer<void>();
+      var calls = 0;
+      try {
+        await const HttpAddonFetcher(allowPrivate: true).fetchBytes(
+          urlOf(server),
+          onProgress: (received, total) {
+            calls++;
+            if (!cancel.isCompleted) cancel.complete();
+          },
+          cancel: cancel.future,
+        );
+        fail('busca deveria ter cancelado');
+      } on AddonError catch (error) {
+        expect(error.code, 'addon.fetch-failed');
+        expect(error.message, 'Download cancelado.');
+      }
+      expect(calls, greaterThan(0));
     });
   });
 }

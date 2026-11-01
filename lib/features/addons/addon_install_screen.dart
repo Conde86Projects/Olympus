@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -57,6 +58,7 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
   final _pasteController = TextEditingController();
   final _urlController = TextEditingController();
   final _zipPathController = TextEditingController();
+  final _zipUrlController = TextEditingController();
   SourcePreview? _preview;
   bool _originTrusted = false;
   bool _cameWithManifest = false;
@@ -65,6 +67,11 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
   String? _error;
   AddonPackage? _package;
   String? _packageSha256;
+  bool _downloading = false;
+  int _downloadReceived = 0;
+  int? _downloadTotal;
+  Completer<void>? _downloadCancel;
+  bool _retryDownload = false;
 
   @override
   void didChangeDependencies() {
@@ -91,10 +98,13 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
 
   @override
   void dispose() {
+    final pending = _downloadCancel;
+    if (pending != null && !pending.isCompleted) pending.complete();
     _fileController.dispose();
     _pasteController.dispose();
     _urlController.dispose();
     _zipPathController.dispose();
+    _zipUrlController.dispose();
     super.dispose();
   }
 
@@ -135,6 +145,14 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
                     style:
                         TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
+                  if (_retryDownload && !_busy) ...[
+                    const SizedBox(height: 12),
+                    FocusableButton(
+                      label: 'Tentar de novo',
+                      icon: Icons.refresh,
+                      onPressed: _downloadZip,
+                    ),
+                  ],
                 ],
               ],
             ),
@@ -302,8 +320,61 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
           icon: Icons.folder_zip,
           onPressed: _busy ? null : _readZip,
         ),
+        const SizedBox(height: 20),
+        Text(
+          'Ou cole o link do pacote (.zip):',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 8),
+        DpadFieldExit(
+          controller: _zipUrlController,
+          child: TextField(
+            controller: _zipUrlController,
+            enabled: !_busy,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: 'Link do pacote',
+              hintText: 'https://…/pacote.zip',
+              border: OutlineInputBorder(),
+            ),
+            onSubmitted: (_) => _downloadZip(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        FocusableButton(
+          label: 'Baixar pacote',
+          icon: Icons.cloud_download,
+          onPressed: _busy ? null : _downloadZip,
+        ),
+        if (_downloading) ...[
+          const SizedBox(height: 12),
+          LinearProgressIndicator(
+            key: const Key('downloadProgress'),
+            value: _downloadTotal != null && _downloadTotal! > 0
+                ? (_downloadReceived / _downloadTotal!).clamp(0.0, 1.0)
+                : null,
+          ),
+          const SizedBox(height: 8),
+          Text(_downloadLabel, textAlign: TextAlign.center),
+          const SizedBox(height: 12),
+          FocusableButton(
+            label: 'Cancelar download',
+            icon: Icons.close,
+            onPressed: _cancelDownload,
+          ),
+        ],
       ],
     );
+  }
+
+  /// Rótulo do progresso: porcentagem com total, KB sem total.
+  String get _downloadLabel {
+    if (_downloadTotal != null && _downloadTotal! > 0) {
+      final pct =
+          (100 * _downloadReceived / _downloadTotal!).clamp(0, 100).round();
+      return 'Baixando… $pct%';
+    }
+    return 'Baixando… ${(_downloadReceived / 1024).round()} KB';
   }
 
   Future<void> _browseZip() async {
@@ -321,12 +392,16 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
   Future<void> _readZip() async {
     final path = _zipPathController.text.trim();
     if (path.isEmpty) {
-      setState(() => _error = 'Informe o caminho do pacote.');
+      setState(() {
+        _error = 'Informe o caminho do pacote.';
+        _retryDownload = false;
+      });
       return;
     }
     setState(() {
       _busy = true;
       _error = null;
+      _retryDownload = false;
     });
     try {
       final file = File(path);
@@ -347,17 +422,7 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
       final package =
           await widget.dependencies.addonService.previewPackage(bytes);
       if (!mounted) return;
-      setState(() {
-        _package = package;
-        _packageSha256 = package.sha256;
-        _preview = SourcePreview(
-          manifest: package.manifest,
-          feedItemCount: package.catalogItemCount,
-          feedSample: package.catalogSample,
-        );
-        _originTrusted = false;
-        _error = null;
-      });
+      _toPackageReview(package);
     } on AppError catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
@@ -367,6 +432,88 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Revisão de pacote (arquivo ou link): mesmos dados, mesma tela.
+  void _toPackageReview(AddonPackage package) {
+    setState(() {
+      _package = package;
+      _packageSha256 = package.sha256;
+      _preview = SourcePreview(
+        manifest: package.manifest,
+        feedItemCount: package.catalogItemCount,
+        feedSample: package.catalogSample,
+      );
+      _originTrusted = false;
+      _error = null;
+      _retryDownload = false;
+    });
+  }
+
+  /// Baixa o zip do link com progresso e cancelamento (T3) e cai
+  /// na mesma revisão do arquivo. Sem temporário por construção.
+  Future<void> _downloadZip() async {
+    final url = _zipUrlController.text.trim();
+    if (url.isEmpty) {
+      setState(() {
+        _error = 'Informe o link do pacote.';
+        _retryDownload = false;
+      });
+      return;
+    }
+    final cancel = Completer<void>();
+    setState(() {
+      _busy = true;
+      _downloading = true;
+      _downloadReceived = 0;
+      _downloadTotal = null;
+      _error = null;
+      _retryDownload = false;
+      _downloadCancel = cancel;
+    });
+    try {
+      final package = await widget.dependencies.addonService
+          .previewPackageFromLink(
+        url,
+        onProgress: (received, total) {
+          if (mounted) {
+            setState(() {
+              _downloadReceived = received;
+              _downloadTotal = total;
+            });
+          }
+        },
+        cancel: cancel.future,
+      );
+      if (!mounted) return;
+      _toPackageReview(package);
+    } on AppError catch (error) {
+      if (mounted) {
+        setState(() {
+          _error = error.message;
+          _retryDownload = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = 'Não foi possível baixar o pacote.';
+          _retryDownload = true;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _downloading = false;
+        });
+      }
+    }
+  }
+
+  void _cancelDownload() {
+    final cancel = _downloadCancel;
+    if (cancel != null && !cancel.isCompleted) cancel.complete();
   }
 
   Widget _fileSection() {

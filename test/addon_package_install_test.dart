@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -23,12 +24,76 @@ import 'package:player/services/window_service.dart';
 
 /// T2: segmento Zip da instalação. Costura da Parte 2: tela de
 /// instalação com preferência ligada e pacote real em arquivo.
+/// T3: o mesmo fake serve bytes do link, com trava e falha
+/// programáveis para exercitar progresso, cancelamento e retry.
 class _FakeFetcher extends AddonFetcher {
-  const _FakeFetcher();
+  _FakeFetcher();
+
+  /// Pacote servido no download; null usa o pacote de demonstração.
+  Uint8List? packageBytes;
+
+  /// Mensagem de falha imediata do download (testa erro + retry).
+  String? failMessage;
+
+  /// Trava após a primeira fatia até [downloadGate] completar;
+  /// o cancelamento destrava com o motivo (testa progresso e
+  /// cancelamento sem corrida).
+  bool hangAfterFirstChunk = false;
+  Completer<void>? downloadGate;
+
+  int progressCalls = 0;
+
   @override
   Future<String> fetchText(String url,
       {Map<String, String> headers = const {}}) async {
     throw const AddonError.fetchFailed('fora de uso neste teste.');
+  }
+
+  @override
+  Future<Uint8List> fetchBytes(
+    String url, {
+    Map<String, String> headers = const {},
+    void Function(int received, int? total)? onProgress,
+    Future<void>? cancel,
+  }) async {
+    var cancelled = false;
+    cancel?.then((_) => cancelled = true);
+    if (failMessage != null) {
+      throw AddonError.fetchFailed(failMessage!);
+    }
+    final bytes = packageBytes ?? packageZip();
+    const slice = 32 * 1024;
+    final out = <int>[];
+    var first = true;
+    for (var i = 0; i < bytes.length; i += slice) {
+      if (cancelled) {
+        throw const AddonError.fetchFailed(fetchCancelledMessage);
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      if (cancelled) {
+        throw const AddonError.fetchFailed(fetchCancelledMessage);
+      }
+      final end = (i + slice).clamp(0, bytes.length);
+      out.addAll(bytes.sublist(i, end));
+      onProgress?.call(out.length, bytes.length);
+      progressCalls++;
+      if (first && hangAfterFirstChunk) {
+        first = false;
+        final gate = downloadGate!;
+        var open = false;
+        unawaited(gate.future.then((_) => open = true));
+        while (!open) {
+          if (cancelled) {
+            throw const AddonError.fetchFailed(fetchCancelledMessage);
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+        if (cancelled) {
+          throw const AddonError.fetchFailed(fetchCancelledMessage);
+        }
+      }
+    }
+    return Uint8List.fromList(out);
   }
 }
 
@@ -67,12 +132,13 @@ class _Harness {
     addons = LocalAddonService(
       InMemoryLocalStore(),
       platform: 'windows',
-      fetcher: const _FakeFetcher(),
+      fetcher: fetcher,
       packageDir: packages,
       allowUnknownSources: () => preferences.current.allowUnknownSources,
     );
   }
 
+  final _FakeFetcher fetcher = _FakeFetcher();
   final Directory packages;
   final InMemoryPreferencesService preferences;
   late final LocalAddonService addons;
@@ -142,7 +208,7 @@ void main() {
     await harness.openZip(tester);
 
     await tester.enterText(
-        find.byType(TextField).last, zipFile.path);
+        find.byType(TextField).first, zipFile.path);
     await tester.runAsync(() async {
       await tester.tap(find.text('Ler pacote'));
       for (var i = 0;
@@ -195,7 +261,7 @@ void main() {
     await harness.openZip(tester);
 
     await tester.enterText(
-        find.byType(TextField).last, zipFile.path);
+        find.byType(TextField).first, zipFile.path);
     await tester.runAsync(() async {
       await tester.tap(find.text('Ler pacote'));
       for (var i = 0;
@@ -234,7 +300,7 @@ void main() {
     await harness.openZip(tester);
 
     await tester.enterText(
-        find.byType(TextField).last, zipFile.path);
+        find.byType(TextField).first, zipFile.path);
     await tester.runAsync(() async {
       await tester.tap(find.text('Ler pacote'));
       for (var i = 0;
@@ -270,7 +336,7 @@ void main() {
     await harness.openZip(tester);
 
     await tester.enterText(
-        find.byType(TextField).last, zipFile.path);
+        find.byType(TextField).first, zipFile.path);
     await tester.runAsync(() async {
       await tester.tap(find.text('Ler pacote'));
       for (var i = 0;
@@ -290,5 +356,128 @@ void main() {
         findsOneWidget);
     expect(find.text('Revise antes de instalar'), findsNothing);
     expect(harness.addons.addons, isEmpty);
+  });
+
+  group('pacote por link (T3)', () {
+    testWidgets('link baixa com progresso e chega à revisão',
+        (tester) async {
+      final work = Directory.systemTemp.createTempSync('olympus-zip-tela-');
+      addTearDown(() => work.deleteSync(recursive: true));
+      final packages =
+          Directory.systemTemp.createTempSync('olympus-pacotes-tela-');
+      addTearDown(() => packages.deleteSync(recursive: true));
+      final harness = _Harness(packages);
+      await harness.setAllowed(true);
+      await harness.pump(tester);
+      await harness.openZip(tester);
+
+      await tester.enterText(find.byType(TextField).last,
+          'https://pacotes.exemplo.com/demo.zip');
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Baixar pacote'));
+        for (var i = 0;
+            i < 200 &&
+                find.text('Revise antes de instalar').evaluate().isEmpty;
+            i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+          await tester.pump();
+        }
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.text('Revise antes de instalar'), findsOneWidget);
+      expect(find.textContaining('2 itens:'), findsOneWidget);
+      expect(
+          find.textContaining(sha256.convert(packageZip()).toString()),
+          findsOneWidget);
+      expect(harness.fetcher.progressCalls, greaterThan(0));
+    });
+
+    testWidgets('download mostra progresso e cancela', (tester) async {
+      final work = Directory.systemTemp.createTempSync('olympus-zip-tela-');
+      addTearDown(() => work.deleteSync(recursive: true));
+      final packages =
+          Directory.systemTemp.createTempSync('olympus-pacotes-tela-');
+      addTearDown(() => packages.deleteSync(recursive: true));
+      final harness = _Harness(packages);
+      harness.fetcher.hangAfterFirstChunk = true;
+      harness.fetcher.downloadGate = Completer<void>();
+      await harness.setAllowed(true);
+      await harness.pump(tester);
+      await harness.openZip(tester);
+
+      await tester.enterText(find.byType(TextField).last,
+          'https://pacotes.exemplo.com/demo.zip');
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Baixar pacote'));
+        for (var i = 0;
+            i < 200 &&
+                find.textContaining('Baixando').evaluate().isEmpty;
+            i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+          await tester.pump();
+        }
+        expect(find.byKey(const Key('downloadProgress')), findsOneWidget);
+        await tester.tap(find.text('Cancelar download'));
+        for (var i = 0;
+            i < 200 && find.text('Download cancelado.').evaluate().isEmpty;
+            i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+          await tester.pump();
+        }
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.text('Download cancelado.'), findsOneWidget);
+      expect(find.text('Tentar de novo'), findsOneWidget);
+      expect(find.text('Revise antes de instalar'), findsNothing);
+      expect(harness.addons.addons, isEmpty);
+    });
+
+    testWidgets('erro no download mostra tentar de novo', (tester) async {
+      final work = Directory.systemTemp.createTempSync('olympus-zip-tela-');
+      addTearDown(() => work.deleteSync(recursive: true));
+      final packages =
+          Directory.systemTemp.createTempSync('olympus-pacotes-tela-');
+      addTearDown(() => packages.deleteSync(recursive: true));
+      final harness = _Harness(packages);
+      harness.fetcher.failMessage = 'Falha simulada.';
+      await harness.setAllowed(true);
+      await harness.pump(tester);
+      await harness.openZip(tester);
+
+      await tester.enterText(find.byType(TextField).last,
+          'https://pacotes.exemplo.com/demo.zip');
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Baixar pacote'));
+        for (var i = 0;
+            i < 200 && find.text('Falha simulada.').evaluate().isEmpty;
+            i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+          await tester.pump();
+        }
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.text('Falha simulada.'), findsOneWidget);
+      expect(find.text('Tentar de novo'), findsOneWidget);
+      expect(harness.addons.addons, isEmpty);
+
+      harness.fetcher.failMessage = null;
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Tentar de novo'));
+        for (var i = 0;
+            i < 200 &&
+                find.text('Revise antes de instalar').evaluate().isEmpty;
+            i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+          await tester.pump();
+        }
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.text('Revise antes de instalar'), findsOneWidget);
+      expect(find.textContaining('2 itens:'), findsOneWidget);
+    });
   });
 }

@@ -250,6 +250,25 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     return compute(readAddonPackage, zipBytes);
   }
 
+  /// Link com progresso e cancelamento (T3): baixa em memória e
+  /// cai na mesma revisão do arquivo. Sem temporário por construção.
+  @override
+  Future<AddonPackage> previewPackageFromLink(
+    String url, {
+    void Function(int received, int? total)? onProgress,
+    Future<void>? cancel,
+  }) async {
+    if (!_allowUnknownSources()) {
+      throw const AddonError.unknownSourcesDisabled();
+    }
+    final bytes = await _fetcher.fetchBytes(
+      url,
+      onProgress: onProgress,
+      cancel: cancel,
+    );
+    return previewPackage(bytes);
+  }
+
   /// Instala o pacote já validado, sempre desativado. Os arquivos
   /// vão para uma pasta temporária e só então para o lugar final;
   /// falha no meio não deixa pasta nem registro (T2).

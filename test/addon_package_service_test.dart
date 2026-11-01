@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -16,9 +17,10 @@ import 'package:player/services/local_addon_service.dart';
 /// T2: gerenciador de pacotes. Costuras da Parte 2: [LocalAddonService]
 /// com [InMemoryLocalStore] e fetcher falso; disco em pasta temporária.
 class _FakeFetcher extends AddonFetcher {
-  const _FakeFetcher(this.bodies);
+  const _FakeFetcher(this.bodies, {this.byteBodies = const {}});
 
   final Map<String, String> bodies;
+  final Map<String, Uint8List> byteBodies;
 
   @override
   Future<String> fetchText(String url,
@@ -28,6 +30,40 @@ class _FakeFetcher extends AddonFetcher {
       throw const AddonError.fetchFailed('Não foi possível buscar.');
     }
     return body;
+  }
+
+  /// Entrega fatiada com progresso; completar [cancel] no meio
+  /// interrompe com o motivo de cancelamento (contrato real).
+  @override
+  Future<Uint8List> fetchBytes(
+    String url, {
+    Map<String, String> headers = const {},
+    void Function(int received, int? total)? onProgress,
+    Future<void>? cancel,
+  }) async {
+    var cancelled = false;
+    cancel?.then((_) => cancelled = true);
+    final bytes = byteBodies[url];
+    if (bytes == null) {
+      throw const AddonError.fetchFailed(
+        'Não foi possível buscar o endereço. Verifique a conexão.',
+      );
+    }
+    const slice = 64 * 1024;
+    final out = <int>[];
+    for (var i = 0; i < bytes.length; i += slice) {
+      if (cancelled) {
+        throw const AddonError.fetchFailed(fetchCancelledMessage);
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      if (cancelled) {
+        throw const AddonError.fetchFailed(fetchCancelledMessage);
+      }
+      final end = (i + slice).clamp(0, bytes.length);
+      out.addAll(bytes.sublist(i, end));
+      onProgress?.call(out.length, bytes.length);
+    }
+    return Uint8List.fromList(out);
   }
 }
 
@@ -62,9 +98,12 @@ Uint8List packageZip({String? catalogUrl}) {
 }
 
 class _Harness {
-  _Harness({Map<String, String> bodies = const {}, bool allow = true})
+  _Harness(
+      {Map<String, String> bodies = const {},
+      Map<String, Uint8List> byteBodies = const {},
+      bool allow = true})
       : _allow = allow,
-        fetcher = _FakeFetcher(bodies);
+        fetcher = _FakeFetcher(bodies, byteBodies: byteBodies);
 
   bool _allow;
   final _FakeFetcher fetcher;
@@ -323,6 +362,70 @@ void main() {
       expect(catalog.map((i) => i.title), ['Vídeo 1', 'Vídeo 2']);
       expect(harness.addons.getStatus('demo.catalogo'),
           AddonState.active);
+    });
+  });
+
+  group('pacote por link (T3)', () {
+    test('link baixa e chega à prévia com progresso', () async {
+      const link = 'https://pacotes.exemplo.com/demo.zip';
+      final bytes = packageZip();
+      final harness = _Harness(byteBodies: {link: bytes});
+      await harness.open();
+
+      final seen = <String>[];
+      final package = await harness.addons.previewPackageFromLink(
+        link,
+        onProgress: (received, total) =>
+            seen.add('$received/$total'),
+      );
+
+      expect(package.manifest.id, 'demo.catalogo');
+      expect(package.sha256, sha256.convert(bytes).toString());
+      expect(package.catalogItemCount, 2);
+      expect(seen, isNotEmpty);
+      expect(seen.last, '${bytes.length}/${bytes.length}');
+    });
+
+    test('botão desligado recusa o link', () async {
+      const link = 'https://pacotes.exemplo.com/demo.zip';
+      final harness = _Harness(
+        allow: false,
+        byteBodies: {link: packageZip()},
+      );
+      await harness.open();
+
+      await expectLater(
+        () => harness.addons.previewPackageFromLink(link),
+        throwsA(isA<AddonError>().having(
+            (e) => e.code, 'code', 'addon.unknown-sources-disabled')),
+      );
+      expect(harness.addons.addons, isEmpty);
+    });
+
+    test('cancelar o download propaga o motivo sem temporário',
+        () async {
+      const link = 'https://pacotes.exemplo.com/grande.zip';
+      final big = Uint8List.fromList(
+        packageZip() + List<int>.filled(1024 * 1024, 0),
+      );
+      final harness = _Harness(byteBodies: {link: big});
+      await harness.open();
+
+      final cancel = Completer<void>();
+      try {
+        await harness.addons.previewPackageFromLink(
+          link,
+          onProgress: (received, total) {
+            if (!cancel.isCompleted) cancel.complete();
+          },
+          cancel: cancel.future,
+        );
+        fail('deveria ter cancelado');
+      } on AddonError catch (error) {
+        expect(error.message, fetchCancelledMessage);
+      }
+      expect(await harness.packages.list().isEmpty, isTrue);
+      expect(harness.addons.addons, isEmpty);
     });
   });
 }

@@ -3,6 +3,7 @@ import 'package:player/models/addon_catalog_item.dart';
 import 'package:player/models/addon_info.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/models/addon_repository.dart';
+import 'package:player/services/addon_fetcher.dart';
 import 'package:player/services/addon_package.dart';
 import 'package:player/models/media_item.dart';
 
@@ -43,6 +44,16 @@ abstract class AddonService extends ChangeNotifier {
 
   /// Remove somente os dados do add-on. Nunca toca midias (spec 6.1).
   Future<AddonPackage> previewPackage(Uint8List zipBytes);
+
+  /// Baixa o zip de um link e devolve a prévia para a mesma revisão
+  /// (T3). Mesmo portão do [previewPackage]; bytes em memória, sem
+  /// temporário (cancelar não deixa arquivo). Completar [cancel]
+  /// aborta e vira [fetchCancelledMessage].
+  Future<AddonPackage> previewPackageFromLink(
+    String url, {
+    void Function(int received, int? total)? onProgress,
+    Future<void>? cancel,
+  });
 
   Future<AddonInfo> installPackage(
     AddonPackage package, {
