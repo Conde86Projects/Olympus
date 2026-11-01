@@ -114,9 +114,9 @@ o diagnóstico do guarda de arranque).
 
 ## Instalação e boot (Task 15)
 
-- [ ] APK instala pela Play Store ou `adb install`.
-- [ ] O app aparece na fileira de apps do launcher da TV (categoria
-      leanback; banner provisório = ícone — TODO banner 320x180).
+- [x] APK instala pela Play Store ou `adb install`. (adb install na TCL, 12/10/2026: Success)
+- [x] O app aparece na fileira de apps do launcher da TV (categoria
+      leanback; banner provisório = ícone — TODO banner 320x180). (TCL, 11/10/2026: tile com banner 320x180 no launcher Google TV; o banner provisório já foi trocado)
 - [ ] Abre direto em paisagem, sem onboarding bloqueante e sem pedir
       toque (D-pad basta desde a primeira tela).
 - [ ] Sem crash no boot com/sem rede.
@@ -127,32 +127,32 @@ o diagnóstico do guarda de arranque).
       outro botão.
 - [ ] Foco sempre visível, com contraste sobre o fundo (§18, §26.6).
 - [ ] Ordem do foco segue a ordem visual (cima→baixo, esq→dir).
-- [ ] Player, barra visível: setas navegam; esquerda/direita no
-      slider ajustam; Enter no slider sai para os botões (§12.2).
-- [ ] Player, barra oculta: setas buscam/volume e reexibem; Enter
-      reexibe sem efeito colateral.
+- [x] Player, barra visível: setas navegam; esquerda/direita no
+      slider ajustam; Enter no slider sai para os botões (§12.2). (TCL, 11/10/2026: F11, OK no slider move o foco para a fileira)
+- [x] Player, barra oculta: setas buscam/volume e reexibem; Enter
+      reexibe sem efeito colateral. (TCL, 11/10/2026: F1, seek +10 s exato e OK reexibe sem seek)
 - [ ] Subir da fileira de botões ancora na AppBar; descer da AppBar
       cai no slider; volume sai para o mudo.
-- [ ] Voltar fecha painel antes de sair; em tela cheia/cinema, voltar
-      sai do modo antes de fechar o player (§18, §12.2).
-- [ ] Diálogos prendem o foco; Cancelar nasce focado (OK imediato
-      nunca destrói — §26.6).
+- [x] Voltar fecha painel antes de sair; em tela cheia/cinema, voltar
+      sai do modo antes de fechar o player (§18, §12.2). (TCL, 11/10/2026: voltar fecha o painel; em tela cheia sai do modo antes de fechar)
+- [x] Diálogos prendem o foco; Cancelar nasce focado (OK imediato
+      nunca destrói — §26.6). (TCL, 11/10/2026: F3, Cancelar focado; repetido na TCL em 31/10)
 - [ ] Pop-up de repositórios: setas navegam, Enter escolhe, voltar
       fecha sem aplicar.
 
 ## Modo TV (Task 14)
 
-- [ ] Configurações → Modo TV: botões ≥ 64 px, texto maior, margens
-      maiores (sem corte por overscan nas bordas).
-- [ ] Com foco na barra, ela não some sozinha; ao sair dela, some em
-      ~4 s (§12.2).
-- [ ] Layout 16:9 sem estouro nem coluna espremida (1920x1080 e
-      3840x2160).
+- [x] Configurações → Modo TV: botões ≥ 64 px, texto maior, margens
+      maiores (sem corte por overscan nas bordas). (AVD-TV, 10/10/2026: alvo de 128 px, margens de 115 px; escala 10-foot na TCL, 12/10/2026)
+- [x] Com foco na barra, ela não some sozinha; ao sair dela, some em
+      ~4 s (§12.2). (AVD-TV, 11/10/2026: some em 4 s, fica com foco na barra)
+- [x] Layout 16:9 sem estouro nem coluna espremida (1920x1080 e
+      3840x2160). (TCL, 12/10/2026: 1080p nativo e 4K simulado, spec 27)
 
 ## Reprodução no aparelho (§26.10, real)
 
-- [ ] Vídeo curto e longo (rede estável): início, pausa, busca,
-      retomada, troca de mídia.
+- [x] Vídeo curto e longo (rede estável): início, pausa, busca,
+      retomada, troca de mídia. (TCL, 11 e 12/10/2026: início, pausa, busca, retomada exata e troca para o próximo vídeo)
 - [ ] Rede instável: buffer indica, UI responde, timeout vira erro
       legível por tipo (fonte/rede/decodificador).
 - [ ] Erro de add-on/fonte diz de quem é a culpa, sem derrubar o app.

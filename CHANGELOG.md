@@ -6,7 +6,41 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
-Nada por enquanto.
+Ciclo de acabamento da spec #16, no PR #29. Ainda não foi publicado nem
+conferido em todos os aparelhos. Na execução de 01/11/2026, a suíte passou com 930
+testes e a análise estática ficou limpa.
+
+### Adicionado
+
+- Configurações: "Tamanho do texto" (Normal, Grande ou Maior) para todo o app. A
+  legenda continua com o ajuste dela, em Legendas.
+- Os cartões mostram "Visto hoje", "Visto ontem" ou a data da última vez que o vídeo
+  foi visto. Vídeo que nunca tocou fica sem a linha.
+- Erro ao tocar: "Ver informações técnicas" (sem caminho de pastas, endereço completo
+  nem senha), "Escolher outro vídeo" para arquivo local e "Abrir arquivo local" quando
+  o link falha por falta de conexão.
+- Fim do vídeo: botões "Biblioteca" e "Início".
+- Configurações: "Menu principal", para esconder Biblioteca, Favoritos, Add-ons ou
+  Histórico. Início e Configurações nunca saem, e esconder não desliga os add-ons.
+- Configurações: "Atalhos" para trocar a tecla de Mudo, Tela cheia, Informações,
+  Legendas, Áudio, Modo cinema e Fechar player. O app recusa tecla já usada ou
+  reservada (espaço, Enter, Esc, setas e Tab) e tem "Restaurar padrão".
+- Celular: em vídeo local sem legenda ao lado encontrada, o painel de legendas avisa
+  que ela pode ser aberta à mão por "Abrir arquivo de legenda…".
+
+### Alterado
+
+- Na TV, o painel de opções do player segura o foco: as setas no primeiro e no último
+  item não saem dele.
+- Duas legendas com o mesmo nome em pastas diferentes aparecem como `pasta/nome` na
+  lista, e a marcada é exatamente a que está ligada.
+
+### Corrigido
+
+- Quando faltava acesso aos arquivos, o erro dizia que o arquivo sumiu ou que não havia
+  conexão. Agora diz que falta acesso aos arquivos e como liberar.
+- Celular: depois de escolher um arquivo no seletor do sistema (por exemplo, a legenda),
+  o vídeo volta a tocar se estava tocando. Vídeo pausado continua pausado.
 
 ## [0.3.5] - 2026-11-01
 
