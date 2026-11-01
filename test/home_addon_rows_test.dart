@@ -219,6 +219,8 @@ void main() {
 
       expect(rows.stateOf('a').error, isNotNull);
       expect(rows.stateOf('a').items, isEmpty);
+      // Falha nesta sessão não ganha tentativa automática.
+      expect(fetcher.calls.where((url) => url == _url('a')), hasLength(1));
       expect(rows.stateOf('b').error, isNull);
       expect(rows.stateOf('b').items, hasLength(2));
     });
@@ -253,6 +255,59 @@ void main() {
       expect(rows.stateOf('a').error, isNull);
       expect(rows.stateOf('a').items, hasLength(2));
       expect(fetcher.calls, hasLength(2));
+    });
+
+    /// Add-on salvo em erro por uma sessão anterior.
+    Future<InMemoryLocalStore> reopenWithError() async {
+      final json = demoManifestJson()
+        ..['id'] = 'a'
+        ..['catalogUrl'] = _url('a');
+      final store = InMemoryLocalStore();
+      await store.write(LocalAddonService.storeKey, {
+        'items': [
+          AddonInfo(
+            manifest: AddonManifest.fromMap(json),
+            state: AddonState.error,
+            diagnostic: 'Falha antiga.',
+            installedAt: DateTime(2026),
+            approvedOrigin: 'fonte.exemplo.org',
+          ).toMap(),
+        ],
+      });
+      rows.dispose();
+      addons = LocalAddonService(store, platform: 'windows', fetcher: fetcher);
+      await addons.load();
+      rows = HomeAddonRows(addons);
+      return store;
+    }
+
+    test('ao abrir, erro de antes tenta sozinho e se recupera', () async {
+      fetcher.bodies[_url('a')] = _feed('a', 2);
+      final store = await reopenWithError();
+
+      rows.reconcile();
+      await settle();
+
+      expect(addons.getStatus('a'), AddonState.active);
+      expect(rows.stateOf('a').items, hasLength(2));
+      expect(fetcher.calls, hasLength(1));
+      // Não é alteração do usuário: o modo seguro segue sem o que desfazer.
+      final doc = await store.read(LocalAddonService.storeKey);
+      expect(doc!['lastChange'], isNull);
+    });
+
+    test('ao abrir, tenta uma vez só e mostra o erro', () async {
+      await reopenWithError();
+
+      rows.reconcile();
+      await settle();
+      await settle();
+      rows.reconcile();
+      await settle();
+
+      expect(fetcher.calls, hasLength(1));
+      expect(addons.getStatus('a'), AddonState.error);
+      expect(rows.stateOf('a').error, isNotNull);
     });
 
     test('Tentar de novo mantém a fileira visível durante a busca', () async {

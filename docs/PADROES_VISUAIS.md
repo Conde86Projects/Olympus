@@ -50,7 +50,8 @@ que for "selecionado" usa `accent`.
   direito e pela tecla de menu.
 - Fileira de add-on: nome da fonte, "Ver tudo" e "Atualizar" no topo.
   Carregando: barra de progresso no lugar dos cartões, sem pular a tela.
-  Falha: motivo e "Tentar de novo" só naquela fileira.
+  Falha: motivo e "Tentar de novo" só naquela fileira. Erro salvo de uma
+  sessão anterior tenta sozinho uma vez ao abrir o app.
 - Testes: `test/home_desktop_test.dart`, `test/home_addon_rows_test.dart`.
 
 ## Avisos (toast)

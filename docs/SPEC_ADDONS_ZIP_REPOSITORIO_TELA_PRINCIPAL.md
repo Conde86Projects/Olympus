@@ -270,7 +270,7 @@ Texto do aviso:
 - A regra atual de "Continuar assistindo" sai da tela e entra nesse modelo, sem mudar o comportamento.
 - Arquivos locais são os itens da biblioteca com `MediaSourceType.local`.
 - Fileira de add-on carrega depois da primeira pintura, até 20 itens, com cache em memória durante a sessão. A falha fica só nessa fileira, com "tentar de novo".
-- `getCatalog` hoje marca o add-on como erro quando falha. Mantenha o isolamento e chame o catálogo de novo só no "tentar de novo" ou na ação "Atualizar".
+- `getCatalog` hoje marca o add-on como erro quando falha. Mantenha o isolamento e chame o catálogo de novo só no "tentar de novo" ou na ação "Atualizar". Exceção decidida pelo dono em 01/11/2026: ao abrir o app, um add-on salvo em erro tenta sozinho uma vez, sem contar como alteração do modo seguro.
 - Largura: o `AppShell` limita o conteúdo a 1080. Adicione um parâmetro opcional para largura livre, usado só por esta tela. O padrão continua 1080 em todas as outras.
 - Cartão: pôster 2:3 com largura base de 200 px, entre 160 e 240, título e linha secundária abaixo, borda azul no foco. Mais janela significa mais pôsteres. Referência: `docs/referencias/tela-principal-fileiras.webp`. Use só a organização da imagem, sem copiar marca nem conteúdo. Cores e tokens vêm de `docs/PADROES_VISUAIS.md`.
 - A rolagem horizontal segue o foco. Cada fileira guarda a posição, e o foco volta ao mesmo pôster depois do player.

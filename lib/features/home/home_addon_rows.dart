@@ -60,6 +60,11 @@ class HomeAddonRows extends ChangeNotifier {
   /// add-on ou trocar o endereço invalida o que estava em memória.
   final _signatures = <String, String>{};
   final _inFlight = <String, Future<void>>{};
+
+  /// Add-ons que já foram à rede desde que o app abriu. Erro salvo por uma
+  /// sessão anterior ganha uma tentativa sozinho: queda passageira de rede
+  /// não fica marcada como defeito. Falha desta sessão espera o usuário.
+  final _attempted = <String>{};
   bool _disposed = false;
 
   List<AddonInfo> get infos => homeAddonRowInfos(
@@ -109,7 +114,12 @@ class HomeAddonRows extends ChangeNotifier {
       final signature = _signatureOf(info);
       if (state?.loading ?? false) continue;
       if (info.state == AddonState.error) {
-        // Já marcado com defeito: mostra o motivo sem ir à rede.
+        if (_attempted.add(id)) {
+          // A saída do erro avisa os ouvintes e este método busca.
+          _addons.clearError(id);
+          continue;
+        }
+        // Já tentou: mostra o motivo sem ir à rede.
         if (state?.error != _message(info)) {
           _states[id] = HomeAddonRowState(
             loaded: true,
@@ -151,6 +161,7 @@ class HomeAddonRows extends ChangeNotifier {
 
   Future<void> _start(AddonInfo info, String signature) {
     final id = info.manifest.id;
+    _attempted.add(id);
     _signatures[id] = signature;
     _states[id] = HomeAddonRowState(
       loading: true,
