@@ -1752,16 +1752,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final modalUp = _panelOpen || _overlayUp;
     final prefs = widget.dependencies.preferencesService.current;
     LogicalKeyboardKey keyOf(ShortcutAction a) => prefs.keyFor(a);
-    VoidCallback guarded(VoidCallback action) => () {
-          final focus = FocusManager.instance.primaryFocus?.context;
-          if (focus != null &&
-              (focus.widget is EditableText ||
-                  focus.findAncestorWidgetOfExactType<EditableText>() !=
-                      null)) {
-            return;
-          }
-          action();
-        };
+    final guarded = guardedByTextField;
     return {
       // Espaco visivel alterna play/pause; oculto, o handler global
       // cuida (so um dos dois existe por vez: sem disparo duplo).
@@ -2352,3 +2343,16 @@ class _PlayerScreenState extends State<PlayerScreen>
 
 /// Area do video: superficie da implementacao com estados sobrepostos
 /// (carregando, erro, fim). A tela nao conhece a biblioteca de video.
+
+/// Envolve a acao de um atalho de tecla para que ela NAO dispare enquanto
+/// o foco esta num campo de texto (digitar "m" nao pode mutar o video).
+@visibleForTesting
+VoidCallback guardedByTextField(VoidCallback action) => () {
+      final focus = FocusManager.instance.primaryFocus?.context;
+      if (focus != null &&
+          (focus.widget is EditableText ||
+              focus.findAncestorWidgetOfExactType<EditableText>() != null)) {
+        return;
+      }
+      action();
+    };

@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/routes.dart';
+import 'package:player/features/player/player_screen.dart';
+import 'package:player/services/shared_preferences_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/preferences.dart';
@@ -287,6 +290,59 @@ void main() {
       expect(find.byTooltip('Fechar'), findsOneWidget);
       await _press(tester, LogicalKeyboardKey.keyW);
       expect(find.byTooltip('Fechar'), findsNothing);
+    });
+  });
+
+  group('persistencia e campo de texto (ticket 23)', () {
+    test('o atalho trocado sobrevive a fechar e reabrir o app', () async {
+      SharedPreferences.setMockInitialValues({});
+      final first = SharedPreferencesPreferencesService();
+      await first.load();
+      await first.update(first.current.copyWith(
+          shortcuts: {ShortcutAction.mute: LogicalKeyboardKey.keyX}));
+
+      // "Reabre o app": servico novo lendo o mesmo armazenamento.
+      final second = SharedPreferencesPreferencesService();
+      await second.load();
+      expect(second.current.keyFor(ShortcutAction.mute),
+          LogicalKeyboardKey.keyX);
+      expect(second.current.keyFor(ShortcutAction.fullscreen),
+          LogicalKeyboardKey.keyF);
+    });
+
+    testWidgets('a tecla do atalho nao dispara com um campo de texto em foco',
+        (tester) async {
+      var disparos = 0;
+      final field = FocusNode();
+      final outside = FocusNode();
+      addTearDown(field.dispose);
+      addTearDown(outside.dispose);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.keyM):
+                  guardedByTextField(() => disparos++),
+            },
+            child: Column(children: [
+              TextField(focusNode: field),
+              Focus(focusNode: outside, child: const Text('fora')),
+            ]),
+          ),
+        ),
+      ));
+
+      field.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyM);
+      await tester.pump();
+      expect(disparos, 0);
+
+      outside.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyM);
+      await tester.pump();
+      expect(disparos, 1);
     });
   });
 }
