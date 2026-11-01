@@ -26,6 +26,7 @@ class UserPreferences {
     this.compatibleVideoOutput = false,
     this.librarySort = LibrarySort.recent,
     this.textSize = TextSizeOption.normal,
+    this.hiddenDestinations = const [],
     this.windowX,
     this.windowY,
     this.windowWidth,
@@ -93,6 +94,10 @@ class UserPreferences {
   /// Tamanho do texto do app inteiro (nao inclui a legenda desenhada).
   final TextSizeOption textSize;
 
+  /// Destinos do menu principal que o usuario escondeu. Padrao: nenhum.
+  /// Inicio e Configuracoes nao existem em [MainDestination]: nunca saem.
+  final List<MainDestination> hiddenDestinations;
+
   /// Geometria salva da janela (spec 14.1). Null = primeira execucao.
   final double? windowX;
   final double? windowY;
@@ -125,6 +130,7 @@ class UserPreferences {
     bool? compatibleVideoOutput,
     LibrarySort? librarySort,
     TextSizeOption? textSize,
+    List<MainDestination>? hiddenDestinations,
     double? Function()? windowX,
     double? Function()? windowY,
     double? Function()? windowWidth,
@@ -159,6 +165,7 @@ class UserPreferences {
           compatibleVideoOutput ?? this.compatibleVideoOutput,
       librarySort: librarySort ?? this.librarySort,
       textSize: textSize ?? this.textSize,
+      hiddenDestinations: hiddenDestinations ?? this.hiddenDestinations,
       windowX: windowX != null ? windowX() : this.windowX,
       windowY: windowY != null ? windowY() : this.windowY,
       windowWidth:
@@ -194,6 +201,7 @@ class UserPreferences {
         'compatibleVideoOutput': compatibleVideoOutput,
         'librarySort': librarySort.name,
         'textSize': textSize.name,
+        'hiddenDestinations': [for (final d in hiddenDestinations) d.name],
         'windowX': windowX,
         'windowY': windowY,
         'windowWidth': windowWidth,
@@ -233,6 +241,7 @@ class UserPreferences {
           LibrarySort.values, map['librarySort'], LibrarySort.recent),
       textSize: _byName(
           TextSizeOption.values, map['textSize'], TextSizeOption.normal),
+      hiddenDestinations: _destinationsFrom(map['hiddenDestinations']),
       windowX: (map['windowX'] as num?)?.toDouble(),
       windowY: (map['windowY'] as num?)?.toDouble(),
       windowWidth: (map['windowWidth'] as num?)?.toDouble(),
@@ -263,6 +272,30 @@ enum TextSizeOption {
   const TextSizeOption(this.scale, this.label);
   final double scale;
   final String label;
+}
+
+/// Destinos do menu principal que podem ser escondidos.
+enum MainDestination {
+  library('Biblioteca'),
+  favorites('Favoritos'),
+  addons('Add-ons'),
+  history('Histórico');
+
+  const MainDestination(this.label);
+  final String label;
+}
+
+/// Lista salva de destinos escondidos: ignora nomes desconhecidos,
+/// repetidos e qualquer valor que nao seja lista.
+List<MainDestination> _destinationsFrom(Object? raw) {
+  if (raw is! List) return const [];
+  final result = <MainDestination>[];
+  for (final name in raw) {
+    for (final d in MainDestination.values) {
+      if (d.name == name && !result.contains(d)) result.add(d);
+    }
+  }
+  return result;
 }
 
 /// Valor salvo desconhecido (versao futura ou dado corrompido) cai no padrao.

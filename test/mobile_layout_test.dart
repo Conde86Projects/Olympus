@@ -118,7 +118,7 @@ void main() {
           final selected = tester
               .widget<NavigationBar>(find.byType(NavigationBar))
               .selectedIndex;
-          expect(MobileShell.destinations[selected].label, label);
+          expect(MobileTab.values[selected].label, label);
         }
       });
     }
@@ -189,7 +189,7 @@ void main() {
     testWidgets('alvos de toque da barra com pelo menos 48', (tester) async {
       await _boot(tester, _portrait);
       final items = find.byType(NavigationDestination);
-      expect(items, findsNWidgets(MobileShell.destinations.length));
+      expect(items, findsNWidgets(MobileTab.values.length));
       for (final element in items.evaluate()) {
         final size = tester.getSize(find.byWidget(element.widget));
         expect(size.height, greaterThanOrEqualTo(48));
