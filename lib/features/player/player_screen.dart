@@ -2228,13 +2228,17 @@ class _PlayerScreenState extends State<PlayerScreen>
         title: 'Escolher vídeo');
     if (!mounted) return;
     if (path == null || path.isEmpty) return;
-    final saved = await widget.dependencies.libraryService.upsert(MediaItem(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      title: titleFromSource(path),
-      sourceType: MediaSourceType.local,
-      source: path,
-      addedAt: DateTime.now(),
-    ));
+    // Fonte ja cadastrada: reaproveita o item (o upsert trocaria o
+    // progresso pelos nulos do item novo e perderia o "continuar").
+    final library = widget.dependencies.libraryService;
+    final saved = library.findBySource(path) ??
+        await library.upsert(MediaItem(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          title: titleFromSource(path),
+          sourceType: MediaSourceType.local,
+          source: path,
+          addedAt: DateTime.now(),
+        ));
     if (!mounted) return;
     unawaited(ThumbnailService.backfill(
         widget.dependencies.libraryService, saved));
