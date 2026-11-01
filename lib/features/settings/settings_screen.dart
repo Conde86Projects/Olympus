@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/routes.dart';
@@ -9,6 +10,7 @@ import 'package:player/core/utils/language_names.dart';
 import 'package:player/features/settings/language_picker_page.dart';
 import 'package:player/features/settings/subtitle_appearance_rows.dart';
 import 'package:player/models/preferences.dart';
+import 'package:player/models/shortcut_action.dart';
 import 'package:player/services/tv_info_service.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/exit_slider.dart';
@@ -50,6 +52,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onSelected(v);
             Navigator.of(context).pop();
           },
+        ),
+      ),
+    );
+  }
+
+  /// Captura a proxima tecla para [action]. Recusa teclas reservadas e
+  /// as que outra acao ja usa, dizendo o motivo na propria janela.
+  Future<void> _captureShortcut(ShortcutAction action) async {
+    final prefs = widget.dependencies.preferencesService;
+    String? error;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setLocal) => Focus(
+          autofocus: true,
+          onKeyEvent: (node, event) {
+            if (event is! KeyDownEvent) return KeyEventResult.handled;
+            final key = event.logicalKey;
+            if (reservedShortcutKeys.contains(key)) {
+              setLocal(() => error =
+                  '${shortcutKeyLabel(key)} é uma tecla reservada para a navegação.');
+              return KeyEventResult.handled;
+            }
+            if (!isAssignableShortcutKey(key)) {
+              setLocal(() => error = 'Essa tecla não pode ser usada.');
+              return KeyEventResult.handled;
+            }
+            final current = prefs.current;
+            for (final other in ShortcutAction.values) {
+              if (other != action && current.keyFor(other) == key) {
+                setLocal(() => error =
+                    '${shortcutKeyLabel(key)} já é usada em "${other.label}".');
+                return KeyEventResult.handled;
+              }
+            }
+            final updated = {...current.shortcuts};
+            if (key == action.defaultKey) {
+              updated.remove(action);
+            } else {
+              updated[action] = key;
+            }
+            prefs.update(current.copyWith(shortcuts: updated));
+            Navigator.of(dialogContext).pop();
+            return KeyEventResult.handled;
+          },
+          child: AlertDialog(
+            title: Text(action.label),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Pressione a nova tecla'),
+                if (error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(error!,
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.error)),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancelar'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -310,24 +379,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     )),
                   ),
               ]),
-              const _Section('Atalhos', [
-                _ShortcutRow(keys: 'Espaço', action: 'Reproduzir / pausar'),
-                _ShortcutRow(
+              _Section('Atalhos', [
+                for (final action in ShortcutAction.values)
+                  ListTile(
+                    dense: true,
+                    title: Text(action.label),
+                    trailing: Text(shortcutKeyLabel(current.keyFor(action))),
+                    onTap: () => _captureShortcut(action),
+                  ),
+                ListTile(
+                  dense: true,
+                  title: const Text('Restaurar padrão'),
+                  trailing: const Icon(Icons.restart_alt),
+                  onTap: () =>
+                      prefs.update(current.copyWith(shortcuts: const {})),
+                ),
+                const _ShortcutRow(
+                    keys: 'Espaço', action: 'Reproduzir / pausar'),
+                const _ShortcutRow(
                     keys: 'Enter', action: 'Ativar focado / sair do ajuste'),
-                _ShortcutRow(
+                const _ShortcutRow(
                     keys: '←  →', action: 'Navegar (buscar 10 s, se ocultos)'),
-                _ShortcutRow(
+                const _ShortcutRow(
                     keys: '↑  ↓',
                     action:
                         'Navegar (só reexibe na TV; volume no desktop, se ocultos)'),
-                _ShortcutRow(keys: 'M', action: 'Mudo'),
-                _ShortcutRow(keys: 'F', action: 'Tela cheia'),
-                _ShortcutRow(keys: 'I', action: 'Informações do vídeo'),
-                _ShortcutRow(keys: 'S', action: 'Legendas'),
-                _ShortcutRow(keys: 'A', action: 'Áudio'),
-                _ShortcutRow(keys: 'C', action: 'Modo cinema'),
-                _ShortcutRow(keys: 'Esc', action: 'Fechar painel / voltar'),
-                _ShortcutRow(keys: 'Q', action: 'Fechar player'),
+                const _ShortcutRow(keys: 'Esc', action: 'Fechar painel / voltar'),
+                const _ShortcutRow(keys: 'Tab', action: 'Próximo controle'),
               ]),
               _Section('Armazenamento', [
                 ListTile(
