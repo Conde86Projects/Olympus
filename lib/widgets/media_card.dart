@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/core/extensions/duration_extensions.dart';
+import 'package:player/core/utils/last_seen.dart';
 import 'package:player/models/media_item.dart';
 
 /// Cartao de midia para biblioteca, favoritos e "Continuar assistindo".
@@ -20,6 +21,7 @@ class MediaCard extends StatelessWidget {
     this.autofocus = false,
     this.thumbnailBuilder,
     this.networkThumbnailBuilder,
+    this.now,
   });
 
   final MediaItem item;
@@ -38,6 +40,9 @@ class MediaCard extends StatelessWidget {
   /// miniatura local. O padrão é [defaultNetworkThumbnailImage];
   /// injetável para testes (evita rede no `flutter test`).
   final Widget Function(String url)? networkThumbnailBuilder;
+
+  /// Relógio injetável (testes) para o texto do último acesso.
+  final DateTime? now;
 
   /// Miniatura padrão: arquivo com fallback para o placeholder.
   /// Chamado sem pump nos testes (só inspeciona o widget).
@@ -124,6 +129,17 @@ class MediaCard extends StatelessWidget {
                               _detailsLine(),
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
+                            if (lastSeenLabel(
+                                    item.lastPlayedAt, now ?? DateTime.now())
+                                case final seen?) ...[
+                              SizedBox(height: TvLayout.spacing(context, 2)),
+                              Text(
+                                seen,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
                             if (progress != null && progress > 0) ...[
                               SizedBox(height: TvLayout.spacing(context, 8)),
                               ClipRRect(
