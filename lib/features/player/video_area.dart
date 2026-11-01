@@ -152,6 +152,11 @@ class VideoArea extends StatelessWidget {
       PlaybackErrorKind.source => isLocal
           ? const MediaError.missingFile().message
           : const NetworkError.unavailableLink().message,
+      // Permissao de arquivos so existe para arquivo local; link nunca
+      // mostra essa mensagem.
+      PlaybackErrorKind.permission => isLocal
+          ? const MediaError.permissionDenied().message
+          : const NetworkError.unavailableLink().message,
       PlaybackErrorKind.decoder => const MediaError.incompatible().message,
       PlaybackErrorKind.timeout =>
         'A fonte demorou demais a responder. Tente de novo ou volte.',

@@ -24,6 +24,10 @@ class MediaError extends AppError {
   const MediaError.missingFile()
       : super('media.missing-file',
             'Este arquivo não está mais disponível no caminho salvo.');
+
+  const MediaError.permissionDenied()
+      : super('media.permission-denied',
+            'Falta acesso aos arquivos do aparelho. Libere o acesso a vídeos e arquivos nas configurações do aparelho (Apps > Olympus > Permissões) e toque em "Tentar novamente".');
 }
 
 /// Falha de rede ou link indisponivel (spec 17.2, 17.3).
