@@ -105,11 +105,6 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// Desktop/TV seguem no espelho local abaixo (dono futuro, fora da F1).
   late final MobileChromeService _chrome;
   bool _windowFullscreen = false;
-
-  /// Preto sobre o player enquanto a janela troca de tela cheia (desktop).
-  bool _windowCurtain = false;
-  Timer? _curtainTimer;
-  static const _curtainDuration = Duration(milliseconds: 350);
   bool get _fullscreen => _mobile ? _chrome.isFullscreen : _windowFullscreen;
   bool _compact = false;
   bool _cinema = false;
@@ -1258,7 +1253,6 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (_mobile && _fullscreen) unawaited(_chrome.setFullscreen(false));
     widget.dependencies.windowService.removeBeforeClose(_saveOnWindowClose);
     _chrome.cancelAutoHide();
-    _curtainTimer?.cancel();
     _resumeTimer?.cancel();
     _resumeProbeTimer?.cancel();
     _hlsObserveTimer?.cancel();
@@ -1679,11 +1673,6 @@ class _PlayerScreenState extends State<PlayerScreen>
                               ),
                             ),
                           ),
-                          if (_windowCurtain)
-                            const IgnorePointer(
-                              key: ValueKey('cortina-janela'),
-                              child: ColoredBox(color: Colors.black),
-                            ),
                         ],
                       ),
                     ),
@@ -1931,17 +1920,6 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Future<void> _toggleFullscreen() async {
     final next = !_fullscreen;
-    // A janela muda de tamanho em etapas e, nesse meio tempo, mostra pedacos
-    // de quadros antigos: o preto vai para a tela antes de ela comecar.
-    if (!_tvMode && !_mobile) {
-      setState(() => _windowCurtain = true);
-      await WidgetsBinding.instance.endOfFrame;
-      if (!mounted) return;
-      _curtainTimer?.cancel();
-      _curtainTimer = Timer(_curtainDuration, () {
-        if (mounted) setState(() => _windowCurtain = false);
-      });
-    }
     await widget.dependencies.windowService.setFullscreen(next);
     if (_mobile) {
       await _chrome.setFullscreen(next);

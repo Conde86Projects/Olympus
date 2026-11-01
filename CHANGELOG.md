@@ -45,8 +45,9 @@ o restante.
   janela, sem mudar o tamanho dela, e a janela se move arrastando o vídeo.
 - Player no computador: F11 agora entra e sai da tela cheia, além de F, e aparece em
   Configurações, na seção Atalhos.
-- Player no computador: ao entrar ou sair da tela cheia, a imagem fica preta por um
-  instante, para não mostrar pedaços do vídeo durante a troca.
+- Windows: ao entrar em tela cheia, o que estava atrás da janela não aparece mais por
+  um instante. Para isso, a janela do Olympus não usa mais a animação do Windows ao
+  maximizar, restaurar ou minimizar.
 - Quando faltava acesso aos arquivos, o erro dizia que o arquivo sumiu ou que não havia
   conexão. Agora diz que falta acesso aos arquivos e como liberar.
 - Celular: depois de escolher um arquivo no seletor do sistema (por exemplo, a legenda),

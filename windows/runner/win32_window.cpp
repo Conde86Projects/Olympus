@@ -146,6 +146,12 @@ bool Win32Window::Create(const std::wstring& title,
 
   UpdateTheme(window);
 
+  // Sem a animacao de janela do Windows: ao entrar em tela cheia, ela deixava
+  // ver por alguns quadros o que esta atras da janela.
+  BOOL no_transitions = TRUE;
+  DwmSetWindowAttribute(window, DWMWA_TRANSITIONS_FORCEDISABLED,
+                        &no_transitions, sizeof(no_transitions));
+
   return OnCreate();
 }
 
