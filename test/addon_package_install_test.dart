@@ -43,6 +43,9 @@ class _FakeFetcher extends AddonFetcher {
 
   int progressCalls = 0;
 
+  /// Bytes efetivamente servidos (a revisão mostra o SHA deles).
+  Uint8List? servedBytes;
+
   @override
   Future<String> fetchText(String url,
       {Map<String, String> headers = const {}}) async {
@@ -77,6 +80,7 @@ class _FakeFetcher extends AddonFetcher {
       out.addAll(bytes.sublist(i, end));
       onProgress?.call(out.length, bytes.length);
       progressCalls++;
+      if (i + slice >= bytes.length) servedBytes = Uint8List.fromList(out);
       if (first && hangAfterFirstChunk) {
         first = false;
         final gate = downloadGate!;
@@ -388,7 +392,8 @@ void main() {
       expect(find.text('Revise antes de instalar'), findsOneWidget);
       expect(find.textContaining('2 itens:'), findsOneWidget);
       expect(
-          find.textContaining(sha256.convert(packageZip()).toString()),
+          find.textContaining(
+              sha256.convert(harness.fetcher.servedBytes!).toString()),
           findsOneWidget);
       expect(harness.fetcher.progressCalls, greaterThan(0));
     });

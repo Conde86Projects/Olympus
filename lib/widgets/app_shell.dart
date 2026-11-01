@@ -15,6 +15,7 @@ class AppShell extends StatelessWidget {
     this.actions = const [],
     this.showBack = false,
     this.showLogo = false,
+    this.maxWidth = 1080,
   });
 
   final String title;
@@ -24,6 +25,10 @@ class AppShell extends StatelessWidget {
 
   /// Logo a esquerda do titulo (telas de marca: inicio e boas-vindas).
   final bool showLogo;
+
+  /// Largura maxima do conteudo; null deixa livre (T7: o Início no
+  /// desktop ocupa a janela toda; as outras telas seguem em 1080).
+  final double? maxWidth;
 
   /// Margem lateral para [width]: 6% presa entre 16 e 96, com piso
   /// anti-overscan de 32 no modo TV. Pura para teste direto.
@@ -84,18 +89,23 @@ class AppShell extends StatelessWidget {
             constraints.maxWidth,
             tvMode: tv,
           );
+          final content = Padding(
+            padding: EdgeInsets.symmetric(
+                horizontal: margin, vertical: tv ? 8 : 16),
+            child: body,
+          );
+          final limit = maxWidth;
           // Largura maxima centralizada: em ultrawide o conteudo nao
-          // estica (Fase 3, padrao minimalista da spec 3.5).
+          // estica (Fase 3, padrao minimalista da spec 3.5), exceto
+          // onde a largura e livre (T7).
           return Align(
             alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1080),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal: margin, vertical: tv ? 8 : 16),
-                child: body,
-              ),
-            ),
+            child: limit == null
+                ? content
+                : ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: limit),
+                    child: content,
+                  ),
           );
         },
       ),
