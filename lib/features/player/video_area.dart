@@ -30,6 +30,8 @@ class VideoArea extends StatelessWidget {
     required this.nextTitle,
     required this.onPlayNext,
     required this.onClose,
+    required this.onShowDetails,
+    required this.onPickOther,
     required this.primaryFocus,
     this.showReplayOffer = false,
     this.onWatchAgain,
@@ -56,6 +58,10 @@ class VideoArea extends StatelessWidget {
   final String? nextTitle;
   final VoidCallback? onPlayNext;
   final VoidCallback onClose;
+
+  /// Erro: abre o diálogo de informações técnicas e escolhe outro vídeo local.
+  final VoidCallback onShowDetails;
+  final VoidCallback onPickOther;
 
   /// Volta para a qualidade Automatica (falha de variante HLS
   /// manual). Null esconde a acao.
@@ -202,10 +208,27 @@ class VideoArea extends StatelessWidget {
             ),
           if (isLocal)
             FocusableButton(
+              label: 'Escolher outro vídeo',
+              icon: Icons.video_file_outlined,
+              onPressed: onPickOther,
+            )
+          else if (session.errorKind == PlaybackErrorKind.network)
+            FocusableButton(
+              label: 'Abrir arquivo local',
+              icon: Icons.video_file_outlined,
+              onPressed: onPickOther,
+            ),
+          if (isLocal)
+            FocusableButton(
               label: 'Remover da biblioteca',
               icon: Icons.delete_outline,
               onPressed: onRemoveFromLibrary,
             ),
+          FocusableButton(
+            label: 'Ver informações técnicas',
+            icon: Icons.info_outline,
+            onPressed: onShowDetails,
+          ),
           FocusableButton(
             label: 'Fechar',
             icon: Icons.close,
