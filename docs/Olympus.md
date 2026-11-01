@@ -107,7 +107,7 @@ O adaptador demo é usado para validar o fluxo de fontes sem depender de um serv
 - modo sempre no topo no desktop, quando suportado;
 - retomada da última posição;
 - legenda externa (`.srt`, `.vtt`, `.ass`) pelo painel e legenda ao lado de mesmo nome (celular: depende do acesso do Android à pasta);
-- atalhos de teclado configuráveis (Mudo, Tela cheia, Informações, Legendas, Áudio, Modo cinema e Fechar player); espaço, Enter, Esc, setas e Tab ficam fixos;
+- atalhos de teclado configuráveis (Mudo, Tela cheia, Informações, Legendas, Áudio, Modo cinema e Fechar player); espaço, Enter, Esc, setas e Tab ficam fixos, e F11 sempre entra e sai da tela cheia;
 - erro de reprodução com informações técnicas e escolha de outro vídeo; fim do vídeo com saídas para Biblioteca e Início.
 
 ### Volume

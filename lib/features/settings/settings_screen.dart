@@ -70,6 +70,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onKeyEvent: (node, event) {
             if (event is! KeyDownEvent) return KeyEventResult.handled;
             final key = event.logicalKey;
+            if (key == LogicalKeyboardKey.f11) {
+              setLocal(() => error = 'F11 já entra e sai da tela cheia.');
+              return KeyEventResult.handled;
+            }
             if (reservedShortcutKeys.contains(key)) {
               setLocal(() => error =
                   '${shortcutKeyLabel(key)} é uma tecla reservada para a navegação.');
@@ -410,6 +414,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         'Navegar (só reexibe na TV; volume no desktop, se ocultos)'),
                 const _ShortcutRow(keys: 'Esc', action: 'Fechar painel / voltar'),
                 const _ShortcutRow(keys: 'Tab', action: 'Próximo controle'),
+                if (!MobileMode.of(context))
+                  const _ShortcutRow(
+                      keys: 'F11', action: 'Entrar / sair da tela cheia'),
               ]),
               _Section('Armazenamento', [
                 ListTile(

@@ -171,6 +171,9 @@ void main() {
       }
       expect(find.text('Reproduzir / pausar'), findsOneWidget);
       expect(find.text('Espaço'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('F11'), 200,
+          scrollable: find.byType(Scrollable).last);
+      expect(find.text('F11'), findsOneWidget);
     });
 
     testWidgets('celular: Atalhos e so referencia, sem edicao nem restaurar',
@@ -251,6 +254,9 @@ void main() {
             reason: key.keyLabel);
         expect(harness.preferences.current.shortcuts, isEmpty);
       }
+      await _press(tester, LogicalKeyboardKey.f11);
+      expect(find.text('F11 já entra e sai da tela cheia.'), findsOneWidget);
+      expect(harness.preferences.current.shortcuts, isEmpty);
       await tester.tap(find.text('Cancelar'));
       await tester.pumpAndSettle();
       expect(find.text('Pressione a nova tecla'), findsNothing);

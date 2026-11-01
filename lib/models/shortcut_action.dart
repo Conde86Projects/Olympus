@@ -1,7 +1,8 @@
 import 'package:flutter/services.dart';
 
 /// Acoes do player cuja tecla o usuario pode trocar. Espaco, Enter, Esc,
-/// as setas e Tab ficam fixos (navegacao basica) e nao entram aqui.
+/// as setas e Tab ficam fixos (navegacao basica) e nao entram aqui, assim
+/// como F11 (sempre entra e sai da tela cheia).
 enum ShortcutAction {
   mute('Mudo'),
   fullscreen('Tela cheia'),
@@ -38,6 +39,7 @@ final Set<LogicalKeyboardKey> reservedShortcutKeys = {
   LogicalKeyboardKey.arrowLeft,
   LogicalKeyboardKey.arrowRight,
   LogicalKeyboardKey.tab,
+  LogicalKeyboardKey.f11,
 };
 
 final Set<LogicalKeyboardKey> _modifierKeys = {

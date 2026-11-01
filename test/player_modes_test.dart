@@ -111,6 +111,65 @@ void main() {
       expect(find.byTooltip('Fechar'), findsOneWidget);
     });
 
+    testWidgets('F11 entra e sai da tela cheia, igual ao botao',
+        (tester) async {
+      final harness = _Harness();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      await _openPlayer(tester, harness, _item());
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.f11);
+      await tester.pumpAndSettle();
+      expect(await harness.windows.isFullscreen, isTrue);
+      expect(find.byTooltip('Sair da tela cheia'), findsOneWidget);
+      expect(harness.windows.titleBarHidden, isFalse);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.f11);
+      await tester.pumpAndSettle();
+      expect(await harness.windows.isFullscreen, isFalse);
+      expect(find.byTooltip('Tela cheia'), findsOneWidget);
+    });
+
+    testWidgets('troca de tela cheia cobre com preto e descobre sozinha',
+        (tester) async {
+      final harness = _Harness();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      await _openPlayer(tester, harness, _item());
+      const curtain = ValueKey('cortina-janela');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.f11);
+      await tester.pump();
+      expect(find.byKey(curtain), findsOneWidget);
+      await tester.pump();
+      expect(await harness.windows.isFullscreen, isTrue);
+
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byKey(curtain), findsNothing);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.f11);
+      await tester.pump();
+      await tester.pump();
+      expect(await harness.windows.isFullscreen, isFalse);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byKey(curtain), findsNothing);
+    });
+
+    testWidgets('na TV a tela cheia nao usa a cobertura', (tester) async {
+      final harness = _Harness();
+      await harness.preferences.update(harness.preferences.current
+          .copyWith(tvMode: true, tvModeAuto: false));
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      await _openPlayer(tester, harness, _item());
+
+      await tester.tap(find.byTooltip('Tela cheia'));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('cortina-janela')), findsNothing);
+      await tester.pumpAndSettle();
+      expect(await harness.windows.isFullscreen, isTrue);
+    });
+
     testWidgets('cinema no desktop tem saida visivel pelo mouse',
         (tester) async {
       final harness = _Harness();
