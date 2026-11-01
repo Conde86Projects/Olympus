@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/main_navigation.dart';
 import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/app/theme.dart';
@@ -110,6 +111,10 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// Saida intencional em curso (ver [_exitPlayer]).
   bool _exitRequested = false;
+
+  /// Destino pedido na saida (fim do video: Biblioteca/Inicio); null
+  /// volta ao lugar de onde o usuario veio.
+  ExitTarget? _exitDestination;
 
   /// Saida real (pop) vs troca de item (replace): so a saida libera
   /// o motor no dispose. Padrao desligado = _playNext nao zera nada.
@@ -1356,12 +1361,19 @@ class _PlayerScreenState extends State<PlayerScreen>
             return;
           }
           _exitRequested = false;
+          final destination = _exitDestination;
+          _exitDestination = null;
+          final navigator = Navigator.of(context);
+          final mobile = MobileMode.of(context);
           await _saveSession();
           // Saida real (nao troca de item): libera o motor no dispose.
           _stopOnDispose = true;
           if (!context.mounted) return;
           setState(() => _allowPop = true);
-          Navigator.of(context).pop();
+          navigator.pop();
+          if (destination != null) {
+            MainNavigation.go(navigator, destination, mobile: mobile);
+          }
         },
         child: CallbackShortcuts(
           bindings: _shortcuts(),
@@ -1418,6 +1430,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                               onPlayNext:
                                   next == null ? null : () => _playNext(next),
                               onClose: _exitPlayer,
+                              onGoLibrary: () =>
+                                  _exitPlayer(ExitTarget.library),
+                              onGoHome: () =>
+                                  _exitPlayer(ExitTarget.home),
                               onShowDetails: _showErrorDetails,
                               onPickOther: _pickOtherVideo,
                               onBackToAutomatic: _hlsVariants.isNotEmpty &&
@@ -1770,8 +1786,9 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// Saida pedida de proposito (X, Fechar do overlay, Q): sai salvando
   /// direto, sem o passo "BACK esconde a barra" da TV.
-  void _exitPlayer() {
+  void _exitPlayer([ExitTarget? destination]) {
     _exitRequested = true;
+    _exitDestination = destination;
     Navigator.of(context).maybePop();
   }
 

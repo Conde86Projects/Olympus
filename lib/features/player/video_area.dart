@@ -30,6 +30,8 @@ class VideoArea extends StatelessWidget {
     required this.nextTitle,
     required this.onPlayNext,
     required this.onClose,
+    this.onGoLibrary,
+    this.onGoHome,
     required this.onShowDetails,
     required this.onPickOther,
     required this.primaryFocus,
@@ -58,6 +60,11 @@ class VideoArea extends StatelessWidget {
   final String? nextTitle;
   final VoidCallback? onPlayNext;
   final VoidCallback onClose;
+
+  /// Saidas do fim do video: fecham o player (salvando a sessao) e
+  /// levam a Biblioteca ou ao Inicio. Sem callback, o botao some.
+  final VoidCallback? onGoLibrary;
+  final VoidCallback? onGoHome;
 
   /// Erro: abre o diálogo de informações técnicas e escolhe outro vídeo local.
   final VoidCallback onShowDetails;
@@ -324,6 +331,8 @@ class VideoArea extends StatelessWidget {
                         ),
                       ],
                       SizedBox(height: isTv ? 8 : 12),
+                      // Duas linhas: acoes do video em cima, saidas
+                      // embaixo (cabe na TV mesmo com seis botoes).
                       Wrap(
                         spacing: isTv ? 8 : 12,
                         runSpacing: isTv ? 8 : 12,
@@ -351,6 +360,26 @@ class VideoArea extends StatelessWidget {
                               label: 'Próximo',
                               icon: Icons.skip_next,
                               onPressed: onPlayNext,
+                            ),
+                        ],
+                      ),
+                      SizedBox(height: isTv ? 8 : 12),
+                      Wrap(
+                        spacing: isTv ? 8 : 12,
+                        runSpacing: isTv ? 8 : 12,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          if (onGoLibrary != null)
+                            FocusableButton(
+                              label: 'Biblioteca',
+                              icon: Icons.video_library_outlined,
+                              onPressed: onGoLibrary,
+                            ),
+                          if (onGoHome != null)
+                            FocusableButton(
+                              label: 'Início',
+                              icon: Icons.home_outlined,
+                              onPressed: onGoHome,
                             ),
                           FocusableButton(
                             label: 'Fechar',
