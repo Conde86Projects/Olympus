@@ -25,7 +25,7 @@ class _Harness {
       : preferences = InMemoryPreferencesService(),
         library = InMemoryLibraryService(),
         history = InMemoryHistoryService(),
-        player = NoOpMediaPlayerService(),
+        player = const NoOpMediaPlayerService(),
         windows = NoOpWindowService(),
         guard = StartupGuard(InMemoryLocalStore()),
         addons = LocalAddonService(InMemoryLocalStore());

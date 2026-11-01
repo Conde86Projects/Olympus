@@ -317,9 +317,8 @@ class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 )
               : tiles,
-          child: FocusScope(
-            node: _scope,
-            child: Material(
+          child: _holdFocus(
+            Material(
             color: PlayerSettingsPanel.panelColor,
             elevation: 12,
             shadowColor: Colors.black87,
@@ -355,6 +354,13 @@ class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
         ),
       ),
     );
+  }
+
+  /// Na TV o painel e um escopo de foco proprio (as setas nao saem dele).
+  /// Fora da TV segue o escopo do dialogo, como antes.
+  Widget _holdFocus(Widget child) {
+    if (!TvLayout.isTv(context)) return child;
+    return FocusScope(node: _scope, child: child);
   }
 }
 
