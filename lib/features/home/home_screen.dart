@@ -6,6 +6,7 @@ import 'package:player/app/routes.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
 import 'package:player/models/media_item.dart';
+import 'package:player/models/preferences.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/empty_state.dart';
@@ -23,6 +24,16 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // O menu acompanha a escolha de destinos em Configuracoes.
+    return AnimatedBuilder(
+      animation: dependencies.preferencesService,
+      builder: (context, _) => _buildScreen(
+          context, dependencies.preferencesService.current.hiddenDestinations),
+    );
+  }
+
+  Widget _buildScreen(BuildContext context, List<MainDestination> hidden) {
+    bool shown(MainDestination d) => !hidden.contains(d);
     final library = dependencies.libraryService;
     final history = dependencies.historyService;
     final guard = dependencies.startupGuard;
@@ -33,24 +44,25 @@ class HomeScreen extends StatelessWidget {
       title: 'Olympus',
       showLogo: true,
       actions: [
-        if (!mobile)
+        if (!mobile && shown(MainDestination.library))
         IconButton(
           tooltip: 'Biblioteca',
           icon: const Icon(Icons.video_library_outlined),
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.library),
         ),
-        if (!mobile)
+        if (!mobile && shown(MainDestination.addons))
         IconButton(
           tooltip: 'Add-ons',
           icon: const Icon(Icons.extension_outlined),
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.addons),
         ),
-        if (!mobile)
+        if (!mobile && shown(MainDestination.favorites))
         IconButton(
           tooltip: 'Favoritos',
           icon: const Icon(Icons.favorite_outline),
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.favorites),
         ),
+        if (shown(MainDestination.history))
         IconButton(
           tooltip: 'Histórico',
           icon: const Icon(Icons.history),
