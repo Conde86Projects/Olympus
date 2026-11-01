@@ -84,6 +84,7 @@ Future<void> _boot(void Function(StartupGuard) onGuard) async {
   final addons = LocalAddonService(
     store,
     adapters: const [OwnedTestSourceAdapter()],
+    allowUnknownSources: () => preferences.current.allowUnknownSources,
   );
   await Future.wait([library.load(), history.load()]);
   if (!guard.safeMode) {

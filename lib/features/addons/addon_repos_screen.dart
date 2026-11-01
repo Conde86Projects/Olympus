@@ -11,6 +11,7 @@ import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/dpad_field_exit.dart';
 import 'package:player/widgets/empty_state.dart';
 import 'package:player/widgets/focusable_button.dart';
+import 'package:player/widgets/confirm_dialog.dart';
 
 /// Repositorios autorizados (spec 6.1): cadastro com validacao de
 /// endereco, marca de confianca e navegacao do conteudo. Instalar um
@@ -67,7 +68,8 @@ class _AddonReposScreenState extends State<AddonReposScreen> {
         title: lookup(_selectedId)?.name ?? 'Repositórios',
         showBack: true,
         body: AnimatedBuilder(
-          animation: addons,
+          animation: Listenable.merge(
+              [addons, widget.dependencies.preferencesService]),
           builder: (context, _) {
             final repo = lookup(_selectedId);
             if (repo == null) return _listStep(addons.repositories);
@@ -122,6 +124,9 @@ class _AddonReposScreenState extends State<AddonReposScreen> {
   }
 
   Widget _addForm() {
+    if (!widget.dependencies.addonService.unknownSourcesAllowed) {
+      return _blockedCard();
+    }
     final theme = Theme.of(context);
     return Card(
       color: const Color(0xFF1C1C1E),
@@ -183,6 +188,63 @@ class _AddonReposScreenState extends State<AddonReposScreen> {
     );
   }
 
+  /// A recusa do botão desligado mostra o atalho para ligar junto do
+  /// motivo (T1). Compara a mensagem fixa do erro, sem tocar nos
+  /// outros caminhos de erro da tela.
+  bool get _browseBlockedByGate =>
+      AddonError.isUnknownSourcesBlock(_browseError);
+
+  /// Cadastro bloqueado: motivo + atalho para ligar (T1). A lista e a
+  /// navegação em repositórios confiáveis seguem funcionando.
+  Widget _blockedCard() {
+    final theme = Theme.of(context);
+    return Card(
+      color: const Color(0xFF1C1C1E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Cadastro bloqueado', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            Text(
+              'Fontes desconhecidas estão desligadas, e este aparelho não '
+              'aceita origens novas. Ative para cadastrar repositórios.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            FocusableButton(
+              label: 'Ativar fontes desconhecidas',
+              icon: Icons.lock_open,
+              primary: true,
+              onPressed: _enableUnknownSources,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _enableUnknownSources() async {
+    final confirmed = await confirmEnableUnknownSources(context);
+    if (!confirmed || !mounted) return;
+    await widget.dependencies.preferencesService.update(
+      widget.dependencies.preferencesService.current
+          .copyWith(allowUnknownSources: true),
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _enableAndRetry(AddonRepository repo) async {
+    await _enableUnknownSources();
+    if (!mounted) return;
+    if (!widget.dependencies.preferencesService.current.allowUnknownSources) {
+      return;
+    }
+    await _openRepo(repo);
+  }
+
   Widget _browseStep(AddonRepository repo) {
     final theme = Theme.of(context);
     if (_busy) {
@@ -205,10 +267,14 @@ class _AddonReposScreenState extends State<AddonReposScreen> {
           ),
           const SizedBox(height: 16),
           FocusableButton(
-            label: 'Tentar novamente',
-            icon: Icons.refresh,
+            label: _browseBlockedByGate
+                ? 'Ativar fontes desconhecidas'
+                : 'Tentar novamente',
+            icon: _browseBlockedByGate ? Icons.lock_open : Icons.refresh,
             primary: true,
-            onPressed: () => _openRepo(repo),
+            onPressed: () => _browseBlockedByGate
+                ? _enableAndRetry(repo)
+                : _openRepo(repo),
           ),
         ],
       );

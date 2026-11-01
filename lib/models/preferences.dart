@@ -30,6 +30,7 @@ class UserPreferences {
     this.compatibleVideoOutput = false,
     this.librarySort = LibrarySort.recent,
     this.textSize = TextSizeOption.normal,
+    this.allowUnknownSources = false,
     this.hiddenDestinations = const [],
     this.shortcuts = const {},
     this.windowX,
@@ -99,6 +100,11 @@ class UserPreferences {
   /// Tamanho do texto do app inteiro (nao inclui a legenda desenhada).
   final TextSizeOption textSize;
 
+  /// Permite a entrada de origens novas (zip, link, arquivo, texto
+  /// colado, repositorio e troca de host). Desligado por padrao: nada
+  /// entra sem o usuario escolher (T1).
+  final bool allowUnknownSources;
+
   /// Destinos do menu principal que o usuario escondeu. Padrao: nenhum.
   /// Inicio e Configuracoes nao existem em [MainDestination]: nunca saem.
   final List<MainDestination> hiddenDestinations;
@@ -143,6 +149,7 @@ class UserPreferences {
     bool? compatibleVideoOutput,
     LibrarySort? librarySort,
     TextSizeOption? textSize,
+    bool? allowUnknownSources,
     List<MainDestination>? hiddenDestinations,
     Map<ShortcutAction, LogicalKeyboardKey>? shortcuts,
     double? Function()? windowX,
@@ -179,6 +186,7 @@ class UserPreferences {
           compatibleVideoOutput ?? this.compatibleVideoOutput,
       librarySort: librarySort ?? this.librarySort,
       textSize: textSize ?? this.textSize,
+      allowUnknownSources: allowUnknownSources ?? this.allowUnknownSources,
       hiddenDestinations: hiddenDestinations ?? this.hiddenDestinations,
       shortcuts: shortcuts ?? this.shortcuts,
       windowX: windowX != null ? windowX() : this.windowX,
@@ -216,6 +224,7 @@ class UserPreferences {
         'compatibleVideoOutput': compatibleVideoOutput,
         'librarySort': librarySort.name,
         'textSize': textSize.name,
+        'allowUnknownSources': allowUnknownSources,
         'hiddenDestinations': [for (final d in hiddenDestinations) d.name],
         'shortcuts': {
           for (final e in shortcuts.entries) e.key.name: e.value.keyId,
@@ -259,6 +268,7 @@ class UserPreferences {
           LibrarySort.values, map['librarySort'], LibrarySort.recent),
       textSize: _byName(
           TextSizeOption.values, map['textSize'], TextSizeOption.normal),
+      allowUnknownSources: map['allowUnknownSources'] == true,
       hiddenDestinations: _destinationsFrom(map['hiddenDestinations']),
       shortcuts: shortcutsFrom(map['shortcuts']),
       windowX: (map['windowX'] as num?)?.toDouble(),

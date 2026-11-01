@@ -25,11 +25,13 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     AddonFetcher fetcher = const HttpAddonFetcher(),
     List<SourceAdapter> adapters = const [],
     SourceCredentialStore? credentials,
+    bool Function()? allowUnknownSources,
   })  : _platform = platform ?? Platform.operatingSystem,
         _faultyIds = faultyIds ?? const {},
         _fetcher = fetcher,
         _adapters = adapters,
-        _credentials = credentials ?? InMemoryCredentialStore();
+        _credentials = credentials ?? InMemoryCredentialStore(),
+        _allowUnknownSources = allowUnknownSources ?? (() => true);
 
   final LocalStore _store;
   final AddonFetcher _fetcher;
@@ -38,6 +40,13 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
   /// `{"items": [...]}`; cada URL casa no maximo um adaptador.
   final List<SourceAdapter> _adapters;
   final SourceCredentialStore _credentials;
+  /// Libera a entrada de origens novas. O padrao `() => true` mantem
+  /// os testes e fluxos existentes; o app injeta a preferencia (T1).
+  /// A regra fica no servico: so bloquear na tela seria contornado
+  /// pelo fluxo de repositorios.
+  final bool Function() _allowUnknownSources;
+  @override
+  bool get unknownSourcesAllowed => _allowUnknownSources();
   final String _platform;
 
   /// Ids que simulam defeito (isolamento, §26.14). Costura de teste: na
@@ -160,6 +169,9 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     AddonManifest manifest, {
     required bool originTrusted,
   }) async {
+    if (!_allowUnknownSources() && !originTrusted) {
+      throw const AddonError.unknownSourcesDisabled();
+    }
     if (_items.containsKey(manifest.id)) {
       throw const AddonError.alreadyInstalled();
     }
@@ -478,6 +490,9 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
 
   @override
   Future<SourcePreview> previewSource(String url) async {
+    if (!_allowUnknownSources()) {
+      throw const AddonError.unknownSourcesDisabled();
+    }
     final trimmed = url.trim();
     // fetchText valida http/https e rede; lanca AddonError e nao
     // salva nada.
@@ -526,6 +541,14 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
   Future<AddonInfo> updateSourceUrl(String addonId, String newUrl) async {
     final info = _require(addonId);
     final trimmed = newUrl.trim();
+    // Origem nova com o botão desligado nem chega a validar: falha
+    // fechado antes de qualquer rede. Mesmo host segue o fluxo atual.
+    final nextHost = _hostOf(trimmed);
+    if (nextHost != null &&
+        nextHost != info.approvedOrigin &&
+        !_allowUnknownSources()) {
+      throw const AddonError.unknownSourcesDisabled();
+    }
     // Valida TUDO antes de salvar: URL, rede e feed parseavel (via
     // adaptador quando houver). O catalogo em si carrega sob demanda.
     await _loadRemoteCatalog(trimmed);
@@ -620,6 +643,9 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     required String originUrl,
     bool trusted = false,
   }) async {
+    if (!_allowUnknownSources()) {
+      throw const AddonError.unknownSourcesDisabled();
+    }
     // Valida pela mesma porta de entrada dos dados externos: nada
     // digitado contorna as regras do modelo.
     final repo = AddonRepository.fromMap({
@@ -652,6 +678,9 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
   Future<List<AddonManifest>> fetchRepoAddons(String repositoryId) async {
     final repo = _repos[repositoryId];
     if (repo == null) throw const AddonError.repoNotFound();
+    if (!repo.trusted && !_allowUnknownSources()) {
+      throw const AddonError.unknownSourcesDisabled();
+    }
     return AddonRepository.parseListing(
       await _fetcher.fetchText(repo.originUrl),
     );

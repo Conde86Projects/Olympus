@@ -14,6 +14,7 @@ import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/dpad_field_exit.dart';
 import 'package:player/widgets/focusable_button.dart';
 import 'package:player/widgets/app_toast.dart';
+import 'package:player/widgets/confirm_dialog.dart';
 
 /// Origem do manifesto na tela de instalacao.
 enum AddonInstallSource { file, paste, link }
@@ -106,8 +107,22 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 8),
-                if (_preview == null) _inputStep() else _reviewStep(),
-                if (_error != null) ...[
+                AnimatedBuilder(
+                  animation: Listenable.merge([
+                    widget.dependencies.preferencesService,
+                    widget.dependencies.addonService,
+                  ]),
+                  builder: (context, _) {
+                    if (_preview == null &&
+                        !widget.dependencies.addonService
+                            .unknownSourcesAllowed) {
+                      return _blockedPanel();
+                    }
+                    if (_preview == null) return _inputStep();
+                    return _reviewStep();
+                  },
+                ),
+                if (_error != null && !_blockedByGate) ...[
                   const SizedBox(height: 16),
                   Text(
                     _error!,
@@ -122,6 +137,50 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
         ),
       ),
     );
+  }
+
+  /// A recusa do botão desligado mostra o atalho para ligar junto do
+  /// motivo (T1). Compara a mensagem fixa do erro, sem tocar nos
+  /// outros caminhos de erro da tela.
+  bool get _blockedByGate => AddonError.isUnknownSourcesBlock(_error);
+
+  /// Entrada bloqueada: motivo + atalho para ligar (T1). A revisão de
+  /// origem confiável não passa por aqui.
+  Widget _blockedPanel() {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Instalação bloqueada',
+          style: theme.textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Fontes desconhecidas estão desligadas, e este aparelho não '
+          'aceita origens novas. Ative para instalar por arquivo, texto '
+          'ou link.',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 16),
+        FocusableButton(
+          label: 'Ativar fontes desconhecidas',
+          icon: Icons.lock_open,
+          primary: true,
+          onPressed: _enableUnknownSources,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _enableUnknownSources() async {
+    final confirmed = await confirmEnableUnknownSources(context);
+    if (!confirmed || !mounted) return;
+    await widget.dependencies.preferencesService.update(
+      widget.dependencies.preferencesService.current
+          .copyWith(allowUnknownSources: true),
+    );
+    if (mounted) setState(() => _error = null);
   }
 
   Widget _inputStep() {
@@ -305,6 +364,7 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
   }
 
   Widget _reviewStep() {
+    if (_blockedByGate) return _blockedPanel();
     final preview = _preview!;
     final manifest = preview.manifest;
     final theme = Theme.of(context);

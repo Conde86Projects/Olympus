@@ -38,3 +38,34 @@ Future<bool> confirmDestructiveAction(
   );
   return confirmed ?? false;
 }
+
+/// Aviso de risco para liberar fontes desconhecidas (T1): o Cancelar
+/// nasce focado (§26.6), então o OK imediato no D-pad cancela com
+/// segurança. Só o "Ativar" explícito libera. Não é destrutivo, por
+/// isso não usa o estilo de remoção.
+Future<bool> confirmEnableUnknownSources(BuildContext context) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Permitir fontes desconhecidas?'),
+      content: const Text(
+        'Add-ons e repositórios de fora podem mostrar conteúdo incorreto '
+        'ou sem autorização. O Olympus não verifica essas fontes e a '
+        'responsabilidade pelo que você adicionar é sua. Cada instalação '
+        'ainda passa pela sua revisão.',
+      ),
+      actions: [
+        TextButton(
+          autofocus: true,
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Ativar'),
+        ),
+      ],
+    ),
+  );
+  return confirmed ?? false;
+}

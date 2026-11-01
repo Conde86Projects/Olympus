@@ -16,6 +16,7 @@ import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/exit_slider.dart';
 import 'package:player/widgets/slider_focus_ring.dart';
 import 'package:player/widgets/app_switch_theme.dart';
+import 'package:player/widgets/confirm_dialog.dart';
 
 /// Configuracoes do aplicativo (spec 16): aparencia, reproducao, legendas,
 /// audio, janela, atalhos, armazenamento e sobre. Todas ligadas ao
@@ -384,6 +385,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Atalhos: editaveis no computador e na TV (teclado/controle).
               // No celular sem teclado a secao e so referencia: nao ha como
               // pressionar a nova tecla, entao nada de edicao nem restaurar.
+              _Section('Add-ons', [
+                SwitchListTile(
+                  title: const Text('Permitir fontes desconhecidas'),
+                  subtitle:
+                      const Text('Libera a entrada de origens novas'),
+                  value: current.allowUnknownSources,
+                  onChanged: (v) async {
+                    if (!v) {
+                      await prefs.update(
+                          current.copyWith(allowUnknownSources: false));
+                      return;
+                    }
+                    if (!context.mounted) return;
+                    final confirmed =
+                        await confirmEnableUnknownSources(context);
+                    if (confirmed) {
+                      await prefs.update(prefs.current
+                          .copyWith(allowUnknownSources: true));
+                    }
+                  },
+                ),
+              ]),
               _Section('Atalhos', [
                 for (final action in ShortcutAction.values)
                   ListTile(

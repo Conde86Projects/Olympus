@@ -9,6 +9,10 @@ import 'package:player/models/media_item.dart';
 /// contrato. Implementacoes isolam falhas por add-on: um add-on com
 /// defeito vira estado de erro com diagnostico, nunca excecao para a UI.
 abstract class AddonService extends ChangeNotifier {
+  /// Permite a entrada de origens novas (T1). A regra fica no servico
+  /// e a tela so apresenta o estado.
+  bool get unknownSourcesAllowed;
+
   /// Instalados, ordenados por nome.
   List<AddonInfo> get addons;
 

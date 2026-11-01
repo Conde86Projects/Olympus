@@ -90,6 +90,13 @@ class AddonError extends AppError {
       : super('addon.incompatible',
             'Esta versão não é compatível com esta plataforma.');
 
+  static bool isUnknownSourcesBlock(String? message) =>
+      message == const AddonError.unknownSourcesDisabled().message;
+
+  const AddonError.unknownSourcesDisabled()
+      : super('addon.unknown-sources-disabled',
+            'Fontes desconhecidas estão desligadas. Ative em Configurações > Add-ons para instalar novas origens.');
+
   const AddonError.noBackup()
       : super('addon.no-backup', 'Sem versão anterior para restaurar.');
 }
