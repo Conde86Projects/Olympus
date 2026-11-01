@@ -115,7 +115,7 @@ class _Harness {
   Future<void> openRepos(WidgetTester tester) async {
     await tester.tap(find.byTooltip('Add-ons'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Repositórios'));
+    await tester.tap(find.text('Instalar de repositório'));
     await tester.pumpAndSettle();
   }
 

@@ -173,7 +173,8 @@ abstract final class PlayerTheme {
       scaffoldBackgroundColor: background,
       focusColor: accent.withValues(alpha: 0.25),
       // Icones convergiram: 24 no desktop e na TV (verificado na TCL).
-      iconTheme: const IconThemeData(size: 24),
+      // Sem cor aqui, icone sem cor propria saia preto no fundo escuro.
+      iconTheme: const IconThemeData(size: 24, color: primaryText),
       textTheme: const TextTheme(
         titleLarge: TextStyle(color: primaryText),
         titleMedium: TextStyle(color: primaryText),

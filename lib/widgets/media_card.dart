@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/core/extensions/duration_extensions.dart';
@@ -183,15 +184,251 @@ class MediaCard extends StatelessWidget {
     );
   }
 
-  String _detailsLine() {
-    final parts = <String>[];
-    if (item.duration != null) parts.add(item.duration!.timestamp);
-    if (item.lastPosition != null && item.isResumable) {
-      parts.add('parou em ${item.lastPosition!.timestamp}');
-    }
-    parts.add(item.sourceType == MediaSourceType.local ? 'Arquivo' : 'Link');
-    return parts.join(' · ');
+  String _detailsLine() => _mediaDetailsLine(item);
+}
+
+String _mediaDetailsLine(MediaItem item) {
+  final parts = <String>[];
+  if (item.duration != null) parts.add(item.duration!.timestamp);
+  if (item.lastPosition != null && item.isResumable) {
+    parts.add('parou em ${item.lastPosition!.timestamp}');
   }
+  parts.add(item.sourceType == MediaSourceType.local ? 'Arquivo' : 'Link');
+  return parts.join(' · ');
+}
+
+/// Cartão vertical das fileiras do Início: imagem grande com o título
+/// embaixo. A proporção vem de quem chama: quadro de vídeo em
+/// [frameAspect] e pôster de catálogo em [posterAspect]. O menu não
+/// entra na navegação por setas (a fileira anda de cartão em cartão);
+/// abre pelo botão, pelo clique direito e pela tecla de menu.
+class MediaPosterCard extends StatefulWidget {
+  const MediaPosterCard({
+    super.key,
+    required this.item,
+    required this.width,
+    this.aspectRatio = frameAspect,
+    this.onTap,
+    this.onToggleFavorite,
+    this.onRemove,
+    this.onRestart,
+    this.autofocus = false,
+    this.thumbnailBuilder,
+    this.networkThumbnailBuilder,
+  });
+
+  static const frameAspect = 16 / 9;
+  static const posterAspect = 2 / 3;
+
+  final MediaItem item;
+  final double width;
+  final double aspectRatio;
+  final VoidCallback? onTap;
+  final VoidCallback? onToggleFavorite;
+  final VoidCallback? onRemove;
+  final VoidCallback? onRestart;
+  final bool autofocus;
+  final Widget Function(String path)? thumbnailBuilder;
+  final Widget Function(String url)? networkThumbnailBuilder;
+
+  /// Altura total: imagem + legenda (respeita o tamanho do texto).
+  static double heightFor(
+    BuildContext context, {
+    required double width,
+    required double aspectRatio,
+  }) {
+    final caption = MediaQuery.textScalerOf(context).scale(_captionHeight);
+    return width / aspectRatio +
+        _captionGap +
+        (caption < _captionMin ? _captionMin : caption);
+  }
+
+  static const _captionGap = 8.0;
+  static const _captionHeight = 52.0;
+  static const _captionMin = 48.0;
+
+  @override
+  State<MediaPosterCard> createState() => _MediaPosterCardState();
+}
+
+class _MediaPosterCardState extends State<MediaPosterCard> {
+  final _menu = GlobalKey<PopupMenuButtonState<String>>();
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _hasMenu =>
+      widget.onToggleFavorite != null ||
+      widget.onRemove != null ||
+      widget.onRestart != null;
+
+  void _openMenu() => _menu.currentState?.showButtonMenu();
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    final theme = Theme.of(context);
+    final progress = item.progress;
+    final image = _mediaImage(
+      item,
+      widget.thumbnailBuilder,
+      widget.networkThumbnailBuilder,
+    );
+    final borderColor = _focused
+        ? PlayerTheme.accent
+        : _hovered
+            ? Colors.white.withValues(alpha: 0.24)
+            : Colors.white.withValues(alpha: 0.08);
+    return SizedBox(
+      width: widget.width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          MouseRegion(
+            onEnter: (_) => setState(() => _hovered = true),
+            onExit: (_) => setState(() => _hovered = false),
+            child: Focus(
+              canRequestFocus: false,
+              skipTraversal: true,
+              onFocusChange: (value) => setState(() => _focused = value),
+              onKeyEvent: (node, event) {
+                if (_hasMenu &&
+                    event is KeyDownEvent &&
+                    event.logicalKey == LogicalKeyboardKey.contextMenu) {
+                  _openMenu();
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
+              child: GestureDetector(
+                onSecondaryTap: _hasMenu ? _openMenu : null,
+                child: AspectRatio(
+                  aspectRatio: widget.aspectRatio,
+                  child: Material(
+                    color: _cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      autofocus: widget.autofocus,
+                      onTap: widget.onTap,
+                      focusColor: Colors.transparent,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          image ??
+                              const Center(
+                                child: Icon(Icons.play_arrow,
+                                    size: 40,
+                                    color: PlayerTheme.secondaryText),
+                              ),
+                          if (item.isFavorite)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.45),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.favorite,
+                                    size: 16, color: PlayerTheme.accent),
+                              ),
+                            ),
+                          if (progress != null && progress > 0)
+                            Align(
+                              alignment: Alignment.bottomCenter,
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                minHeight: 4,
+                                backgroundColor:
+                                    Colors.black.withValues(alpha: 0.45),
+                                valueColor: const AlwaysStoppedAnimation(
+                                    PlayerTheme.accent),
+                              ),
+                            ),
+                          // Borda por cima da imagem, sempre visível.
+                          IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: borderColor,
+                                  width: _focused ? 3 : 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: MediaPosterCard._captionGap),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: widget.onTap,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        Text(
+                          _mediaDetailsLine(item),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (_hasMenu)
+                  ExcludeFocus(
+                    child: _OverflowMenu(
+                      menuKey: _menu,
+                      item: item,
+                      onToggleFavorite: widget.onToggleFavorite,
+                      onRemove: widget.onRemove,
+                      onRestart: widget.onRestart,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Imagem do item: miniatura local, pôster da fonte ou nada.
+Widget? _mediaImage(
+  MediaItem item,
+  Widget Function(String path)? builder,
+  Widget Function(String url)? networkBuilder,
+) {
+  final thumb = item.thumbnailPath;
+  final poster = item.metadata['posterUrl'];
+  if (thumb != null) {
+    return builder?.call(thumb) ?? MediaCard.defaultThumbnailImage(thumb);
+  }
+  if (poster != null && poster.isNotEmpty) {
+    return networkBuilder?.call(poster) ??
+        MediaCard.defaultNetworkThumbnailImage(poster);
+  }
+  return null;
 }
 
 class _Thumbnail extends StatelessWidget {
@@ -204,15 +441,7 @@ class _Thumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Ordem: miniatura local, pôster da fonte, placeholder.
-    final thumb = item.thumbnailPath;
-    final poster = item.metadata['posterUrl'];
-    Widget? image;
-    if (thumb != null) {
-      image = builder?.call(thumb) ?? MediaCard.defaultThumbnailImage(thumb);
-    } else if (poster != null && poster.isNotEmpty) {
-      image = networkBuilder?.call(poster) ??
-          MediaCard.defaultNetworkThumbnailImage(poster);
-    }
+    final image = _mediaImage(item, builder, networkBuilder);
     return Container(
       width:
           TvLayout.isTv(context) ? TvLayout.tokensOf(context).thumbWidth : 96,
@@ -239,12 +468,14 @@ class _OverflowMenu extends StatelessWidget {
     this.onToggleFavorite,
     this.onRemove,
     this.onRestart,
+    this.menuKey,
   });
 
   final MediaItem item;
   final VoidCallback? onToggleFavorite;
   final VoidCallback? onRemove;
   final VoidCallback? onRestart;
+  final GlobalKey<PopupMenuButtonState<String>>? menuKey;
 
   @override
   Widget build(BuildContext context) {
@@ -252,6 +483,7 @@ class _OverflowMenu extends StatelessWidget {
       return const SizedBox.shrink();
     }
     return PopupMenuButton<String>(
+      key: menuKey,
       tooltip: 'Opções',
       icon: const Icon(Icons.more_vert, color: PlayerTheme.secondaryText),
       onSelected: (value) {

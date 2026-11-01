@@ -48,21 +48,25 @@ Future<bool> confirmEnableUnknownSources(BuildContext context) async {
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Permitir fontes desconhecidas?'),
-      content: const Text(
-        'Add-ons e repositórios de fora podem mostrar conteúdo incorreto '
-        'ou sem autorização. O Olympus não verifica essas fontes e a '
-        'responsabilidade pelo que você adicionar é sua. Cada instalação '
-        'ainda passa pela sua revisão.',
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: const Text(
+          'Add-ons e repositórios de fora podem mostrar conteúdo incorreto '
+          'ou sem autorização. O Olympus não verifica essas fontes e a '
+          'responsabilidade pelo que você adicionar é sua. Cada instalação '
+          'ainda passa pela sua revisão.',
+        ),
       ),
       actions: [
-        TextButton(
+        FocusableButton(
+          label: 'Cancelar',
           autofocus: true,
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancelar'),
         ),
-        FilledButton(
+        FocusableButton(
+          label: 'Ativar',
+          primary: true,
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Ativar'),
         ),
       ],
     ),

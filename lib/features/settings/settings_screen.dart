@@ -382,9 +382,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     )),
                   ),
               ]),
-              // Atalhos: editaveis no computador e na TV (teclado/controle).
-              // No celular sem teclado a secao e so referencia: nao ha como
-              // pressionar a nova tecla, entao nada de edicao nem restaurar.
               _Section('Add-ons', [
                 SwitchListTile(
                   title: const Text('Permitir fontes desconhecidas'),
@@ -407,6 +404,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
               ]),
+              // Atalhos: editaveis no computador e na TV (teclado/controle).
+              // No celular sem teclado a secao e so referencia: nao ha como
+              // pressionar a nova tecla, entao nada de edicao nem restaurar.
               _Section('Atalhos', [
                 for (final action in ShortcutAction.values)
                   ListTile(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/theme.dart';
 import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/services/demo_addons.dart';
@@ -224,12 +225,45 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Nenhum add-on instalado'), findsOneWidget);
-      expect(find.text('Repositórios'), findsOneWidget);
-      expect(find.text('Arquivo ou link'), findsOneWidget);
+      expect(find.text('Meus add-ons (0)'), findsOneWidget);
+      expect(find.text('Instalar de repositório'), findsOneWidget);
+      expect(find.text('Instalar de zip'), findsOneWidget);
+      // As entradas não se repetem em ícones nem em botões.
+      expect(find.byTooltip('Repositórios'), findsNothing);
+      expect(find.byTooltip('Instalar add-on'), findsNothing);
+      expect(find.text('Arquivo ou link'), findsNothing);
 
-      await tester.tap(find.text('Repositórios'));
+      // Sem add-on, o foco inicial fica na primeira entrada.
+      expect(FocusManager.instance.primaryFocus?.context, isNotNull);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
       expect(find.text('Adicionar repositório'), findsOneWidget);
+    });
+
+    testWidgets('Instalar de zip abre direto na aba Zip', (tester) async {
+      final harness = _Harness();
+      await harness.preferences.update(
+          harness.preferences.current.copyWith(allowUnknownSources: true));
+      await harness.pump(tester);
+      await tester.tap(find.byTooltip('Add-ons'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Instalar de zip'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Procurar pacote…'), findsOneWidget);
+      expect(find.text('Procurar arquivo…'), findsNothing);
+    });
+
+    testWidgets('ícone sem cor própria fica claro',
+        (tester) async {
+      final harness = _Harness();
+      await harness.install('demo.catalogo');
+      await harness.pump(tester);
+      await tester.tap(find.byTooltip('Add-ons'));
+      await tester.pumpAndSettle();
+
+      final context = tester.element(find.text('Instalar de zip'));
+      expect(IconTheme.of(context).color, PlayerTheme.primaryText);
     });
 
     testWidgets('cabe em 360 dp com e sem instalados', (tester) async {

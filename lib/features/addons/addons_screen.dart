@@ -3,11 +3,11 @@ import 'package:player/app/app.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/features/addons/addon_display.dart';
+import 'package:player/features/addons/addon_install_screen.dart';
 import 'package:player/models/addon_info.dart';
 import 'package:player/services/addon_service.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/empty_state.dart';
-import 'package:player/widgets/focusable_button.dart';
 
 /// Gerenciador de add-ons (spec 6.1, Fase 5): instalados com seus
 /// estados. Detalhes, instalacao e repositorios vivem em telas proprias.
@@ -24,30 +24,17 @@ class AddonsScreen extends StatelessWidget {
       showBack: true,
       actions: [
         _UpdatesAction(addons: addons),
-        IconButton(
-          tooltip: 'Repositórios',
-          icon: const Icon(Icons.storage),
-          onPressed: () => Navigator.of(context).pushNamed(
-            AppRoutes.addonRepos,
-          ),
-        ),
-        IconButton(
-          tooltip: 'Instalar add-on',
-          icon: const Icon(Icons.add),
-          onPressed: () => Navigator.of(context).pushNamed(
-            AppRoutes.addonInstall,
-          ),
-        ),
       ],
       body: AnimatedBuilder(
         animation: addons,
         builder: (context, _) {
           final items = addons.addons;
-          // Entradas do hub (T6) antes da lista, sem roubar o foco
-          // inicial: o primeiro item segue com autofocus (TV/controle).
+          // Entradas do hub (T6) antes da lista. O primeiro add-on segue
+          // com o foco inicial; sem add-on, a primeira entrada recebe.
           final children = <Widget>[
             _EntryTile(
               icon: Icons.storage_outlined,
+              autofocus: items.isEmpty,
               title: 'Instalar de repositório',
               subtitle: 'Catálogos publicados por repositórios.',
               onTap: () => Navigator.of(context).pushNamed(
@@ -61,43 +48,31 @@ class AddonsScreen extends StatelessWidget {
               subtitle: 'Arquivo do aparelho ou link.',
               onTap: () => Navigator.of(context).pushNamed(
                 AppRoutes.addonInstall,
+                arguments:
+                    const AddonInstallArgs(source: AddonInstallSource.zip),
               ),
             ),
             const SizedBox(height: 16),
-          ];
-          if (items.isEmpty) {
-            children.add(
-              EmptyState(
-                icon: Icons.extension_outlined,
-                title: 'Nenhum add-on instalado',
-                message: 'Add-ons adicionam catálogos e fontes de mídia. '
-                    'Instale de um repositório ou de um arquivo ou link.',
-                actions: [
-                  FocusableButton(
-                    label: 'Repositórios',
-                    icon: Icons.storage_outlined,
-                    onPressed: () => Navigator.of(context).pushNamed(
-                      AppRoutes.addonRepos,
-                    ),
-                  ),
-                  FocusableButton(
-                    label: 'Arquivo ou link',
-                    icon: Icons.archive_outlined,
-                    onPressed: () => Navigator.of(context).pushNamed(
-                      AppRoutes.addonInstall,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          } else {
-            children.add(
-              Text(
+            // Mesma margem de 4 do Card, para alinhar com os cartões.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
                 'Meus add-ons (${items.length})',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
+            ),
+            const SizedBox(height: 8),
+          ];
+          if (items.isEmpty) {
+            children.add(
+              const EmptyState(
+                icon: Icons.extension_outlined,
+                title: 'Nenhum add-on instalado',
+                message: 'Add-ons adicionam catálogos e fontes de mídia. '
+                    'Instale de um repositório ou de um zip nas opções acima.',
+              ),
             );
-            children.add(const SizedBox(height: 8));
+          } else {
             for (var index = 0; index < items.length; index++) {
               if (index > 0) children.add(const SizedBox(height: 8));
               final item = items[index];
@@ -158,8 +133,10 @@ class _EntryTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.autofocus = false,
   });
 
+  final bool autofocus;
   final IconData icon;
   final String title;
   final String subtitle;
@@ -173,6 +150,7 @@ class _EntryTile extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
+        autofocus: autofocus,
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(12),

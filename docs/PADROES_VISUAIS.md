@@ -35,6 +35,20 @@ que for "selecionado" usa `accent`.
   faz isso para toda linha com interruptor.
 - Teste que fixa: `test/app_switch_test.dart` (desktop, celular e TV).
 
+## Cartão de fileira (Início)
+
+- `MediaPosterCard` (`lib/widgets/media_card.dart`): imagem com raio 12 e
+  título + detalhe embaixo, numa linha cada.
+- Proporção: 16:9 para quadro de vídeo (miniatura local é paisagem, e
+  cortar em 2:3 borraria) e 2:3 para pôster de catálogo.
+- Largura pela janela: `janela / 6`, presa entre 240 e 360. Janela maior
+  mostra mais cartões, não cartões maiores.
+- Foco: borda `accent` de 3 px. Mouse em cima: borda branca a 24%.
+  Parado: branca a 8%.
+- Setas andam de cartão em cartão. O menu abre pelo botão, pelo clique
+  direito e pela tecla de menu.
+- Teste: `test/home_desktop_test.dart`.
+
 ## Avisos (toast)
 
 - `showAppToast(context, mensagem, error: false)`

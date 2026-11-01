@@ -114,8 +114,7 @@ Future<_Harness> _boot(
 
 Finder get _horizontalRows => find.byWidgetPredicate(
       (widget) =>
-          widget is SingleChildScrollView &&
-          widget.scrollDirection == Axis.horizontal,
+          widget is ListView && widget.scrollDirection == Axis.horizontal,
     );
 
 void main() {
@@ -143,10 +142,10 @@ void main() {
       expect(find.text('Favoritos'), findsOneWidget);
       expect(_horizontalRows, findsNWidgets(3));
       expect(tester.getRect(_horizontalRows.first).width, greaterThan(3000));
-      // Pôster sem aumentar: o cartão mantém a largura de sempre e a
-      // janela cheia mostra bem mais cartão que o 1080 de antes.
-      final cards = find.byType(MediaCard);
-      expect(tester.getRect(cards.first).width, 320);
+      // O cartão para em 360: a janela cheia mostra mais cartões, em
+      // vez de cartões maiores.
+      final cards = find.byType(MediaPosterCard);
+      expect(tester.getRect(cards.first).width, 360);
       var inWindow = 0;
       for (var i = 0; i < tester.widgetList(cards).length; i++) {
         if (tester.getRect(cards.at(i)).right <= 3440) inWindow++;
@@ -171,9 +170,7 @@ void main() {
       await _seedResume(harness);
       await tester.pumpAndSettle();
 
-      // Corpo do cartão 1 -> menu do cartão 1 -> corpo do cartão 2.
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      await tester.pump();
+      // A seta anda de cartão em cartão, sem parar no menu.
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -186,6 +183,30 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Continuar assistindo'), findsOneWidget);
       await tester.pump(const Duration(seconds: 2));
+    });
+
+    testWidgets('seta alcança cartão fora da tela e a fileira acompanha',
+        (tester) async {
+      final harness = await _boot(tester, const Size(1280, 800));
+      for (var i = 0; i < 12; i++) {
+        await harness.library.upsert(video(
+          'l$i',
+          type: MediaSourceType.local,
+        ));
+      }
+      await tester.pumpAndSettle();
+
+      for (var i = 0; i < 11; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await tester.pumpAndSettle();
+      }
+
+      final focused = FocusManager.instance.primaryFocus!.context!;
+      final card = focused.findAncestorWidgetOfExactType<MediaPosterCard>()!;
+      expect(harness.library.items.map((e) => e.id), contains(card.item.id));
+      final rect = tester.getRect(find.byWidget(card));
+      expect(rect.right, lessThanOrEqualTo(1280));
+      expect(rect.left, greaterThanOrEqualTo(0));
     });
 
     testWidgets('posição volta depois do player', (tester) async {
@@ -203,7 +224,7 @@ void main() {
 
       // Rola a fileira (o Continuar assistindo mostra 10: a fileira
       // estoura a janela) e fixa o deslocamento em pixels.
-      await tester.drag(_horizontalRows.first, const Offset(-600, 0));
+      await tester.drag(_horizontalRows.first, const Offset(-300, 0));
       await tester.pumpAndSettle();
       double offset() => tester
           .state<ScrollableState>(
@@ -275,6 +296,50 @@ void main() {
 
       expect(find.byTooltip('Biblioteca'), findsNothing);
       expect(find.byTooltip('Add-ons'), findsOneWidget);
+    });
+
+    testWidgets('destino escondido esconde a fileira dele', (tester) async {
+      final harness = await _boot(
+        tester,
+        const Size(1280, 800),
+        hidden: const [MainDestination.library, MainDestination.favorites],
+      );
+      await harness.library.upsert(video('l', type: MediaSourceType.local));
+      await harness.library.upsert(video('f', favorite: true));
+      await _seedResume(harness);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Continuar assistindo'), findsOneWidget);
+      expect(find.text('Arquivos locais'), findsNothing);
+      expect(find.text('Favoritos'), findsNothing);
+    });
+
+    testWidgets('Remover só aparece no Continuar assistindo', (tester) async {
+      // Primeira fileira é a de arquivos locais: não há o que tirar do
+      // histórico, mesmo sendo a primeira.
+      final harness = await _boot(tester, const Size(1280, 800));
+      await harness.library.upsert(video('l', type: MediaSourceType.local));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Opções').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Adicionar aos favoritos'), findsOneWidget);
+      expect(find.text('Remover'), findsNothing);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('tecla de menu abre as opções do cartão focado',
+        (tester) async {
+      final harness = await _boot(tester, const Size(1280, 800));
+      await _seedResume(harness);
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+      await tester.pumpAndSettle();
+      expect(find.text('Adicionar aos favoritos'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
     });
 
     testWidgets('faixa de modo seguro continua no Início', (tester) async {

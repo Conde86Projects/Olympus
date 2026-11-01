@@ -25,8 +25,14 @@ enum AddonInstallSource { file, paste, link, zip }
 /// ja obtido (fluxo de repositorios, spec 6.1). Ou um, ou outro.
 class AddonInstallArgs {
   const AddonInstallArgs(
-      {this.sourceUrl, this.manifest, this.originTrusted = false})
+      {this.sourceUrl,
+      this.manifest,
+      this.originTrusted = false,
+      this.source})
       : assert(sourceUrl == null || manifest == null);
+
+  /// Aba inicial da entrada ("Instalar de zip" abre direto no Zip).
+  final AddonInstallSource? source;
 
   final String? sourceUrl;
   final AddonManifest? manifest;
@@ -79,6 +85,7 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
     if (!_argsInitialized) {
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is AddonInstallArgs) {
+        _source = args.source ?? _source;
         final withManifest = args.manifest;
         if (withManifest != null) {
           _preview = SourcePreview(
@@ -190,6 +197,7 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
           label: 'Ativar fontes desconhecidas',
           icon: Icons.lock_open,
           primary: true,
+          autofocus: true,
           onPressed: _enableUnknownSources,
         ),
       ],

@@ -131,7 +131,9 @@ class _Harness {
   Future<void> openInstall(WidgetTester tester) async {
     await tester.tap(find.byTooltip('Add-ons'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Instalar add-on'));
+    await tester.tap(find.text('Instalar de zip'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Arquivo'));
     await tester.pumpAndSettle();
   }
 

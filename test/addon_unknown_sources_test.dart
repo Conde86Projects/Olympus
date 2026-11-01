@@ -116,14 +116,14 @@ class _Harness {
   Future<void> openInstall(WidgetTester tester) async {
     await tester.tap(find.byTooltip('Add-ons'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Instalar add-on'));
+    await tester.tap(find.text('Instalar de zip'));
     await tester.pumpAndSettle();
   }
 
   Future<void> openRepos(WidgetTester tester) async {
     await tester.tap(find.byTooltip('Add-ons'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Repositórios'));
+    await tester.tap(find.text('Instalar de repositório'));
     await tester.pumpAndSettle();
   }
 
@@ -352,7 +352,7 @@ void main() {
       await tester.tap(find.text('Ativar'));
       await tester.pumpAndSettle();
       expect(harness.preferences.current.allowUnknownSources, isTrue);
-      expect(find.text('Procurar arquivo…'), findsOneWidget);
+      expect(find.text('Procurar pacote…'), findsOneWidget);
     });
 
     testWidgets('revisão de origem confiável instala com o botão desligado',

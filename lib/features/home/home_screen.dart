@@ -142,17 +142,18 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// Fileiras horizontais do desktop (T7): Continuar assistindo,
-  /// Arquivos locais e Favoritos, na largura livre da janela. Os
-  /// cartões são os mesmos (pôster sem aumentar) e a fileira mede
-  /// a altura exata do cartão mais alto (sem número mágico que a
-  /// escala de texto estouraria).
-  static const _cardWidth = 320.0;
+  /// Largura do cartão da fileira: acompanha a janela só até 360; daí
+  /// em diante, mais janela mostra mais cartões, não cartões maiores.
+  static double rowCardWidth(double windowWidth) =>
+      (windowWidth / 6).clamp(240.0, 360.0);
 
+  /// Fileiras horizontais do desktop (T7): Continuar assistindo,
+  /// Arquivos locais e Favoritos, na largura livre da janela.
   Widget _desktopBody(BuildContext context) {
     final library = dependencies.libraryService;
     final history = dependencies.historyService;
     final guard = dependencies.startupGuard;
+    final hidden = dependencies.preferencesService.current.hiddenDestinations;
     return Column(
       children: [
         AnimatedBuilder(
@@ -168,68 +169,71 @@ class HomeScreen extends StatelessWidget {
               final sections = homeSections(
                 entries: history.entries,
                 items: library.items,
+                hidden: hidden,
               );
               if (sections.isEmpty) return _empty(context);
               return ListView.separated(
-          itemCount: sections.length + 1,
-          separatorBuilder: (_, __) => const SizedBox(height: 24),
-          itemBuilder: (context, s) {
-            if (s >= sections.length) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _openActions(context),
+                itemCount: sections.length + 1,
+                separatorBuilder: (_, __) => const SizedBox(height: 24),
+                itemBuilder: (context, index) => index == 0
+                    ? _openActions(context)
+                    : _desktopRow(
+                        context,
+                        sections[index - 1],
+                        autofocusFirst: index == 1,
+                      ),
               );
-            }
-            final section = sections[s];
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(section.title,
-                    style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 12),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (var i = 0; i < section.items.length; i++) ...[
-                          if (i > 0) const SizedBox(width: 12),
-                          SizedBox(
-                            width: _cardWidth,
-                            child: Builder(builder: (context) {
-                              final item = section.items[i];
-                              return MediaCard(
-                                item: item,
-                                autofocus: s == 0 &&
-                                    i == 0 &&
-                                    ModalRoute.of(context)?.isCurrent == true,
-                                onTap: () => _play(context, item),
-                                onRestart: () => _play(context, item,
-                                    fromStart: true),
-                                onToggleFavorite: () =>
-                                    library.toggleFavorite(item.id),
-                                onRemove: s == 0
-                                    ? () =>
-                                        _removeFromHistory(context, item)
-                                    : null,
-                              );
-                            }),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ),
-  ),
-  ],
-);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _desktopRow(
+    BuildContext context,
+    HomeSection section, {
+    required bool autofocusFirst,
+  }) {
+    final library = dependencies.libraryService;
+    final width = rowCardWidth(MediaQuery.sizeOf(context).width);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(section.title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: MediaPosterCard.heightFor(
+            context,
+            width: width,
+            aspectRatio: MediaPosterCard.frameAspect,
+          ),
+          child: ListView.separated(
+            key: PageStorageKey<String>('home-row-${section.kind.name}'),
+            scrollDirection: Axis.horizontal,
+            itemCount: section.items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 16),
+            itemBuilder: (context, i) {
+              final item = section.items[i];
+              return MediaPosterCard(
+                key: ValueKey(item.id),
+                item: item,
+                width: width,
+                autofocus: autofocusFirst &&
+                    i == 0 &&
+                    ModalRoute.of(context)?.isCurrent == true,
+                onTap: () => _play(context, item),
+                onRestart: () => _play(context, item, fromStart: true),
+                onToggleFavorite: () => library.toggleFavorite(item.id),
+                onRemove: section.kind == HomeSectionKind.resume
+                    ? () => _removeFromHistory(context, item)
+                    : null,
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   /// F3 (Fase 4b): confirma antes de tirar do histórico; o item
