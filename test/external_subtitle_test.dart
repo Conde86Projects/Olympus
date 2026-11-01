@@ -254,6 +254,45 @@ void main() {
       });
     });
 
+    group('legendas com o mesmo nome em pastas diferentes', () {
+      const a = SubtitleTrack('2', 'C:/filmes/a/pt.srt', 'auto');
+      const b = SubtitleTrack('3', 'C:/filmes/b/pt.srt', 'auto');
+      const unica = SubtitleTrack('4', 'C:/filmes/a/en.srt', 'auto');
+      final all = [list.first, a, b, unica];
+
+      test('nome repetido ganha a pasta no rotulo', () {
+        expect(MediaKitPlayerService.subtitleLabel(a, all), 'a/pt.srt');
+        expect(MediaKitPlayerService.subtitleLabel(b, all), 'b/pt.srt');
+      });
+
+      test('caminho do Windows tambem', () {
+        const w = SubtitleTrack('5', r'C:\filmes\c\pt.srt', 'auto');
+        expect(MediaKitPlayerService.subtitleLabel(w, [...all, w]),
+            'c/pt.srt');
+      });
+
+      test('nome unico fica so com o nome do arquivo', () {
+        expect(MediaKitPlayerService.subtitleLabel(unica, all), 'en.srt');
+      });
+
+      test('faixa embutida mantem o titulo', () {
+        expect(MediaKitPlayerService.subtitleLabel(list.first, all), 'por');
+      });
+
+      test('a marcada e a ligada, mesmo com nomes iguais', () {
+        SubtitleTrack ligada(String path) =>
+            SubtitleTrack.uri('file:///$path', title: path);
+        expect(
+            MediaKitPlayerService.selectedSubtitleTrackId(
+                ligada('C:/filmes/b/pt.srt'), all),
+            '3');
+        expect(
+            MediaKitPlayerService.selectedSubtitleTrackId(
+                ligada('C:/filmes/a/pt.srt'), all),
+            '2');
+      });
+    });
+
     test('antes de entrar na lista, mantem o endereco', () {
       final selected = SubtitleTrack.uri('file:///a/nova.srt', title: 'nova.srt');
       expect(MediaKitPlayerService.selectedSubtitleTrackId(selected, list),

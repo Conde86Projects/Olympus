@@ -81,6 +81,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     )),
                   ),
                 ),
+                ListTile(
+                  title: const Text('Tamanho do texto'),
+                  trailing: DropdownButton<TextSizeOption>(
+                    value: current.textSize,
+                    items: [
+                      for (final option in TextSizeOption.values)
+                        DropdownMenuItem(
+                            value: option, child: Text(option.label)),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        prefs.update(current.copyWith(textSize: v));
+                      }
+                    },
+                  ),
+                ),
                 SwitchListTile(
                   title: const Text('Animações'),
                   subtitle:

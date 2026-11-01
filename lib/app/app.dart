@@ -93,6 +93,18 @@ class PlayerApp extends StatelessWidget {
             // Na TV, a classe de largura (spec 27.4) escolhe a faixa
             // do texto e as metricas; fora da TV, nada muda.
             builder: (context, child) {
+              // Tamanho do texto escolhido, aplicado uma vez na raiz e
+              // antes do teto da TV, que continua valendo.
+              if (prefs.textSize != TextSizeOption.normal) {
+                final media = MediaQuery.of(context);
+                child = MediaQuery(
+                  data: media.copyWith(
+                    textScaler: _MultipliedTextScaler(
+                        media.textScaler, prefs.textSize.scale),
+                  ),
+                  child: child!,
+                );
+              }
               if (!prefs.tvMode) return child!;
               final widthClass = TvLayout.widthClassOf(context);
               final tokens = TvLayoutTokens.forClass(widthClass);
@@ -145,6 +157,29 @@ class PlayerApp extends StatelessWidget {
       },
     );
   }
+}
+
+/// Multiplica o escalador de texto do sistema por um fator fixo.
+class _MultipliedTextScaler extends TextScaler {
+  const _MultipliedTextScaler(this.base, this.factor);
+
+  final TextScaler base;
+  final double factor;
+
+  @override
+  double scale(double fontSize) => base.scale(fontSize) * factor;
+
+  @override
+  double get textScaleFactor => scale(1);
+
+  @override
+  bool operator ==(Object other) =>
+      other is _MultipliedTextScaler &&
+      other.base == base &&
+      other.factor == factor;
+
+  @override
+  int get hashCode => Object.hash(base, factor);
 }
 
 /// Dependencias compartilhadas entre rotas.
