@@ -25,6 +25,7 @@ class UserPreferences {
     this.tvModeAuto = true,
     this.compatibleVideoOutput = false,
     this.librarySort = LibrarySort.recent,
+    this.textSize = TextSizeOption.normal,
     this.windowX,
     this.windowY,
     this.windowWidth,
@@ -89,6 +90,9 @@ class UserPreferences {
   /// Ordem da lista da Biblioteca; lembrada entre aberturas.
   final LibrarySort librarySort;
 
+  /// Tamanho do texto do app inteiro (nao inclui a legenda desenhada).
+  final TextSizeOption textSize;
+
   /// Geometria salva da janela (spec 14.1). Null = primeira execucao.
   final double? windowX;
   final double? windowY;
@@ -120,6 +124,7 @@ class UserPreferences {
     bool? tvModeAuto,
     bool? compatibleVideoOutput,
     LibrarySort? librarySort,
+    TextSizeOption? textSize,
     double? Function()? windowX,
     double? Function()? windowY,
     double? Function()? windowWidth,
@@ -153,6 +158,7 @@ class UserPreferences {
       compatibleVideoOutput:
           compatibleVideoOutput ?? this.compatibleVideoOutput,
       librarySort: librarySort ?? this.librarySort,
+      textSize: textSize ?? this.textSize,
       windowX: windowX != null ? windowX() : this.windowX,
       windowY: windowY != null ? windowY() : this.windowY,
       windowWidth:
@@ -187,6 +193,7 @@ class UserPreferences {
         'tvModeAuto': tvModeAuto,
         'compatibleVideoOutput': compatibleVideoOutput,
         'librarySort': librarySort.name,
+        'textSize': textSize.name,
         'windowX': windowX,
         'windowY': windowY,
         'windowWidth': windowWidth,
@@ -224,6 +231,8 @@ class UserPreferences {
           (map['compatibleVideoOutput'] ?? false) as bool,
       librarySort: _byName(
           LibrarySort.values, map['librarySort'], LibrarySort.recent),
+      textSize: _byName(
+          TextSizeOption.values, map['textSize'], TextSizeOption.normal),
       windowX: (map['windowX'] as num?)?.toDouble(),
       windowY: (map['windowY'] as num?)?.toDouble(),
       windowWidth: (map['windowWidth'] as num?)?.toDouble(),
@@ -243,6 +252,18 @@ enum SubtitlePosition { low, normal, high }
 /// Ordem da Biblioteca: último adicionado primeiro, título de A a Z ou
 /// os vídeos mais longos primeiro.
 enum LibrarySort { recent, title, duration }
+
+/// Tamanho do texto do app: multiplica o texto do sistema por 1,0, 1,15
+/// ou 1,3.
+enum TextSizeOption {
+  normal(1.0, 'Normal'),
+  large(1.15, 'Grande'),
+  larger(1.3, 'Maior');
+
+  const TextSizeOption(this.scale, this.label);
+  final double scale;
+  final String label;
+}
 
 /// Valor salvo desconhecido (versao futura ou dado corrompido) cai no padrao.
 T _byName<T extends Enum>(List<T> values, Object? name, T fallback) {
