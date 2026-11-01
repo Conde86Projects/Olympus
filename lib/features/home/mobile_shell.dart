@@ -9,14 +9,8 @@ import 'package:player/features/library/library_screen.dart';
 import 'package:player/features/settings/settings_screen.dart';
 import 'package:player/models/preferences.dart';
 
-/// Raiz do celular ([MobileMode]): navegacao inferior com as telas
-/// principais. Cada aba mantem o proprio estado (rolagem, filtros) ao
-/// trocar. Telas de detalhe e o player abrem por cima, como antes.
-/// Desktop e TV nao passam por aqui: seguem na [HomeScreen] com a
-/// barra superior.
 /// Abas da barra inferior, na ordem de exibicao (rotulos curtos: cabem
-/// em 360 dp). A aba ativa e guardada por identidade, nao por posicao,
-/// para esconder um destino nao trocar a tela do usuario.
+/// em 360 dp).
 enum MobileTab {
   home(Icons.home_outlined, Icons.home, 'Início'),
   library(Icons.video_library_outlined, Icons.video_library, 'Biblioteca',
@@ -36,6 +30,13 @@ enum MobileTab {
   final MainDestination? hideable;
 }
 
+/// Raiz do celular ([MobileMode]): navegacao inferior com as telas
+/// principais. Cada aba mantem o proprio estado (rolagem, filtros) ao
+/// trocar. Telas de detalhe e o player abrem por cima, como antes.
+/// Desktop e TV nao passam por aqui: seguem na [HomeScreen] com a
+/// barra superior.
+/// A aba ativa e guardada por identidade ([MobileTab]), nao por posicao,
+/// para esconder um destino nao trocar a tela do usuario.
 class MobileShell extends StatefulWidget {
   const MobileShell({super.key, required this.dependencies});
 
@@ -54,6 +55,8 @@ class _MobileShellState extends State<MobileShell> {
   @override
   void initState() {
     super.initState();
+    // Pedido feito antes de este shell existir e velho: descarta.
+    MainNavigation.request.value = null;
     MainNavigation.request.addListener(_onRequest);
   }
 

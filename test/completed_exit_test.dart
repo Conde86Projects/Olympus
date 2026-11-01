@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/main_navigation.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/media_item.dart';
@@ -145,6 +146,23 @@ void main() {
       expect(_button('Fechar'), findsOneWidget);
     });
   }
+
+  testWidgets('celular: pedido de aba feito sem o shell nao vaza para o proximo',
+      (tester) async {
+    // Pedido antigo, feito quando nenhum MobileShell estava montado.
+    MainNavigation.request.value = ExitTarget.library;
+    addTearDown(() => MainNavigation.request.value = null);
+    final h = _Harness(mobile: true);
+    await h.pump(tester);
+
+    expect(MainNavigation.request.value, isNull);
+    // Um pedido novo igual ao velho ainda tem que trocar a aba.
+    MainNavigation.request.value = ExitTarget.library;
+    await tester.pumpAndSettle();
+    expect(
+        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+        1);
+  });
 
   testWidgets('Inicio salva a sessao e volta a tela inicial', (tester) async {
     final h = _Harness();
