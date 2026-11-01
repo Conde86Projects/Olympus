@@ -118,6 +118,19 @@ void main() {
     }
   });
 
+  group('player nas divisoes do Windows em monitor de 34 polegadas', () {
+    // Area cliente em 3440x1440 com escala 125%: metade, 1/3 e 1/4.
+    for (final size in const [Size(1360, 1065), Size(900, 1065), Size(1360, 513)]) {
+      testWidgets('$size nao estoura e mantem os botoes', (tester) async {
+        final harness = await _boot(tester, size);
+        await _openPlayer(tester, harness);
+        expect(tester.takeException(), isNull);
+        expect(find.byTooltip('Fechar'), findsOneWidget);
+        expect(find.byTooltip('Modo cinema'), findsOneWidget);
+      });
+    }
+  });
+
   group('player na janela pequena', () {
     testWidgets('card de uma fileira, legivel e longe dos cantos',
         (tester) async {

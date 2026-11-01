@@ -12,6 +12,14 @@ abstract class WindowService {
   /// Janela pequena flutuante para assistir enquanto trabalha (spec 14.4).
   Future<void> setCompact(bool enabled);
 
+  /// Tira a barra de titulo do sistema (modo cinema): so o video na janela,
+  /// no tamanho e na posicao de antes, inclusive numa divisao da tela.
+  Future<void> setTitleBarHidden(bool hidden);
+
+  /// Comeca a mover a janela como pela barra de titulo: o encaixe nas
+  /// divisoes do Windows segue valendo.
+  Future<void> startDragging();
+
   Future<bool> get isFullscreen;
   Future<bool> get isCompact;
 
@@ -161,6 +169,15 @@ class WindowManagerService with WindowListener implements WindowService {
   }
 
   @override
+  Future<void> setTitleBarHidden(bool hidden) =>
+      windowManager.setTitleBarStyle(
+        hidden ? TitleBarStyle.hidden : TitleBarStyle.normal,
+      );
+
+  @override
+  Future<void> startDragging() => windowManager.startDragging();
+
+  @override
   Future<bool> get isFullscreen => windowManager.isFullScreen();
 
   @override
@@ -203,6 +220,16 @@ class NoOpWindowService implements WindowService {
 
   @override
   Future<void> setCompact(bool enabled) async => _compact = enabled;
+
+  /// Testes: barra de titulo escondida e arrastos pedidos.
+  bool titleBarHidden = false;
+  int dragStarts = 0;
+
+  @override
+  Future<void> setTitleBarHidden(bool hidden) async => titleBarHidden = hidden;
+
+  @override
+  Future<void> startDragging() async => dragStarts++;
 
   @override
   Future<bool> get isFullscreen async => _fullscreen;

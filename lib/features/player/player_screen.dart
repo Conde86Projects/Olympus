@@ -1274,6 +1274,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     // ar e o stop a zeraria. Nenhum listener local segue vivo aqui,
     // entao o reset nao reconstrui nada no meio da transicao.
     if (_stopOnDispose) unawaited(_stopPlayback());
+    // A barra de titulo e da janela: nao fica escondida fora do player.
+    if (_cinemaWindow) {
+      unawaited(widget.dependencies.windowService.setTitleBarHidden(false));
+    }
     super.dispose();
   }
 
@@ -1436,6 +1440,11 @@ class _PlayerScreenState extends State<PlayerScreen>
                                 : null,
                             onDoubleTap:
                                 _mobile && !modalUp ? _seekByDoubleTap : null,
+                            onPanStart: _cinemaWindow && !_fullscreen
+                                ? (_) => unawaited(widget
+                                    .dependencies.windowService
+                                    .startDragging())
+                                : null,
                             child: SubtitleScope(
                               style: SubtitleStyle.fromPreferences(widget
                                   .dependencies.preferencesService.current),
@@ -1589,6 +1598,25 @@ class _PlayerScreenState extends State<PlayerScreen>
                               ),
                             ),
                           ),
+                          // Cinema no desktop: os cantos somem, mas a saida fica
+                          // visivel com os controles (so C/Esc prendia quem usa
+                          // o mouse). Na TV a saida e o voltar do controle.
+                          if (_cinemaWindow && _controlsVisible)
+                            Positioned(
+                              right: edge,
+                              top: 0,
+                              child: SafeArea(
+                                bottom: false,
+                                child: RoundPlayerButton(
+                                  tooltip: 'Sair do modo cinema',
+                                  icon: Icons.theaters,
+                                  size: _cornerSize,
+                                  padding: _cornerPadding,
+                                  overVideo: true,
+                                  onPressed: _toggleCinema,
+                                ),
+                              ),
+                            ),
                           // O card nunca desmonta (Fase 4): so oculta com estado.
                           // Desmontar mataria o foco do controle atual e as
                           // setas nao chegariam aos bindings (D-pad morto);
@@ -1926,11 +1954,19 @@ class _PlayerScreenState extends State<PlayerScreen>
     setState(() => _compact = next);
   }
 
-  /// Modo cinema (spec 14.2): o video ocupa o interior da janela e a
-  /// barra do app some; os controles continuam flutuando sobre o video.
-  /// Nao mexe na janela do sistema (isso e tela cheia). Sai com C ou Esc.
+  /// Cinema numa janela de desktop: sem barra de titulo, a janela se move
+  /// arrastando o video.
+  bool get _cinemaWindow => _cinema && !_tvMode && !_mobile;
+
+  /// Modo cinema (spec 14.2): o video ocupa o interior da janela e as
+  /// barras somem; os controles continuam flutuando sobre o video. A janela
+  /// fica onde esta (ocupar o monitor e tela cheia). Sai com C, Esc ou o
+  /// botao de sair.
   void _toggleCinema() {
     setState(() => _cinema = !_cinema);
+    if (!_tvMode && !_mobile) {
+      unawaited(widget.dependencies.windowService.setTitleBarHidden(_cinema));
+    }
     _restoreFocusIfLost();
   }
 

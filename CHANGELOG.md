@@ -40,6 +40,9 @@ o restante.
 
 ### Corrigido
 
+- Modo cinema no desktop: agora tem o botão "Sair do modo cinema" na tela. Antes, só
+  dava para sair pelas teclas C ou Esc. O modo também esconde a barra do Windows,
+  sem mudar o tamanho da janela, e a janela se move arrastando o vídeo.
 - Quando faltava acesso aos arquivos, o erro dizia que o arquivo sumiu ou que não havia
   conexão. Agora diz que falta acesso aos arquivos e como liberar.
 - Celular: depois de escolher um arquivo no seletor do sistema (por exemplo, a legenda),

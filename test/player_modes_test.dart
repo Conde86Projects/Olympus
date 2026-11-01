@@ -111,6 +111,93 @@ void main() {
       expect(find.byTooltip('Fechar'), findsOneWidget);
     });
 
+    testWidgets('cinema no desktop tem saida visivel pelo mouse',
+        (tester) async {
+      final harness = _Harness();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      await _openPlayer(tester, harness, _item());
+
+      await tester.tap(find.byTooltip('Modo cinema'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Fechar'), findsNothing);
+
+      await tester.tap(find.byTooltip('Sair do modo cinema'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Sair do modo cinema'), findsNothing);
+      expect(find.byTooltip('Modo cinema'), findsOneWidget);
+      expect(find.byTooltip('Fechar'), findsOneWidget);
+    });
+
+    testWidgets('cinema esconde a barra do Windows e move pelo video',
+        (tester) async {
+      final harness = _Harness();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      await _openPlayer(tester, harness, _item());
+      final center = tester.getCenter(find.byType(Scaffold).last);
+
+      // Fora do cinema, arrastar o video nao move a janela.
+      await tester.dragFrom(center, const Offset(80, 0));
+      await tester.pumpAndSettle();
+      expect(harness.windows.dragStarts, 0);
+
+      await tester.tap(find.byTooltip('Modo cinema'));
+      await tester.pumpAndSettle();
+      expect(harness.windows.titleBarHidden, isTrue);
+
+      await tester.dragFrom(center, const Offset(80, 0));
+      await tester.pumpAndSettle();
+      expect(harness.windows.dragStarts, 1);
+
+      // Em tela cheia nao ha janela para mover.
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+      await tester.pumpAndSettle();
+      await tester.dragFrom(center, const Offset(80, 0));
+      await tester.pumpAndSettle();
+      expect(harness.windows.dragStarts, 1);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+      await tester.pumpAndSettle();
+      expect(harness.windows.titleBarHidden, isFalse);
+    });
+
+    testWidgets('sair do player em cinema devolve a barra do Windows',
+        (tester) async {
+      final harness = _Harness();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      await _openPlayer(tester, harness, _item());
+
+      await tester.tap(find.byTooltip('Modo cinema'));
+      await tester.pumpAndSettle();
+      expect(harness.windows.titleBarHidden, isTrue);
+
+      await tester.pumpWidget(const SizedBox());
+      expect(harness.windows.titleBarHidden, isFalse);
+    });
+
+    testWidgets('cinema na TV segue saindo pelo voltar, sem botao novo',
+        (tester) async {
+      final harness = _Harness();
+      await harness.preferences.update(harness.preferences.current
+          .copyWith(tvMode: true, tvModeAuto: false));
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      await _openPlayer(tester, harness, _item());
+
+      await tester.tap(find.byTooltip('Modo cinema'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Sair do modo cinema'), findsNothing);
+      expect(harness.windows.titleBarHidden, isFalse);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Modo cinema'), findsOneWidget);
+    });
+
     testWidgets('I, S e A abrem o painel direto na subview',
         (tester) async {
       final harness = _Harness();
