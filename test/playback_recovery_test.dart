@@ -467,6 +467,49 @@ void main() {
       expect(player.session.errorKind, PlaybackErrorKind.source);
     });
 
+    Future<SupervisedPlayerService> abrirComErroDoMotor(
+        MediaItem item, bool acesso, String mensagem) async {
+      final dir = Directory.systemTemp.createTempSync('motor_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final inner = _ScriptedPlayer();
+      final player = SupervisedPlayerService(inner,
+          hasMediaAccess: () async => acesso);
+      addTearDown(player.dispose);
+      await player.open(item);
+      inner.emit(PlaybackSession(
+          status: PlaybackStatus.error, errorMessage: mensagem));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      return player;
+    }
+
+    MediaItem arquivoReal() {
+      final dir = Directory.systemTemp.createTempSync('existe_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final file = File('${dir.path}${Platform.pathSeparator}v.mp4')
+        ..writeAsStringSync('x');
+      return localItem(file.path);
+    }
+
+    test('erro do motor em arquivo local sem acesso vira permissao', () async {
+      final player = await abrirComErroDoMotor(
+          arquivoReal(), false, 'Failed to open /sdcard/Movies/a.mp4');
+      expect(player.session.errorKind, PlaybackErrorKind.permission);
+    });
+
+    test('erro do motor em arquivo local com acesso segue como antes',
+        () async {
+      final player = await abrirComErroDoMotor(
+          arquivoReal(), true, 'Failed to open /sdcard/Movies/a.mp4');
+      expect(player.session.errorKind, PlaybackErrorKind.network);
+    });
+
+    test('erro do motor em link nunca vira permissao', () async {
+      final player = await abrirComErroDoMotor(
+          urlItem(), false, 'Failed to open https://x.test/a.mp4');
+      expect(player.session.errorKind, PlaybackErrorKind.network);
+    });
+
     test('arquivo existente nao consulta o acesso', () async {
       final dir = Directory.systemTemp.createTempSync('precheck_');
       addTearDown(() => dir.deleteSync(recursive: true));

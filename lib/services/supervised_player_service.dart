@@ -60,6 +60,7 @@ class SupervisedPlayerService implements MediaPlayerService {
 
   final MediaPlayerService _inner;
   final Future<bool> Function() _hasMediaAccess;
+  bool _openingLocal = false;
   final Duration loadTimeout;
   final Duration bufferTimeout;
 
@@ -99,6 +100,7 @@ class SupervisedPlayerService implements MediaPlayerService {
     _watchdog.cancel();
     _latched = null;
     _openStartedAt = DateTime.now();
+    _openingLocal = item.sourceType == MediaSourceType.local;
 
     if (item.sourceType == MediaSourceType.local &&
         !await File(item.source).exists()) {
@@ -148,7 +150,10 @@ class SupervisedPlayerService implements MediaPlayerService {
       _fail(PlaybackErrorKind.timeout, generation);
       return;
     } catch (error) {
-      final kind = classifyPlaybackError(error.toString());
+      var kind = classifyPlaybackError(error.toString());
+      if (item.sourceType == MediaSourceType.local && _maskedPermission(kind)) {
+        kind = await _refineLocalError(kind);
+      }
       _logEvent('open', outcome: kind.name);
       _fail(kind, generation);
       return;
@@ -239,15 +244,51 @@ class SupervisedPlayerService implements MediaPlayerService {
       _latchedFrom = null;
     }
     if (_latched != null) return;
-    var mirror = session;
     if (session.status == PlaybackStatus.error) {
       final kind = classifyPlaybackError(session.errorMessage);
+      if (_openingLocal && _maskedPermission(kind)) {
+        // Decide depois de consultar o acesso aos arquivos.
+        final generation = _generation;
+        unawaited(() async {
+          final refined = await _refineLocalError(kind);
+          if (generation != _generation || _latched != null) return;
+          _applyInner(session, refined);
+        }());
+        return;
+      }
+      _applyInner(session, kind);
+      return;
+    }
+    _applyInner(session, null);
+  }
+
+  void _applyInner(PlaybackSession session, PlaybackErrorKind? kind) {
+    var mirror = session;
+    if (kind != null) {
       mirror = session.copyWith(errorKind: () => kind);
       _logEvent('error', outcome: kind.name);
     }
     _mirror = mirror;
     _watchdog.observe(mirror);
     _emit();
+  }
+
+  /// Tipos que o motor usa quando o Android esconde o arquivo por falta
+  /// de permissao: "Failed to open" sem "permission denied".
+  bool _maskedPermission(PlaybackErrorKind kind) =>
+      kind == PlaybackErrorKind.network ||
+      kind == PlaybackErrorKind.source ||
+      kind == PlaybackErrorKind.unknown;
+
+  /// Em arquivo local, sem acesso aos arquivos o erro e de permissao.
+  /// Com acesso (ou plataforma que nao pede) o tipo segue como veio.
+  Future<PlaybackErrorKind> _refineLocalError(PlaybackErrorKind kind) async {
+    try {
+      if (!await _hasMediaAccess()) return PlaybackErrorKind.permission;
+    } catch (_) {
+      // Sem resposta da plataforma: mantem o tipo classificado.
+    }
+    return kind;
   }
 
   /// Vigia tocando no zero disparou, mas o video enfim avancou.
