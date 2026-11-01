@@ -140,7 +140,11 @@ void main() {
       expect(
           classifyPlaybackError(
               'Failed to open /sdcard/Movies/a.mp4: Permission denied'),
-          PlaybackErrorKind.source);
+          PlaybackErrorKind.permission);
+      expect(
+          classifyPlaybackError('open: EPERM'), PlaybackErrorKind.permission);
+      expect(classifyPlaybackError('Access is denied'),
+          PlaybackErrorKind.permission);
       expect(classifyPlaybackError('Could not resolve host'),
           PlaybackErrorKind.network);
       expect(classifyPlaybackError('Connection refused'),
@@ -617,6 +621,40 @@ void main() {
           find.text(
               'Este arquivo não está mais disponível no caminho salvo.'),
           findsOneWidget);
+    });
+
+    testWidgets('permissao negada em arquivo local pede acesso aos arquivos',
+        (tester) async {
+      final harness = _WidgetHarness();
+      await harness.player.stop();
+      await harness.pump(tester);
+      await harness.openPlayer(tester, localItem(r'C:\x.mp4'));
+
+      harness.player.simulateError(PlaybackErrorKind.permission);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Falta acesso aos arquivos'), findsOneWidget);
+      expect(find.textContaining('configurações do aparelho'), findsOneWidget);
+      expect(
+          find.text('Este arquivo não está mais disponível no caminho salvo.'),
+          findsNothing);
+      expect(find.text('Tentar novamente'), findsOneWidget);
+      expect(find.text('Localizar arquivo…'), findsOneWidget);
+    });
+
+    testWidgets('link nunca mostra a mensagem de permissao de arquivos',
+        (tester) async {
+      final harness = _WidgetHarness();
+      await harness.player.stop();
+      await harness.pump(tester);
+      await harness.openPlayer(tester, urlItem());
+
+      harness.player.simulateError(PlaybackErrorKind.permission);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('acesso aos arquivos'), findsNothing);
+      expect(find.textContaining('Não foi possível carregar este link'),
+          findsOneWidget);
+      expect(find.text('Editar link'), findsOneWidget);
+      expect(find.text('Localizar arquivo…'), findsNothing);
     });
 
     testWidgets('erro de decodificador e distinto', (tester) async {
