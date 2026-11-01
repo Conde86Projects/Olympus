@@ -2,11 +2,11 @@
 
 > Player de mídia minimalista, bonito e eficiente, inspirado na simplicidade do Showtime e na flexibilidade dos players com extensões.
 
-**Versão atual:** `0.3.0-rc.1` (ver `pubspec.yaml`)  
+**Versão publicada:** `0.3.5` (ver `pubspec.yaml`; última tag e release: `v0.3.5`, 01/11/2026). O ciclo de acabamento da spec #16 está na branch `integracao/acabamento-16`, no PR #29, não publicado.  
 **Codinome do projeto:** `Olympus`  
 **Tecnologia principal:** Flutter / Dart  
 **Interface inicial:** Português do Brasil  
-**Status:** marco 0.2.0 validado em Windows, TV (TCL) e celular físico
+**Status:** versão 0.3.5 publicada; marco 0.2.0 validado em Windows, TV (TCL) e celular físico. Estado detalhado em `docs/SITUACAO_ATUAL.md`.
 
 ---
 
@@ -34,6 +34,21 @@ O projeto prioriza:
 
 ## Estado atual
 
+Versões publicadas depois do marco 0.2.0: 0.3.0 (volume por plataforma,
+seletor de qualidade HLS, legendas com estilo), 0.3.1 (nome Olympus e
+pacote `com.conde86.olympus`), 0.3.2 (legenda externa pelo painel), 0.3.3
+(legenda ao lado), 0.3.4 (busca e ordem na Biblioteca) e 0.3.5 (miniatura
+de vídeo local no Windows). Detalhes no `CHANGELOG.md`.
+
+Ciclo de acabamento da spec #16 (na branch, PR #29, não publicado):
+tamanho do texto, data do último acesso nos cartões, erros com
+informações técnicas e escolha de outra fonte, erro de permissão
+separado de arquivo ausente, fim do vídeo com Biblioteca e Início, menu
+principal escolhido pelo usuário, atalhos configuráveis, foco do painel
+de opções na TV, celular que retoma o play depois de um seletor,
+legendas homônimas e aviso de legenda ao lado no celular. Decisões em
+`docs/adr/0003-acabamento-spec-16.md`.
+
 Marco 0.2.0 (19/10/2026): composição mobile, janela pequena no
 Windows, catálogo da fonte própria, saída direta do vídeo no
 Android/TV, menus compactos da TV e padrão visual único. Detalhes em
@@ -56,8 +71,12 @@ Refinamento de UX                        concluído
 Composição mobile (celular)              concluída
 Saída direta de vídeo (Android/TV)       concluída
 Padrão visual único (TV/desktop/celular) concluído
-Testes automatizados                     verdes (ver checklist 0.2.0)
+Testes automatizados                     verdes (930 na execução do ciclo #16)
 flutter analyze                          limpo
+Estilo das legendas (0.3.0)              concluído
+Legenda externa e ao lado (0.3.2/0.3.3)  concluídas
+Busca e ordem da Biblioteca (0.3.4)      concluídas
+Miniatura no Windows (0.3.5)             concluída
 Provider real                            não conectado
 Validação Windows                        concluída (0.2.0)
 Validação em TV física (TCL)             concluída (0.2.0)
@@ -86,9 +105,14 @@ O adaptador demo é usado para validar o fluxo de fontes sem depender de um serv
 - modo cinema;
 - modo compacto;
 - modo sempre no topo no desktop, quando suportado;
-- retomada da última posição.
+- retomada da última posição;
+- legenda externa (`.srt`, `.vtt`, `.ass`) pelo painel e legenda ao lado de mesmo nome (celular: depende do acesso do Android à pasta);
+- atalhos de teclado configuráveis (Mudo, Tela cheia, Informações, Legendas, Áudio, Modo cinema e Fechar player); espaço, Enter, Esc, setas e Tab ficam fixos;
+- erro de reprodução com informações técnicas e escolha de outro vídeo; fim do vídeo com saídas para Biblioteca e Início.
 
 ### Volume
+
+Fonte única da regra: `docs/adr/0001-volume-por-plataforma.md`. Resumo:
 
 Decisão de produto (20/10/2026, ajuste 21/10/2026): só o mudo
 dentro do app, em todas as plataformas. Sem barra, sem botões de
@@ -126,7 +150,15 @@ Windows: ele empurrava os botões de pausar/play/voltar.
 - progresso de reprodução;
 - miniaturas locais;
 - pôster remoto quando disponível;
-- placeholder quando a imagem não existe ou falha.
+- placeholder quando a imagem não existe ou falha;
+- busca pelo título e ordem por recentes, título ou duração (0.3.4);
+- data do último acesso no cartão: "Visto hoje", "Visto ontem" ou dia e mês (ciclo #16, não publicado);
+- miniatura de vídeo local no Windows, tirada pelo próprio motor do app (0.3.5).
+
+### Personalização (ciclo #16, não publicado)
+
+- Tamanho do texto: Normal, Grande e Maior (1,0, 1,15 e 1,3 vezes o texto do sistema), em Configurações > Aparência. A legenda desenhada pelo app tem ajuste próprio.
+- Menu principal: Biblioteca, Favoritos, Add-ons e Histórico podem ser escondidos; Início e Configurações nunca saem. Esconder não desliga add-ons instalados.
 
 ### Fontes e add-ons
 
@@ -182,10 +214,11 @@ lib/
 │   ├── media_player_service.dart
 │   ├── addon_service.dart
 │   ├── addon_fetcher.dart
-│   ├── source_credentials.dart
 │   └── sources/
 │       ├── source_adapter.dart
-│       └── demo_source_adapter.dart
+│       ├── source_credentials.dart
+│       ├── demo_source_adapter.dart
+│       └── owned_test_source.dart
 ├── features/
 │   ├── home/
 │   ├── player/
@@ -351,7 +384,7 @@ Se ocorrer erro relacionado a `atlstr.h`, o componente ATL do MSVC não está in
 
 ## Testes
 
-A suíte atual possui **741 testes aprovados** (execução de 31/10/2026; registrar o número real antes de cada release).
+A suíte atual possui **930 testes aprovados** (`flutter test` em `integracao/acabamento-16`, 01/11/2026; registrar o número real antes de cada release). `flutter analyze` sem avisos.
 
 Execute:
 
@@ -379,84 +412,63 @@ Toda nova fonte, alteração de player ou alteração de fluxo de instalação d
 
 ---
 
-## Release Candidate 1
-
-A versão atual é:
+## Versões e releases
 
 ```text
-Versão: 0.1.0-rc.1+1
-Codinome: Olympus
-Tag planejada: v0.1.0-rc.1
+Versão publicada: 0.3.5+1011
+Tag e release:    v0.3.5 (01/11/2026)
+Pacote Android:   com.conde86.olympus
+Codinome:         Olympus
 ```
 
-A RC1 deve ser congelada como baseline quando o build Windows estiver disponível. Depois disso, alterações devem preservar os gates:
+As tags e releases estão no GitHub (`gh release list`). Cada versão publicada
+tem seu checklist em `docs/RELEASE_v*_CHECKLIST.md`, que não é editado depois
+da publicação. Os gates de cada entrega:
 
 ```text
 flutter analyze → limpo
 flutter test    → todos os testes aprovados
 ```
 
-Sugestão de versionamento:
-
-```bash
-git add .
-git commit -m "chore: congelar release candidate 1"
-git tag -a v0.1.0-rc.1 -m "Olympus v0.1.0-rc.1"
-```
-
-Configure a identidade Git antes do commit:
-
-```bash
-git config user.name "Seu Nome"
-git config user.email "seu-email@example.com"
-```
-
-Não coloque tokens, senhas ou chaves no repositório.
+Só o dono autoriza push, tag e release. Não coloque tokens, senhas ou chaves no repositório.
 
 ---
 
 ## Roadmap
 
-### Fase atual — RC1
+### Concluído
 
-- [x] Interface principal;
-- [x] player e controles;
-- [x] histórico, favoritos e retomada;
-- [x] feed remoto e catálogo;
-- [x] fontes desconhecidas por feed;
-- [x] validação e aprovação de fonte;
-- [x] proteção SSRF;
-- [x] adaptadores de fonte;
-- [x] miniaturas, pôsteres e placeholders;
-- [x] qualidades dinâmicas;
+- [x] Interface principal, player e controles, histórico, favoritos e retomada;
+- [x] feed remoto, catálogo, fontes desconhecidas, validação, aprovação e proteção SSRF;
+- [x] adaptadores de fonte, miniaturas, pôsteres, placeholders e qualidades dinâmicas;
 - [x] refinamento de UX;
 - [x] build e teste visual no Windows (checklist RC1, 31/10);
-- [x] validação em hardware de TV (TCL, 31/10; ver docs/SITUACAO_ATUAL.md).
+- [x] validação em hardware de TV (TCL, 31/10; ver `docs/SITUACAO_ATUAL.md`);
+- [x] volume por plataforma, estilo das legendas, legenda externa e ao lado, busca e ordem da Biblioteca, miniatura no Windows (0.3.0 a 0.3.5);
+- [x] modo seguro, diagnóstico com exportação sem credenciais e atualizações controladas de add-ons.
+
+### No PR #29 (spec #16), não publicado
+
+- [x] tamanho do texto, data do último acesso, erros com informações técnicas e escolha de outra fonte, permissão de arquivos separada, fim do vídeo com Biblioteca e Início, menu principal, atalhos configuráveis, foco do painel na TV, retomada do play no celular, legendas homônimas e aviso de legenda ao lado;
+- [ ] conferir em aparelho o que a suíte não cobre (foco na TCL, seletor e permissão no emulador, atalhos e texto no Windows) e registrar no checklist da próxima versão.
 
 ### Próxima etapa
 
-1. concluir o ambiente Windows;
-2. abrir o app e fazer teste visual real;
-3. validar janela normal, tela cheia e modo compacto;
-4. testar monitor ultrawide;
-5. validar arquivo local, seek, áudio e legenda;
-6. validar fonte demo e fonte desconhecida;
-7. corrigir somente problemas observados;
-8. validar Android TV ou TV Box.
+Ver `docs/PLANO_PROXIMAS_ATUALIZACOES.md` e `docs/BACKLOG.md`. Em aberto, sem
+dependência de código novo: validar em Google TV, Fire TV ou Mi Box e em celular
+físico adicional, medir 4K no PC e rede lenta no aparelho.
 
 ### Futuro
 
-- estilo visual de legendas;
 - miniaturas mais avançadas;
 - qualidade dinâmica em fontes reais;
-- modo seguro (implementado);
-- diagnóstico e exportação de logs sem credenciais (implementado);
-- atualizações controladas de add-ons (implementado);
 - fontes autorizadas reais;
 - catálogo e autenticação quando necessários;
 - validação física em Smart TV;
 - assinatura de pacotes;
 - suporte adicional a plataformas de TV.
+
+Já feitos e antes listados aqui: estilo visual de legendas, modo seguro, diagnóstico e exportação de logs, atualizações controladas de add-ons.
 
 ---
 

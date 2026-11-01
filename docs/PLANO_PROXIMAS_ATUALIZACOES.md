@@ -1,5 +1,31 @@
 # Plano das próximas atualizações (snapshot de pesquisa)
 
+> **Atualização de 01/11/2026 (ticket #28 da spec #16):** versão publicada `0.3.5`
+> (tag e release `v0.3.5`). O ciclo de acabamento da spec #16 está no PR #29,
+> não publicado. A tabela e as fatias abaixo são o retrato de 31/10/2026; o estado
+> de cada item hoje, conferido em `lib/`, `test/`, `git tag` e `gh issue`, é:
+>
+> - **Feito:** U01 (estilo das legendas, 0.3.0), U03, U05 (com teste em
+>   `test/mobile_chrome_test.dart`), U11 (`3a80efb`), U12, U13 a U15 (checklist RC1
+>   sem caixas abertas), U16, U17 (tag movida para `e5d289b`, como o checklist
+>   registra), U18 (o `pubspec.yaml` está em `0.3.5+1011`; o checklist da RC1 é
+>   histórico e não muda), U22, U23, U24, U32 (issue #1 fechada em 31/10).
+> - **Fechado como não reproduzido:** U06 (ticket #15, v0.3.4).
+> - **Validado na TCL em 31/10:** U07 (diálogo de fim de reprodução).
+> - **Parcial:** U02 (no código: `bufferTimeout` de 15 s vira erro com nova tentativa e o
+>   mpv recebe `network-timeout`; falta rede lenta no aparelho), U04 (código e teste;
+>   fim do vídeo validado na TCL), U26 (só a TCL).
+> - **Abertos:** U09, U10, U25, U27, U28, U29, U30. **Bloqueados:** U19 a U21.
+>   **Congelados:** U08, U31.
+> - **Entregue fora desta lista, no PR #29:** tamanho do texto, data do último acesso,
+>   informações técnicas e escolha de outra fonte nos erros, permissão separada,
+>   fim do vídeo com Biblioteca e Início, menu principal, atalhos configuráveis, foco do
+>   painel na TV, retomada do play no celular, legendas homônimas, aviso de legenda ao lado.
+>   Fora desta lista, publicados: legenda externa e ao lado, busca e ordem da Biblioteca,
+>   logo e miniatura no Windows (0.3.2 a 0.3.5).
+> - Seção 5 (desatualizados): os 20 itens foram conferidos um a um; a resolução está no
+>   fim da seção.
+
 > **Atualização após a v0.3.0 (31/10/2026):** a tabela abaixo é o retrato de antes
 > dessa versão. Entraram na 0.3.0: U01, U02, U05, U06 (não reproduzido), U07, U11,
 > U13 a U18, U30 e U32. U09 ficou validado só em um PC. Seguem abertos: U08, U10,
@@ -168,3 +194,26 @@ Ordem por valor e risco. Cada fatia pode ser entregue e testada sozinha.
 18. **Cabeçalho do BACKLOG:** "Fora da fase atual (confirmado)" (l.27) lista itens concluídos (5B, 5C, refinamento UX) e pendentes na mesma seção. Separar em "Concluído" e "Pendente".
 19. **Glossário e SITUACAO:** `GLOSSARY.md` l.18-19 define "Mutar com o sistema", termo que `docs/SITUACAO_ATUAL.md` l.6-7 não lista entre os termos canônicos. Menor, mas vale incluir.
 20. **Volume (fonte única):** a regra de volume aparece em `docs/adr/0001-volume-por-plataforma.md`, `docs/Olympus.md` l.91-118, `docs/BACKLOG.md` l.269-291 e `docs/SITUACAO_ATUAL.md` §2 (l.59-71). O conteúdo é consistente. Mantê-lo em um único lugar (ADR-0001) e linkar dos demais reduz o risco de divergência.
+
+### Resolução dos 20 itens (conferida em 01/11/2026)
+
+1. **Corrigido:** `docs/Olympus.md` agora diz `0.3.5` (pubspec `0.3.5+1011`, `appVersion` `0.3.5`).
+2. **Corrigido no que é atual:** `docs/Olympus.md` registra 930 testes (`flutter test`, 01/11/2026). Os números de `BACKLOG.md`, `NOTAS_2026-10-24.md` e do checklist da RC1 são de datas passadas e ficam como registro histórico.
+3. **Corrigido:** o roadmap da RC1 em `docs/Olympus.md` foi reescrito como "Concluído". As duas linhas já estavam marcadas.
+4. **Corrigido:** "Próxima etapa" reescrita; a configuração do Windows já está feita.
+5. **Corrigido:** modo seguro, exportação de logs e atualizações de add-ons saíram de "Futuro", e o estilo das legendas também (feito na 0.3.0).
+6. **Corrigido:** `source_credentials.dart` está em `lib/services/sources/`; a árvore de `Olympus.md` foi ajustada (e ganhou `owned_test_source.dart`).
+7. **Corrigido:** `SITUACAO_ATUAL.md` dizia que órfãos não são apagados. `BACKLOG.md` já estava certo.
+8. **Já estava certo:** `BACKLOG.md` diz "pôsteres remotos com fallback, feito no 5C". Sem mudança.
+9. **Corrigido:** "Ver de novo" aparece como feito em `SITUACAO_ATUAL.md` e `BACKLOG.md`.
+10. **Corrigido:** `SITUACAO_ATUAL.md` marca `startInFullscreen` como feito e aponta o teste.
+11. **Corrigido:** a seção de legendas do `BACKLOG.md` agora diz que a premissa foi superada e que o estilo saiu na 0.3.0.
+12. **Já estava certo:** o bloco da falha de seek já traz "Resolvido em 13/10". Sem mudança.
+13. **Corrigido:** o plano dizia que não havia `network-timeout`; há (`media_kit_player_service.dart`). `SITUACAO_ATUAL.md` e `BACKLOG.md` agora dizem "resolvido no código, falta rede lenta no aparelho".
+14. **Corrigido:** issue #1 fechada em 31/10, #4 fechada, e o smoke RC1 está fechado (checklist sem caixas abertas).
+15. **Resolvido pelo tempo:** o `pubspec.yaml` não está mais em `0.3.0-rc.1`. O checklist da RC1 não foi editado.
+16. **Já estava certo:** o checklist da RC1 registra a tag movida para `e5d289b`, e `git rev-list -n1 v0.3.0-rc.1` confere.
+17. **Já estava certo:** `BACKLOG.md` registra celular, TCL e mudo do Windows validados em 31/10.
+18. **Corrigido:** a seção "Fora da fase atual" foi renomeada para "Concluído" e o item pendente (fonte real) foi para "Pendente: fonte real".
+19. **Corrigido:** `SITUACAO_ATUAL.md` já listava "Mutar com o sistema"; agora lista também Tamanho do texto, Menu principal e Atalho (novos no `GLOSSARY.md`).
+20. **Corrigido em parte:** `Olympus.md`, `SITUACAO_ATUAL.md` e `BACKLOG.md` apontam para o ADR-0001 como fonte única. O texto resumido foi mantido, porque é consistente com ele.

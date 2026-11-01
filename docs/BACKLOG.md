@@ -1,20 +1,31 @@
 # Backlog técnico
 
 Itens aceitos como pendentes, sem bloquear a entrega da fase atual.
-Decisão registrada em 10/10/2026.
+Decisão registrada em 10/10/2026. Revisado em 01/11/2026 (ticket #28 da spec
+#16): versão publicada `0.3.5`; o ciclo de acabamento está no PR #29, não
+publicado. Estado resumido em `docs/SITUACAO_ATUAL.md`.
 
-## Estilo visual das legendas (spec §16, parcial)
+## Pendente hoje (resumo)
 
-Seleção e reprodução de legendas funcionam e continuam cobertas por
-testes (submenu de legendas nos testes de widget; legenda externa no
-teste de integração). Fica pendente só a estilização:
+- Conferir em aparelho o ciclo da spec #16 (foco do painel e fim do vídeo na
+  TCL; seletor e permissão no emulador; atalhos e texto maior no Windows).
+- Conferir o estilo das legendas no Windows (nota de 31/10 abaixo).
+- Rede lenta no aparelho (timeout de buffering) e 4K no PC (hwdec).
+- Fonte real, assinatura de pacotes, outros aparelhos de TV, Tizen,
+  compileSdk 36, flash branco no primeiro quadro da TV (detalhes abaixo).
+
+## Estilo visual das legendas (spec §16) — entregue na 0.3.0
+
+Texto histórico de 10/10/2026, mantido para contexto; o que ficou
+pendente na época era só a estilização:
 
 - tamanho da legenda;
 - cor da legenda;
 - cor/presença do fundo;
 - posição na tela.
 
-Motivo: o media_kit 1.2.6 não expõe propriedades do mpv (`sub-font-size`,
+Motivo (premissa da época, superada pelas notas de 18/10 e 31/10 abaixo):
+o media_kit 1.2.6 não expõe propriedades do mpv (`sub-font-size`,
 `sub-color`, `sub-back-color`, `sub-pos` etc.) pela API Dart — as funções
 `_setProperty*` existem só como bindings FFI privados. Implementar exige
 uma ponte própria com o mpv nativo (platform channel ou fork da camada
@@ -28,13 +39,16 @@ Reavaliado em 31/10/2026: `sub-*` não é o caminho. Com `libass` desligado, o
 media_kit usa `sub-visibility=no` e a legenda é desenhada pelo Flutter. O
 estilo padrão agora está em `SubtitleOverlay` (10% acima da base, fonte
 proporcional). Ajustes tem tamanho, cor, posição e fundo, e a legenda sobe
-acima da barra de controles (`5be75a8`). Falta conferir essa versão no
-Windows.
+acima da barra de controles (`5be75a8`). Entregue na 0.3.0 (CHANGELOG:
+"Legendas com tamanho, cor, posição e fundo em Ajustes"). Falta conferir
+essa versão no Windows.
 
-## Fora da fase atual (confirmado)
+## Concluído (fontes, qualidade HLS e refinamento) — antes "Fora da fase atual"
 
-> Esta seção mistura itens concluídos e pendentes. O estado atual está em
-> docs/PLANO_PROXIMAS_ATUALIZACOES.md.
+> Seção separada em 01/11/2026: o que está aqui foi feito. O único item
+> pendente que estava misturado (integração de fonte real) passou para
+> "Pendente: fonte real", logo abaixo desta seção. Estado atual do
+> plano em docs/PLANO_PROXIMAS_ATUALIZACOES.md.
 
 - Qualidade dinâmica e retomada HLS (§13): seleção manual,
   política automática e resume HLS concluídos e aprovados na TCL
@@ -83,9 +97,12 @@ Windows.
   qualidades opcionais no item, auth só na origem em redirects.
   Contrato em `docs/FONTES_ADAPTADOR.md`. Nenhum provider real
   conectado; `AddonService`, locais e embutido intactos.
-- 5C integração (quando os dados chegarem): novo adaptador em
-  `lib/services/sources/` + testes, sem quebrar a suíte.
-  Autenticação só via fluxo do serviço (`account.login` declarado).
+
+## Pendente: fonte real (5C integração)
+
+- Quando os dados chegarem: novo adaptador em `lib/services/sources/` +
+  testes, sem quebrar a suíte. Autenticação só via fluxo do serviço
+  (`account.login` declarado). Bloqueado por URL, formato, autorização.
 
 ## Incorporado (spec v0.3, 10/10/2026)
 
@@ -197,7 +214,11 @@ Honestas e registradas, sem bloquear a revisão:
   suficiente (sonda mediu 1.00 cravado em 85 s de `x36xhzz`), mas
   4K pode engasgar: avaliar forçar `d3d11va`/`dxva2` ou atualizar
   driver/ANGLE. Não bloqueia a RC1.
-- Stall de rede vira "Cancelar" eterno em vez de erro (12/10/2026):
+- Stall de rede vira "Cancelar" eterno em vez de erro (12/10/2026;
+  **no código está resolvido em 01/11/2026**: buffering acima de
+  `bufferTimeout` de 15 s vira erro de tempo esgotado com "tentar de novo"
+  em `supervised_player_service.dart`, e `media_kit_player_service.dart`
+  manda `network-timeout` ao mpv; falta conferir no aparelho com rede lenta):
   fonte lenta mantém o overlay de buffering sem prazo visível; o
   `bufferTimeout` do supervisor existe mas o usuário não vê
   progresso nem ação além de Cancelar. Proposta: timeout de rede
@@ -283,6 +304,9 @@ Honestas e registradas, sem bloquear a revisão:
 
 ## Volume no mobile/TV — decisão de produto (20/10/2026, sem volta)
 
+Fonte única da regra de volume: `docs/adr/0001-volume-por-plataforma.md`.
+O texto abaixo é o registro do backlog e concorda com ela.
+
 NÃO implementar barra, botões de +/− ou gesto vertical de volume no
 celular e na TV. Os dois itens abaixo estão CANCELADOS e não voltam
 ao backlog como melhoria futura:
@@ -305,3 +329,19 @@ Regra vigente, travada em testes (`test/volume_platform_test.dart`,
 - Validar em aparelho: botões físicos no celular, VOL+/VOL− na TCL,
   mudo nas três plataformas e fileira alinhada no Windows.
   Atualizado em 31/10: celular, TCL e mudo do Windows validados (F2).
+
+## Ciclo de acabamento da spec #16 (PR #29, não publicado)
+
+Entregue na branch `integracao/acabamento-16` (tickets #17 a #27); decisões em
+`docs/adr/0003-acabamento-spec-16.md`; 930 testes aprovados e análise limpa.
+
+- Feito: tamanho do texto; data do último acesso; informações técnicas e
+  escolha de outra fonte nos erros; permissão de arquivos separada de arquivo
+  ausente; fim do vídeo com Biblioteca e Início; menu principal; atalhos
+  configuráveis; foco do painel de opções na TV; retomada do play no celular
+  depois de um seletor; legendas homônimas; aviso de legenda ao lado.
+- Pendente: conferir em aparelho (TCL, emulador, Windows) e registrar no
+  checklist da versão que publicar o ciclo.
+- Fora do ciclo, continua pendente: idioma da interface, fontes reais,
+  assinatura de pacotes, Tizen, "Abrir com", acesso a todos os arquivos
+  no Android (decidido não pedir).

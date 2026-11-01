@@ -22,7 +22,7 @@ media_kit.
 - [x] TCL 50" v8-r851t02-lf1v660 — Realtek, Mali-470, Android 9 (piso).
 - [ ] Google TV / Chromecast com Google TV — Amlogic.
 - [ ] Fire TV Stick ou Mi Box — MediaTek / Amlogic.
-- [ ] Celular Android recente (qualquer).
+- [x] Celular Android recente (qualquer) — Xiaomi 24069PC21G, Android 16 (ADR-0001, 24/10/2026; validação em celular físico da 0.2.0 e volume em 31/10).
 - [x] Windows: janela grande, janela pequena/minimizada, sempre no topo
   (18/10/2026, ver `VALIDACAO_WINDOWS.md`).
 
