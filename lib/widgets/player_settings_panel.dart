@@ -92,7 +92,10 @@ class PlayerSettingsPanel extends StatefulWidget {
     PlayerPanelView initialView = PlayerPanelView.main,
     Duration transitionDuration = AppConstants.shortTransition,
   }) {
-    return showGeneralDialog(
+    // Na TV o foco volta ao botao de opcoes quando o painel fecha.
+    final anchorFocus =
+        TvLayout.isTv(context) ? _focusNodeUnder(anchorContext) : null;
+    final shown = showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Fechar configurações',
@@ -178,6 +181,34 @@ class PlayerSettingsPanel extends StatefulWidget {
         );
       },
     );
+    if (anchorFocus == null) return shown;
+    return shown.whenComplete(() {
+      if (anchorFocus.context != null && anchorFocus.canRequestFocus) {
+        anchorFocus.requestFocus();
+      }
+    });
+  }
+
+  /// No de foco do botao que serve de ancora (o primeiro `Focus` abaixo
+  /// do contexto), ou null sem ancora.
+  static FocusNode? _focusNodeUnder(BuildContext? anchor) {
+    if (anchor == null) return null;
+    Element? found;
+    void visit(Element element) {
+      if (found != null) return;
+      if (element.widget is Focus) {
+        found = element;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    (anchor as Element).visitChildren(visit);
+    final focusElement = found;
+    if (focusElement == null) return null;
+    FocusNode? node;
+    focusElement.visitChildren((child) => node = Focus.maybeOf(child, createDependency: false));
+    return node;
   }
 
   /// Espaco acima da engrenagem abaixo do qual o painel ganha teto e
@@ -197,10 +228,16 @@ enum PlayerPanelView { main, audio, subtitles, quality, repeat, info }
 class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
   late PlayerPanelView _view;
 
+  /// Escopo proprio do painel: as setas procuram o proximo item so aqui
+  /// dentro, entao no primeiro/ultimo item o foco fica onde esta em vez
+  /// de escapar para os botoes do player atras do painel (ticket 24).
+  final _scope = FocusScopeNode(debugLabel: 'painel');
+
   @override
   void initState() {
     super.initState();
     _view = widget.initialView;
+    _focusFirstItem(Duration.zero);
     widget.source?.selectedListenable?.addListener(_onQualityChanged);
     widget.hls?.selectedListenable?.addListener(_onQualityChanged);
     widget.hls?.effectiveListenable?.addListener(_onQualityChanged);
@@ -226,10 +263,29 @@ class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
 
   @override
   void dispose() {
+    _scope.dispose();
     widget.source?.selectedListenable?.removeListener(_onQualityChanged);
     widget.hls?.selectedListenable?.removeListener(_onQualityChanged);
     widget.hls?.effectiveListenable?.removeListener(_onQualityChanged);
     super.dispose();
+  }
+
+  /// Na TV nao ha ponteiro: o foco ja entra no painel, no primeiro item
+  /// da subtela. Espera a troca animada terminar para nao cair num item
+  /// da subtela que esta saindo.
+  void _focusFirstItem(Duration delay) {
+    void focus() {
+      if (!mounted || !TvLayout.isTv(context)) return;
+      final first = FocusTraversalGroup.of(context)
+          .findFirstFocus(_scope, ignoreCurrentFocus: true);
+      first?.requestFocus();
+    }
+
+    if (delay == Duration.zero) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => focus());
+    } else {
+      Future<void>.delayed(delay + const Duration(milliseconds: 20), focus);
+    }
   }
 
   void _onQualityChanged() {
@@ -261,7 +317,8 @@ class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 )
               : tiles,
-          child: Material(
+          child: _holdFocus(
+            Material(
             color: PlayerSettingsPanel.panelColor,
             elevation: 12,
             shadowColor: Colors.black87,
@@ -283,16 +340,27 @@ class _PlayerSettingsPanelState extends State<PlayerSettingsPanel> {
                 source: widget.source,
                 hls: widget.hls,
                 view: _view,
-                onViewChanged: (view) => setState(() => _view = view),
+                onViewChanged: (view) {
+                  setState(() => _view = view);
+                  _focusFirstItem(widget.transitionDuration);
+                },
                 transitionDuration: widget.transitionDuration,
                 maxHeight: widget.maxHeight,
                 pickSubtitle: widget.pickSubtitle,
               ),
             ),
+            ),
           ),
         ),
       ),
     );
+  }
+
+  /// Na TV o painel e um escopo de foco proprio (as setas nao saem dele).
+  /// Fora da TV segue o escopo do dialogo, como antes.
+  Widget _holdFocus(Widget child) {
+    if (!TvLayout.isTv(context)) return child;
+    return FocusScope(node: _scope, child: child);
   }
 }
 
