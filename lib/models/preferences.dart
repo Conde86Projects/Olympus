@@ -24,6 +24,7 @@ class UserPreferences {
     this.tvMode = false,
     this.tvModeAuto = true,
     this.compatibleVideoOutput = false,
+    this.librarySort = LibrarySort.recent,
     this.windowX,
     this.windowY,
     this.windowWidth,
@@ -85,6 +86,9 @@ class UserPreferences {
   /// decodificador defeituoso; vale ao reabrir o app.
   final bool compatibleVideoOutput;
 
+  /// Ordem da lista da Biblioteca; lembrada entre aberturas.
+  final LibrarySort librarySort;
+
   /// Geometria salva da janela (spec 14.1). Null = primeira execucao.
   final double? windowX;
   final double? windowY;
@@ -115,6 +119,7 @@ class UserPreferences {
     bool? tvMode,
     bool? tvModeAuto,
     bool? compatibleVideoOutput,
+    LibrarySort? librarySort,
     double? Function()? windowX,
     double? Function()? windowY,
     double? Function()? windowWidth,
@@ -147,6 +152,7 @@ class UserPreferences {
       tvModeAuto: tvModeAuto ?? this.tvModeAuto,
       compatibleVideoOutput:
           compatibleVideoOutput ?? this.compatibleVideoOutput,
+      librarySort: librarySort ?? this.librarySort,
       windowX: windowX != null ? windowX() : this.windowX,
       windowY: windowY != null ? windowY() : this.windowY,
       windowWidth:
@@ -180,6 +186,7 @@ class UserPreferences {
         'tvMode': tvMode,
         'tvModeAuto': tvModeAuto,
         'compatibleVideoOutput': compatibleVideoOutput,
+        'librarySort': librarySort.name,
         'windowX': windowX,
         'windowY': windowY,
         'windowWidth': windowWidth,
@@ -215,6 +222,8 @@ class UserPreferences {
       tvModeAuto: (map['tvModeAuto'] ?? true) as bool,
       compatibleVideoOutput:
           (map['compatibleVideoOutput'] ?? false) as bool,
+      librarySort: _byName(
+          LibrarySort.values, map['librarySort'], LibrarySort.recent),
       windowX: (map['windowX'] as num?)?.toDouble(),
       windowY: (map['windowY'] as num?)?.toDouble(),
       windowWidth: (map['windowWidth'] as num?)?.toDouble(),
@@ -230,6 +239,10 @@ enum SubtitleSize { small, medium, large }
 enum SubtitleColor { white, yellow, cyan }
 
 enum SubtitlePosition { low, normal, high }
+
+/// Ordem da Biblioteca: último adicionado primeiro, título de A a Z ou
+/// os vídeos mais longos primeiro.
+enum LibrarySort { recent, title, duration }
 
 /// Valor salvo desconhecido (versao futura ou dado corrompido) cai no padrao.
 T _byName<T extends Enum>(List<T> values, Object? name, T fallback) {
