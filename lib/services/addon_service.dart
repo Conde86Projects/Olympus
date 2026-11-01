@@ -42,6 +42,12 @@ abstract class AddonService extends ChangeNotifier {
 
   Future<void> disable(String addonId);
 
+  /// Tira o add-on do erro para tentar de novo. Não é ativação nova: não
+  /// conta como última alteração do modo seguro. Só vale para quem está
+  /// em erro; origem pendente ou plataforma incompatível seguem em erro,
+  /// com o motivo no diagnóstico.
+  Future<void> clearError(String addonId);
+
   /// Remove somente os dados do add-on. Nunca toca midias (spec 6.1).
   Future<AddonPackage> previewPackage(Uint8List zipBytes);
 

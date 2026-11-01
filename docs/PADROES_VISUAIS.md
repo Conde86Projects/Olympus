@@ -6,7 +6,7 @@ Regra: um componente tem **um** desenho; o que muda entre plataformas
 componente novo, use o daqui; se precisar de um novo padrão, registre
 aqui no mesmo commit.
 
-Atualizado em 19/10/2026 (marco 0.2.0).
+Atualizado em 01/11/2026.
 
 ## Cores (`PlayerTheme`)
 
@@ -41,13 +41,17 @@ que for "selecionado" usa `accent`.
   título + detalhe embaixo, numa linha cada.
 - Proporção: 16:9 para quadro de vídeo (miniatura local é paisagem, e
   cortar em 2:3 borraria) e 2:3 para pôster de catálogo.
-- Largura pela janela: `janela / 6`, presa entre 240 e 360. Janela maior
-  mostra mais cartões, não cartões maiores.
+- Largura pela janela: quadro em `janela / 6`, preso entre 240 e 360;
+  pôster em `janela / 8`, preso entre 160 e 240. Janela maior mostra mais
+  cartões, não cartões maiores.
 - Foco: borda `accent` de 3 px. Mouse em cima: borda branca a 24%.
   Parado: branca a 8%.
 - Setas andam de cartão em cartão. O menu abre pelo botão, pelo clique
   direito e pela tecla de menu.
-- Teste: `test/home_desktop_test.dart`.
+- Fileira de add-on: nome da fonte, "Ver tudo" e "Atualizar" no topo.
+  Carregando: barra de progresso no lugar dos cartões, sem pular a tela.
+  Falha: motivo e "Tentar de novo" só naquela fileira.
+- Testes: `test/home_desktop_test.dart`, `test/home_addon_rows_test.dart`.
 
 ## Avisos (toast)
 

@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/mobile_mode.dart';
-import 'package:player/app/tv_layout.dart';
 import 'package:player/app/routes.dart';
+import 'package:player/app/tv_layout.dart';
+import 'package:player/core/errors/app_error.dart';
+import 'package:player/core/extensions/duration_extensions.dart';
+import 'package:player/features/addons/catalog_playback.dart';
+import 'package:player/features/home/home_addon_rows.dart';
 import 'package:player/features/home/home_sections.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
+import 'package:player/models/addon_catalog_item.dart';
+import 'package:player/models/addon_info.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/preferences.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/widgets/app_shell.dart';
+import 'package:player/widgets/app_toast.dart';
+import 'package:player/widgets/confirm_dialog.dart';
 import 'package:player/widgets/empty_state.dart';
 import 'package:player/widgets/focusable_button.dart';
-import 'package:player/widgets/confirm_dialog.dart';
 import 'package:player/widgets/media_card.dart';
-import 'package:player/widgets/app_toast.dart';
 
 /// Tela inicial (spec 8): "Continuar assistindo", abrir arquivo/link e acesso
 /// a biblioteca, favoritos, historico e configuracoes.
@@ -78,7 +84,7 @@ class HomeScreen extends StatelessWidget {
         ),
       ],
       body: desktop
-          ? _desktopBody(context)
+          ? _DesktopHome(home: this)
           : _classicBody(context, guard),
     );
   }
@@ -147,94 +153,9 @@ class HomeScreen extends StatelessWidget {
   static double rowCardWidth(double windowWidth) =>
       (windowWidth / 6).clamp(240.0, 360.0);
 
-  /// Fileiras horizontais do desktop (T7): Continuar assistindo,
-  /// Arquivos locais e Favoritos, na largura livre da janela.
-  Widget _desktopBody(BuildContext context) {
-    final library = dependencies.libraryService;
-    final history = dependencies.historyService;
-    final guard = dependencies.startupGuard;
-    final hidden = dependencies.preferencesService.current.hiddenDestinations;
-    return Column(
-      children: [
-        AnimatedBuilder(
-          animation: guard,
-          builder: (context, _) => guard.safeMode
-              ? _SafeModeBanner(guard: guard)
-              : const SizedBox.shrink(),
-        ),
-        Expanded(
-          child: AnimatedBuilder(
-            animation: Listenable.merge([library, history]),
-            builder: (context, _) {
-              final sections = homeSections(
-                entries: history.entries,
-                items: library.items,
-                hidden: hidden,
-              );
-              if (sections.isEmpty) return _empty(context);
-              return ListView.separated(
-                itemCount: sections.length + 1,
-                separatorBuilder: (_, __) => const SizedBox(height: 24),
-                itemBuilder: (context, index) => index == 0
-                    ? _openActions(context)
-                    : _desktopRow(
-                        context,
-                        sections[index - 1],
-                        autofocusFirst: index == 1,
-                      ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _desktopRow(
-    BuildContext context,
-    HomeSection section, {
-    required bool autofocusFirst,
-  }) {
-    final library = dependencies.libraryService;
-    final width = rowCardWidth(MediaQuery.sizeOf(context).width);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(section.title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: MediaPosterCard.heightFor(
-            context,
-            width: width,
-            aspectRatio: MediaPosterCard.frameAspect,
-          ),
-          child: ListView.separated(
-            key: PageStorageKey<String>('home-row-${section.kind.name}'),
-            scrollDirection: Axis.horizontal,
-            itemCount: section.items.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 16),
-            itemBuilder: (context, i) {
-              final item = section.items[i];
-              return MediaPosterCard(
-                key: ValueKey(item.id),
-                item: item,
-                width: width,
-                autofocus: autofocusFirst &&
-                    i == 0 &&
-                    ModalRoute.of(context)?.isCurrent == true,
-                onTap: () => _play(context, item),
-                onRestart: () => _play(context, item, fromStart: true),
-                onToggleFavorite: () => library.toggleFavorite(item.id),
-                onRemove: section.kind == HomeSectionKind.resume
-                    ? () => _removeFromHistory(context, item)
-                    : null,
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
+  /// Largura do pôster de catálogo, no mesmo critério do cartão.
+  static double rowPosterWidth(double windowWidth) =>
+      (windowWidth / 8).clamp(160.0, 240.0);
 
   /// F3 (Fase 4b): confirma antes de tirar do histórico; o item
   /// continua na biblioteca.
@@ -248,7 +169,7 @@ class HomeScreen extends StatelessWidget {
     if (confirmed) dependencies.historyService.remove(item.id);
   }
 
-  Widget _empty(BuildContext context) {
+  Widget _empty(BuildContext context, {bool withAddons = false}) {
     return EmptyState(
       icon: Icons.play_circle_outline,
       title: 'Nenhum vídeo por aqui ainda',
@@ -267,6 +188,13 @@ class HomeScreen extends StatelessWidget {
           icon: Icons.link,
           onPressed: () => _openMedia(context, OpenMediaTab.link),
         ),
+        if (withAddons)
+          FocusableButton(
+            label: 'Instalar add-on',
+            icon: Icons.extension_outlined,
+            onPressed: () =>
+                Navigator.of(context).pushNamed(AppRoutes.addons),
+          ),
       ],
     );
   }
@@ -298,6 +226,324 @@ class HomeScreen extends StatelessWidget {
     Navigator.of(context).pushNamed(
       AppRoutes.openMedia,
       arguments: OpenMediaArgs(tab: tab),
+    );
+  }
+}
+
+/// Início do desktop: fileiras locais (T7) e uma por add-on ativo (T8).
+/// Os catálogos ficam em memória aqui: voltar do player não busca de novo.
+class _DesktopHome extends StatefulWidget {
+  const _DesktopHome({required this.home});
+
+  final HomeScreen home;
+
+  @override
+  State<_DesktopHome> createState() => _DesktopHomeState();
+}
+
+class _DesktopHomeState extends State<_DesktopHome> {
+  late final HomeAddonRows _rows;
+
+  AppDependencies get _deps => widget.home.dependencies;
+
+  @override
+  void initState() {
+    super.initState();
+    _rows = HomeAddonRows(
+      _deps.addonService,
+      hidden: () => _deps.preferencesService.current.hiddenDestinations,
+      safeMode: () => _deps.startupGuard.safeMode,
+    );
+    _deps.preferencesService.addListener(_rows.reconcile);
+    _deps.startupGuard.addListener(_rows.reconcile);
+    // Depois da primeira pintura: a tela nunca espera a rede.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _rows.reconcile());
+  }
+
+  @override
+  void dispose() {
+    _deps.preferencesService.removeListener(_rows.reconcile);
+    _deps.startupGuard.removeListener(_rows.reconcile);
+    _rows.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final library = _deps.libraryService;
+    final history = _deps.historyService;
+    final guard = _deps.startupGuard;
+    final hidden = _deps.preferencesService.current.hiddenDestinations;
+    return Column(
+      children: [
+        AnimatedBuilder(
+          animation: guard,
+          builder: (context, _) => guard.safeMode
+              ? _SafeModeBanner(guard: guard)
+              : const SizedBox.shrink(),
+        ),
+        Expanded(
+          child: AnimatedBuilder(
+            animation: Listenable.merge([library, history, _rows]),
+            builder: (context, _) {
+              final sections = homeSections(
+                entries: history.entries,
+                items: library.items,
+                hidden: hidden,
+              );
+              final addons = _rows.visibleInfos;
+              if (sections.isEmpty && addons.isEmpty) {
+                return widget.home._empty(
+                  context,
+                  withAddons: !hidden.contains(MainDestination.addons),
+                );
+              }
+              return ListView.separated(
+                itemCount: 1 + sections.length + addons.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 24),
+                itemBuilder: (context, index) {
+                  if (index == 0) return widget.home._openActions(context);
+                  final at = index - 1;
+                  if (at < sections.length) {
+                    return _localRow(
+                      context,
+                      sections[at],
+                      autofocusFirst: at == 0,
+                    );
+                  }
+                  final position = at - sections.length;
+                  final info = addons[position];
+                  return _AddonRow(
+                    key: ValueKey('home-addon-${info.manifest.id}'),
+                    dependencies: _deps,
+                    info: info,
+                    state: _rows.stateOf(info.manifest.id),
+                    autofocusFirst: sections.isEmpty && position == 0,
+                    onRefresh: () => _rows.refresh(info.manifest.id),
+                    onRetry: () => _rows.retry(info.manifest.id),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _localRow(
+    BuildContext context,
+    HomeSection section, {
+    required bool autofocusFirst,
+  }) {
+    final library = _deps.libraryService;
+    final home = widget.home;
+    final width = HomeScreen.rowCardWidth(MediaQuery.sizeOf(context).width);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(section.title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: MediaPosterCard.heightFor(
+            context,
+            width: width,
+            aspectRatio: MediaPosterCard.frameAspect,
+          ),
+          child: ListView.separated(
+            key: PageStorageKey<String>('home-row-${section.kind.name}'),
+            scrollDirection: Axis.horizontal,
+            itemCount: section.items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 16),
+            itemBuilder: (context, i) {
+              final item = section.items[i];
+              return MediaPosterCard(
+                key: ValueKey(item.id),
+                item: item,
+                width: width,
+                autofocus: autofocusFirst &&
+                    i == 0 &&
+                    ModalRoute.of(context)?.isCurrent == true,
+                onTap: () => home._play(context, item),
+                onRestart: () => home._play(context, item, fromStart: true),
+                onToggleFavorite: () => library.toggleFavorite(item.id),
+                onRemove: section.kind == HomeSectionKind.resume
+                    ? () => home._removeFromHistory(context, item)
+                    : null,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Fileira de um add-on (T8): nome, "Ver tudo", "Atualizar" e pôsteres.
+/// Carga e falha ficam só nela.
+class _AddonRow extends StatefulWidget {
+  const _AddonRow({
+    super.key,
+    required this.dependencies,
+    required this.info,
+    required this.state,
+    required this.autofocusFirst,
+    required this.onRefresh,
+    required this.onRetry,
+  });
+
+  final AppDependencies dependencies;
+  final AddonInfo info;
+  final HomeAddonRowState state;
+  final bool autofocusFirst;
+  final VoidCallback onRefresh;
+  final VoidCallback onRetry;
+
+  @override
+  State<_AddonRow> createState() => _AddonRowState();
+}
+
+class _AddonRowState extends State<_AddonRow> {
+  bool _opening = false;
+
+  String get _addonId => widget.info.manifest.id;
+
+  Future<void> _play(AddonCatalogItem item) async {
+    if (_opening) return;
+    _opening = true;
+    try {
+      final saved = await prepareCatalogItem(
+        widget.dependencies,
+        _addonId,
+        item,
+      );
+      if (!mounted) return;
+      await Navigator.of(context).pushNamed(AppRoutes.player, arguments: saved);
+    } on AddonError catch (error) {
+      if (mounted) showAppToast(context, error.message, error: true);
+    } catch (_) {
+      if (mounted) {
+        showAppToast(context, 'Não foi possível abrir esta mídia.',
+            error: true);
+      }
+    } finally {
+      _opening = false;
+    }
+  }
+
+  /// Item do catálogo no formato do cartão, só para desenhar: quem vai
+  /// para a biblioteca é o que o add-on resolve ao abrir.
+  MediaItem _preview(AddonCatalogItem item) => MediaItem(
+        id: '$_addonId:${item.id}',
+        title: item.title,
+        subtitle: item.subtitle,
+        sourceType: MediaSourceType.url,
+        source: item.sourceUrl,
+        duration: item.duration,
+        addedAt: DateTime.fromMillisecondsSinceEpoch(0),
+        metadata: {
+          if (item.thumbnailUrl != null) 'posterUrl': item.thumbnailUrl!,
+        },
+      );
+
+  String _detailOf(AddonCatalogItem item) {
+    final subtitle = item.subtitle;
+    if (subtitle != null && subtitle.isNotEmpty) return subtitle;
+    final duration = item.duration;
+    return duration == null ? 'Catálogo' : duration.timestamp;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final state = widget.state;
+    final width = HomeScreen.rowPosterWidth(MediaQuery.sizeOf(context).width);
+    final height = MediaPosterCard.heightFor(
+      context,
+      width: width,
+      aspectRatio: MediaPosterCard.posterAspect,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                widget.info.manifest.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleLarge,
+              ),
+            ),
+            FocusableButton(
+              label: 'Ver tudo',
+              onPressed: () => Navigator.of(context).pushNamed(
+                AppRoutes.sourceCatalog,
+                arguments: _addonId,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Sempre habilitado: desabilitar tiraria o foco do teclado no
+            // meio da carga. Clicar de novo enquanto carrega não repete.
+            FocusableButton(
+              label: 'Atualizar',
+              icon: Icons.refresh,
+              onPressed: widget.onRefresh,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (state.error != null)
+          Row(
+            children: [
+              Icon(Icons.error_outline, color: theme.colorScheme.error),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(state.error!, style: theme.textTheme.bodyMedium),
+              ),
+              const SizedBox(width: 12),
+              FocusableButton(
+                label: 'Tentar de novo',
+                icon: Icons.refresh,
+                onPressed: widget.onRetry,
+              ),
+            ],
+          )
+        else if (state.items.isEmpty)
+          // Reserva a altura da fileira: chegar o catálogo não pula a tela.
+          SizedBox(
+            height: height,
+            child: const Align(
+              alignment: Alignment.topCenter,
+              child: LinearProgressIndicator(),
+            ),
+          )
+        else
+          SizedBox(
+            height: height,
+            child: ListView.separated(
+              key: PageStorageKey<String>('home-addon-row-$_addonId'),
+              scrollDirection: Axis.horizontal,
+              itemCount: state.items.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 16),
+              itemBuilder: (context, i) {
+                final item = state.items[i];
+                return MediaPosterCard(
+                  key: ValueKey(item.id),
+                  item: _preview(item),
+                  width: width,
+                  aspectRatio: MediaPosterCard.posterAspect,
+                  detail: _detailOf(item),
+                  autofocus: widget.autofocusFirst &&
+                      i == 0 &&
+                      ModalRoute.of(context)?.isCurrent == true,
+                  onTap: () => _play(item),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }

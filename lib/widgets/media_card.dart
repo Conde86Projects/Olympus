@@ -215,7 +215,11 @@ class MediaPosterCard extends StatefulWidget {
     this.autofocus = false,
     this.thumbnailBuilder,
     this.networkThumbnailBuilder,
+    this.detail,
   });
+
+  /// Linha abaixo do título; nula usa duração, posição e origem.
+  final String? detail;
 
   static const frameAspect = 16 / 9;
   static const posterAspect = 2 / 3;
@@ -385,7 +389,7 @@ class _MediaPosterCardState extends State<MediaPosterCard> {
                           style: theme.textTheme.titleMedium,
                         ),
                         Text(
-                          _mediaDetailsLine(item),
+                          widget.detail ?? _mediaDetailsLine(item),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodyMedium,

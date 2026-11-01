@@ -1,15 +1,13 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/core/errors/app_error.dart';
 import 'package:player/core/utils/media_utils.dart';
 import 'package:player/features/addons/addon_display.dart';
+import 'package:player/features/addons/catalog_playback.dart';
 import 'package:player/models/addon_catalog_item.dart';
 import 'package:player/models/addon_info.dart';
 import 'package:player/services/addon_service.dart';
-import 'package:player/services/thumbnail_service.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/dpad_field_exit.dart';
 import 'package:player/widgets/empty_state.dart';
@@ -429,11 +427,11 @@ class _ItemSheetState extends State<_ItemSheet> {
       _error = null;
     });
     try {
-      final media = await widget.dependencies.addonService
-          .resolvePlayback(widget.addonId, widget.item);
-      final saved = await widget.dependencies.libraryService.upsert(media);
-      unawaited(
-          ThumbnailService.backfill(widget.dependencies.libraryService, saved));
+      final saved = await prepareCatalogItem(
+        widget.dependencies,
+        widget.addonId,
+        widget.item,
+      );
       if (!mounted) return;
       final navigator = Navigator.of(context);
       navigator.pop();

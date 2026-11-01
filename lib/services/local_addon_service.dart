@@ -236,6 +236,21 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
   }
 
   @override
+  Future<void> clearError(String addonId) async {
+    final info = _require(addonId);
+    if (info.state != AddonState.error) return;
+    final blocked = info.needsApproval
+        ? approvalDiagnostic
+        : !info.manifest.supports(_platform)
+            ? 'Este add-on não é compatível com esta plataforma.'
+            : null;
+    await _update(info.copyWith(
+      state: blocked == null ? AddonState.active : AddonState.error,
+      diagnostic: () => blocked,
+    ));
+  }
+
+  @override
   Future<void> disable(String addonId) async {
     final info = _require(addonId);
     await _update(info.copyWith(
