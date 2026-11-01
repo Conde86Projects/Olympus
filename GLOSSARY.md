@@ -46,3 +46,19 @@ _Avoid_: barra de navegação, abas
 **Atalho**:
 Tecla do teclado que dispara uma ação do player. Mudo, Tela cheia, Informações, Legendas, Áudio, Modo cinema e Fechar player têm tecla configurável; espaço, Enter, Esc, as setas e Tab são fixos e não podem ser atribuídos. Não dispara enquanto há um campo de texto em foco.
 _Avoid_: hotkey, tecla de volume, Setas ocultas
+
+**Pacote de add-on**:
+Zip só com dados.
+_Avoid_: plugin, extensão com código
+
+**Fonte desconhecida**:
+Origem que o usuário adicionou e o app não verificou.
+_Avoid_: fonte confiável, loja oficial
+
+**Repositório**:
+Endereço que lista add-ons.
+_Avoid_: loja de aplicativos
+
+**Fileira**:
+Faixa horizontal de pôsteres da tela principal.
+_Avoid_: grade, carrossel

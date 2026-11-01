@@ -3,6 +3,7 @@ import 'package:player/models/addon_catalog_item.dart';
 import 'package:player/models/addon_info.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/models/addon_repository.dart';
+import 'package:player/services/addon_package.dart';
 import 'package:player/models/media_item.dart';
 
 /// Gerenciador de add-ons (spec 4.1.1, 6.1). A UI depende apenas deste
@@ -41,6 +42,14 @@ abstract class AddonService extends ChangeNotifier {
   Future<void> disable(String addonId);
 
   /// Remove somente os dados do add-on. Nunca toca midias (spec 6.1).
+  Future<AddonPackage> previewPackage(Uint8List zipBytes);
+
+  Future<AddonInfo> installPackage(
+    AddonPackage package, {
+    required bool originTrusted,
+    AddonPackageOrigin packageOrigin = AddonPackageOrigin.file,
+  });
+
   Future<void> uninstall(String addonId);
 
   /// Apaga todos os add-ons, repositorios e a ultima alteracao.

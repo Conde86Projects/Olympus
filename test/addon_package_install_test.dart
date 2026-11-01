@@ -1,0 +1,294 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:archive/archive.dart';
+import 'package:crypto/crypto.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:player/app/app.dart';
+import 'package:player/core/errors/app_error.dart';
+import 'package:player/models/addon_info.dart';
+import 'package:player/core/storage/local_store.dart';
+import 'package:player/services/addon_fetcher.dart';
+import 'package:player/services/demo_addons.dart';
+import 'package:player/services/diagnostics_service.dart';
+import 'package:player/services/history_service.dart';
+import 'package:player/services/library_service.dart';
+import 'package:player/services/local_addon_service.dart';
+import 'package:player/services/media_player_service.dart';
+import 'package:player/services/preferences_service.dart';
+import 'package:player/services/startup_guard.dart';
+import 'package:player/services/window_service.dart';
+
+/// T2: segmento Zip da instalação. Costura da Parte 2: tela de
+/// instalação com preferência ligada e pacote real em arquivo.
+class _FakeFetcher extends AddonFetcher {
+  const _FakeFetcher();
+  @override
+  Future<String> fetchText(String url,
+      {Map<String, String> headers = const {}}) async {
+    throw const AddonError.fetchFailed('fora de uso neste teste.');
+  }
+}
+
+Uint8List zipOf(Map<String, List<int>> entries) {
+  final archive = Archive();
+  entries.forEach((name, content) {
+    archive.addFile(ArchiveFile(name, content.length, content));
+  });
+  return Uint8List.fromList(ZipEncoder().encode(archive));
+}
+
+Uint8List packageZip() {
+  final manifest = demoManifestJson();
+  return zipOf({
+    'addon.json': utf8.encode(jsonEncode(manifest)),
+    'catalog.json': utf8.encode(jsonEncode({
+      'items': [
+        {
+          'id': 'v1',
+          'title': 'Vídeo 1',
+          'sourceUrl': 'https://cdn.exemplo.com/v1.mp4',
+        },
+        {
+          'id': 'v2',
+          'title': 'Vídeo 2',
+          'sourceUrl': 'https://cdn.exemplo.com/v2.mp4',
+        },
+      ],
+    })),
+  });
+}
+
+class _Harness {
+  _Harness(this.packages) : preferences = InMemoryPreferencesService() {
+    preferences.update(preferences.current.copyWith(showOnboarding: false));
+    addons = LocalAddonService(
+      InMemoryLocalStore(),
+      platform: 'windows',
+      fetcher: const _FakeFetcher(),
+      packageDir: packages,
+      allowUnknownSources: () => preferences.current.allowUnknownSources,
+    );
+  }
+
+  final Directory packages;
+  final InMemoryPreferencesService preferences;
+  late final LocalAddonService addons;
+  final InMemoryLibraryService library = InMemoryLibraryService();
+  final InMemoryHistoryService history = InMemoryHistoryService();
+  final NoOpMediaPlayerService player = const NoOpMediaPlayerService();
+  final NoOpWindowService windows = NoOpWindowService();
+  final StartupGuard guard = StartupGuard(InMemoryLocalStore());
+
+  DiagnosticsService get diagnostics => DiagnosticsService(
+        store: InMemoryLocalStore(),
+        preferences: preferences,
+        library: library,
+        history: history,
+        player: player,
+        addons: addons,
+        guard: guard,
+      );
+
+  Future<void> setAllowed(bool value) async {
+    await preferences.update(
+        preferences.current.copyWith(allowUnknownSources: value));
+  }
+
+  Future<void> pump(WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(1080, 3400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(PlayerApp(
+      preferencesService: preferences,
+      libraryService: library,
+      historyService: history,
+      playerService: player,
+      windowService: windows,
+      addonService: addons,
+      startupGuard: guard,
+      diagnosticsService: diagnostics,
+    ));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> openZip(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('Add-ons'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Instalar add-on'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Zip'));
+    await tester.pumpAndSettle();
+  }
+}
+
+void main() {
+  testWidgets('zip por caminho instala e mostra SHA na revisão',
+      (tester) async {
+    // IO sincrono no corpo: testWidgets roda em FakeAsync e IO real
+    // (disco, compute) nunca completaria fora de runAsync.
+    final work = Directory.systemTemp.createTempSync('olympus-zip-tela-');
+    addTearDown(() => work.deleteSync(recursive: true));
+    final packages =
+        Directory.systemTemp.createTempSync('olympus-pacotes-tela-');
+    addTearDown(() => packages.deleteSync(recursive: true));
+    final bytes = packageZip();
+    final zipFile = File('${work.path}/pacote.zip');
+    zipFile.writeAsBytesSync(bytes);
+    final harness = _Harness(packages);
+    await harness.setAllowed(true);
+    await harness.pump(tester);
+    await harness.openZip(tester);
+
+    await tester.enterText(
+        find.byType(TextField).last, zipFile.path);
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Ler pacote'));
+      for (var i = 0;
+          i < 200 &&
+              find.text('Revise antes de instalar').evaluate().isEmpty;
+          i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+        await tester.pump();
+      }
+    });
+    await tester.pumpAndSettle();
+
+    expect(find.text('Revise antes de instalar'), findsOneWidget);
+    expect(find.textContaining(sha256.convert(bytes).toString()),
+        findsOneWidget);
+    expect(find.textContaining('2 itens:'), findsOneWidget);
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Instalar'));
+      for (var i = 0;
+          i < 200 &&
+              find.text('Add-on instalado desativado.').evaluate().isEmpty;
+          i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+        await tester.pump();
+      }
+    });
+    await tester.pumpAndSettle();
+
+    expect(
+        harness.addons.getStatus('demo.catalogo'), AddonState.inactive);
+    expect(find.text('Add-on instalado desativado.'), findsOneWidget);
+  });
+
+  testWidgets('zip do Kodi mostra a mensagem própria', (tester) async {
+    final work = Directory.systemTemp.createTempSync('olympus-zip-tela-');
+    addTearDown(() => work.deleteSync(recursive: true));
+    final packages =
+        Directory.systemTemp.createTempSync('olympus-pacotes-tela-');
+    addTearDown(() => packages.deleteSync(recursive: true));
+    final bytes = zipOf({
+      'addon.xml': utf8.encode('<addon id="x.y" version="1.0.0"></addon>'),
+    });
+    final zipFile = File('${work.path}/kodi.zip');
+    zipFile.writeAsBytesSync(bytes);
+    final harness = _Harness(packages);
+    await harness.setAllowed(true);
+    await harness.pump(tester);
+    await harness.openZip(tester);
+
+    await tester.enterText(
+        find.byType(TextField).last, zipFile.path);
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Ler pacote'));
+      for (var i = 0;
+          i < 200 &&
+              find
+                  .textContaining('Este é um add-on do Kodi')
+                  .evaluate()
+                  .isEmpty;
+          i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+        await tester.pump();
+      }
+    });
+    await tester.pumpAndSettle();
+
+    expect(find.text('Revise antes de instalar'), findsNothing);
+    expect(
+        find.textContaining('Este é um add-on do Kodi'), findsOneWidget);
+    expect(harness.addons.addons, isEmpty);
+  });
+
+  testWidgets('zip sem catálogo é recusado na entrada', (tester) async {
+    final work = Directory.systemTemp.createTempSync('olympus-zip-tela-');
+    addTearDown(() => work.deleteSync(recursive: true));
+    final packages =
+        Directory.systemTemp.createTempSync('olympus-pacotes-tela-');
+    addTearDown(() => packages.deleteSync(recursive: true));
+    final bytes = zipOf({
+      'addon.json': utf8.encode(jsonEncode(demoManifestJson())),
+    });
+    final zipFile = File('${work.path}/sem-catalogo.zip');
+    zipFile.writeAsBytesSync(bytes);
+    final harness = _Harness(packages);
+    await harness.setAllowed(true);
+    await harness.pump(tester);
+    await harness.openZip(tester);
+
+    await tester.enterText(
+        find.byType(TextField).last, zipFile.path);
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Ler pacote'));
+      for (var i = 0;
+          i < 200 &&
+              find
+                  .textContaining('catalog.json ou catalogUrl')
+                  .evaluate()
+                  .isEmpty;
+          i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+        await tester.pump();
+      }
+    });
+    await tester.pumpAndSettle();
+
+    expect(find.text('Revise antes de instalar'), findsNothing);
+    expect(find.textContaining('catalog.json ou catalogUrl'), findsOneWidget);
+    expect(harness.addons.addons, isEmpty);
+  });
+
+  testWidgets('pacote acima de 10 MB é recusado antes de ler',
+      (tester) async {
+    final work = Directory.systemTemp.createTempSync('olympus-zip-tela-');
+    addTearDown(() => work.deleteSync(recursive: true));
+    final packages =
+        Directory.systemTemp.createTempSync('olympus-pacotes-tela-');
+    addTearDown(() => packages.deleteSync(recursive: true));
+    final zipFile = File('${work.path}/grande.zip');
+    zipFile.writeAsBytesSync(List<int>.filled(11 * 1024 * 1024, 0));
+    final harness = _Harness(packages);
+    await harness.setAllowed(true);
+    await harness.pump(tester);
+    await harness.openZip(tester);
+
+    await tester.enterText(
+        find.byType(TextField).last, zipFile.path);
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Ler pacote'));
+      for (var i = 0;
+          i < 200 &&
+              find
+                  .text('O pacote é grande demais (limite de 10 MB).')
+                  .evaluate()
+                  .isEmpty;
+          i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+        await tester.pump();
+      }
+    });
+    await tester.pumpAndSettle();
+
+    expect(find.text('O pacote é grande demais (limite de 10 MB).'),
+        findsOneWidget);
+    expect(find.text('Revise antes de instalar'), findsNothing);
+    expect(harness.addons.addons, isEmpty);
+  });
+}

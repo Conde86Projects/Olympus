@@ -6,6 +6,10 @@ import 'package:player/models/addon_manifest.dart';
 /// ativaria quem esta inativo ao detectar update).
 enum AddonState { active, inactive, error }
 
+/// Origem de um add-on instalado (T2): de onde os arquivos vieram.
+/// Nulo em documentos antigos.
+enum AddonPackageOrigin { manifest, file, link, repository }
+
 /// Add-on instalado: manifesto + estado operacional. Imutavel; transicoes
 /// de estado produzem copias via [copyWith].
 class AddonInfo {
@@ -19,6 +23,9 @@ class AddonInfo {
     this.updateAvailable = false,
     this.deferredVersion,
     this.approvedOrigin,
+    this.packageOrigin,
+    this.packageSha256,
+    this.packageDir,
   });
 
   final AddonManifest manifest;
@@ -47,6 +54,16 @@ class AddonInfo {
   /// (nesse caso, a primeira ativacao com feed pede aprovacao).
   final String? approvedOrigin;
 
+  /// De onde o add-on veio; nulo em documentos antigos.
+  final AddonPackageOrigin? packageOrigin;
+
+  /// SHA-256 do zip instalado; nulo quando não veio de pacote.
+  final String? packageSha256;
+
+  /// Pasta da versão instalada (`<suporte>/addons/<id>/<versão>`);
+  /// nulo quando não há arquivos de pacote.
+  final String? packageDir;
+
   /// Verdadeiro quando o feed atual ainda nao foi aprovado: host
   /// diferente do aprovado (ou primeiro feed, aprovado nulo).
   bool get needsApproval =>
@@ -58,6 +75,14 @@ class AddonInfo {
     return host.isEmpty ? null : host.toLowerCase();
   }
 
+  static AddonPackageOrigin? _originFrom(Object? raw) {
+    if (raw is! String) return null;
+    for (final value in AddonPackageOrigin.values) {
+      if (value.name == raw) return value;
+    }
+    return null;
+  }
+
   AddonInfo copyWith({
     AddonManifest? manifest,
     AddonState? state,
@@ -67,6 +92,9 @@ class AddonInfo {
     bool? updateAvailable,
     String? Function()? deferredVersion,
     String? Function()? approvedOrigin,
+    AddonPackageOrigin? Function()? packageOrigin,
+    String? Function()? packageSha256,
+    String? Function()? packageDir,
   }) {
     return AddonInfo(
       manifest: manifest ?? this.manifest,
@@ -81,6 +109,11 @@ class AddonInfo {
           : this.deferredVersion,
       approvedOrigin:
           approvedOrigin != null ? approvedOrigin() : this.approvedOrigin,
+      packageOrigin:
+          packageOrigin != null ? packageOrigin() : this.packageOrigin,
+      packageSha256:
+          packageSha256 != null ? packageSha256() : this.packageSha256,
+      packageDir: packageDir != null ? packageDir() : this.packageDir,
     );
   }
 
@@ -94,6 +127,9 @@ class AddonInfo {
         'updateAvailable': updateAvailable,
         'deferredVersion': deferredVersion,
         'approvedOrigin': approvedOrigin,
+        'packageOrigin': packageOrigin?.name,
+        'packageSha256': packageSha256,
+        'packageDir': packageDir,
       };
 
   factory AddonInfo.fromMap(Map<String, Object?> map) {
@@ -110,6 +146,9 @@ class AddonInfo {
       updateAvailable: (map['updateAvailable'] ?? false) as bool,
       deferredVersion: map['deferredVersion'] as String?,
       approvedOrigin: map['approvedOrigin'] as String?,
+      packageOrigin: _originFrom(map['packageOrigin']),
+      packageSha256: map['packageSha256'] as String?,
+      packageDir: map['packageDir'] as String?,
     );
   }
 }

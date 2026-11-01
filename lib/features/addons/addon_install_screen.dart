@@ -14,10 +14,11 @@ import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/dpad_field_exit.dart';
 import 'package:player/widgets/focusable_button.dart';
 import 'package:player/widgets/app_toast.dart';
+import 'package:player/services/addon_package.dart';
 import 'package:player/widgets/confirm_dialog.dart';
 
 /// Origem do manifesto na tela de instalacao.
-enum AddonInstallSource { file, paste, link }
+enum AddonInstallSource { file, paste, link, zip }
 
 /// Argumentos da rota de instalacao: URL ja preenchida ou manifesto
 /// ja obtido (fluxo de repositorios, spec 6.1). Ou um, ou outro.
@@ -55,12 +56,15 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
   final _fileController = TextEditingController();
   final _pasteController = TextEditingController();
   final _urlController = TextEditingController();
+  final _zipPathController = TextEditingController();
   SourcePreview? _preview;
   bool _originTrusted = false;
   bool _cameWithManifest = false;
   bool _approved = false;
   bool _busy = false;
   String? _error;
+  AddonPackage? _package;
+  String? _packageSha256;
 
   @override
   void didChangeDependencies() {
@@ -90,6 +94,7 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
     _fileController.dispose();
     _pasteController.dispose();
     _urlController.dispose();
+    _zipPathController.dispose();
     super.dispose();
   }
 
@@ -225,6 +230,11 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
                 icon: Icon(Icons.link),
                 label: Text('Link'),
               ),
+              ButtonSegment(
+                value: AddonInstallSource.zip,
+                icon: Icon(Icons.folder_zip),
+                label: Text('Zip'),
+              ),
             ],
             selected: {_source},
             onSelectionChanged: _busy
@@ -246,9 +256,117 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
           AddonInstallSource.file => _fileSection(),
           AddonInstallSource.paste => _pasteSection(),
           AddonInstallSource.link => _linkSection(),
+          AddonInstallSource.zip => _zipSection(),
         },
       ],
     );
+  }
+
+  Widget _zipSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Escolha um pacote (.zip) do aparelho.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        FocusableButton(
+          label: 'Procurar pacote…',
+          icon: Icons.folder_zip,
+          primary: true,
+          onPressed: _busy ? null : _browseZip,
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Ou informe o caminho diretamente:',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 8),
+        DpadFieldExit(
+          controller: _zipPathController,
+          child: TextField(
+            controller: _zipPathController,
+            enabled: !_busy,
+            decoration: const InputDecoration(
+              labelText: 'Caminho do pacote',
+              hintText: r'/armazenamento/pacote.zip',
+              border: OutlineInputBorder(),
+            ),
+            onSubmitted: (_) => _readZip(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        FocusableButton(
+          label: 'Ler pacote',
+          icon: Icons.folder_zip,
+          onPressed: _busy ? null : _readZip,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _browseZip() async {
+    final files = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['zip'],
+      dialogTitle: 'Escolher pacote',
+    );
+    final path = files.singleOrNull?.path;
+    if (path == null || path.isEmpty) return;
+    _zipPathController.text = path;
+    await _readZip();
+  }
+
+  Future<void> _readZip() async {
+    final path = _zipPathController.text.trim();
+    if (path.isEmpty) {
+      setState(() => _error = 'Informe o caminho do pacote.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final file = File(path);
+      if (!await file.exists()) {
+        if (mounted) {
+          setState(
+              () => _error = 'Arquivo não encontrado. Verifique o caminho.');
+        }
+        return;
+      }
+      // Teto pelo tamanho no disco, antes de carregar na memória.
+      if (await file.length() > AddonPackageLimits.maxCompressedBytes) {
+        throw const AddonError.invalidManifest(
+          'O pacote é grande demais (limite de 10 MB).',
+        );
+      }
+      final bytes = await file.readAsBytes();
+      final package =
+          await widget.dependencies.addonService.previewPackage(bytes);
+      if (!mounted) return;
+      setState(() {
+        _package = package;
+        _packageSha256 = package.sha256;
+        _preview = SourcePreview(
+          manifest: package.manifest,
+          feedItemCount: package.catalogItemCount,
+          feedSample: package.catalogSample,
+        );
+        _originTrusted = false;
+        _error = null;
+      });
+    } on AppError catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Não foi possível ler o arquivo.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Widget _fileSection() {
@@ -445,10 +563,12 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
                           .map(formatAddonPermission)
                           .join('\n'),
                 ),
+                if (_packageSha256 != null)
+                  _ReviewRow(title: 'SHA-256', value: _packageSha256!),
                 if (preview.feedItemCount != null) ...[
                   const SizedBox(height: 8),
                   _ReviewRow(
-                    title: 'Catálogo',
+                title: 'Catálogo',
                     value: switch (preview.feedItemCount) {
                       0 => 'Feed vazio (0 itens)',
                       1 =>
@@ -637,6 +757,8 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
     }
     setState(() {
       _preview = null;
+      _package = null;
+      _packageSha256 = null;
       _error = null;
     });
   }
@@ -649,8 +771,15 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
       _error = null;
     });
     try {
-      await widget.dependencies.addonService
-          .install(manifest, originTrusted: _originTrusted);
+      if (_package != null) {
+        await widget.dependencies.addonService.installPackage(
+          _package!,
+          originTrusted: _originTrusted,
+        );
+      } else {
+        await widget.dependencies.addonService
+            .install(manifest, originTrusted: _originTrusted);
+      }
       if (!mounted) return;
       Navigator.of(context).pop();
       showAppToast(context, 'Add-on instalado desativado.');

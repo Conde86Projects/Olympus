@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -9,6 +10,7 @@ import 'package:player/models/addon_manifest.dart';
 import 'package:player/models/addon_repository.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/services/addon_fetcher.dart';
+import 'package:player/services/addon_package.dart';
 import 'package:player/services/addon_service.dart';
 import 'package:player/services/demo_addons.dart';
 import 'package:player/services/sources/source_adapter.dart';
@@ -25,13 +27,15 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     AddonFetcher fetcher = const HttpAddonFetcher(),
     List<SourceAdapter> adapters = const [],
     SourceCredentialStore? credentials,
+    Directory? packageDir,
     bool Function()? allowUnknownSources,
   })  : _platform = platform ?? Platform.operatingSystem,
         _faultyIds = faultyIds ?? const {},
         _fetcher = fetcher,
         _adapters = adapters,
         _credentials = credentials ?? InMemoryCredentialStore(),
-        _allowUnknownSources = allowUnknownSources ?? (() => true);
+        _allowUnknownSources = allowUnknownSources ?? (() => true),
+        _packageDir = packageDir;
 
   final LocalStore _store;
   final AddonFetcher _fetcher;
@@ -45,6 +49,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
   /// A regra fica no servico: so bloquear na tela seria contornado
   /// pelo fluxo de repositorios.
   final bool Function() _allowUnknownSources;
+  final Directory? _packageDir;
   @override
   bool get unknownSourcesAllowed => _allowUnknownSources();
   final String _platform;
@@ -178,6 +183,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     final info = AddonInfo(
       manifest: manifest,
       originTrusted: originTrusted,
+      packageOrigin: AddonPackageOrigin.manifest,
       installedAt: DateTime.now(),
       // Instalar e aprovar: a revisao humana ja aconteceu.
       approvedOrigin: _hostOf(manifest.catalogUrl),
@@ -234,11 +240,149 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     ));
   }
 
+  /// Lê e valida um pacote sem salvar nada: a revisão mostra o que
+  /// vai entrar antes de confirmar. Roda fora da thread da interface.
+  @override
+  Future<AddonPackage> previewPackage(Uint8List zipBytes) async {
+    if (!_allowUnknownSources()) {
+      throw const AddonError.unknownSourcesDisabled();
+    }
+    return compute(readAddonPackage, zipBytes);
+  }
+
+  /// Instala o pacote já validado, sempre desativado. Os arquivos
+  /// vão para uma pasta temporária e só então para o lugar final;
+  /// falha no meio não deixa pasta nem registro (T2).
+  @override
+  Future<AddonInfo> installPackage(
+    AddonPackage package, {
+    required bool originTrusted,
+    AddonPackageOrigin packageOrigin = AddonPackageOrigin.file,
+  }) async {
+    if (!_allowUnknownSources() && !originTrusted) {
+      throw const AddonError.unknownSourcesDisabled();
+    }
+    final manifest = package.manifest;
+    if (_items.containsKey(manifest.id)) {
+      throw const AddonError.alreadyInstalled();
+    }
+    final root = _packageDir;
+    if (root == null) {
+      throw const AddonError.fetchFailed(
+        'Armazenamento de pacotes indisponível.',
+      );
+    }
+    final sep = Platform.pathSeparator;
+    final versionDir = Directory(
+        '${root.path}$sep${manifest.id}$sep${manifest.version}');
+    final tmp = Directory('${root.path}$sep.tmp-${manifest.id}-'
+        '${manifest.version}-${DateTime.now().microsecondsSinceEpoch}');
+    try {
+      if (await tmp.exists()) await tmp.delete(recursive: true);
+      await tmp.create(recursive: true);
+      final payload = <String, List<int>>{
+        if (package.catalogJson != null)
+          'catalog.json': utf8.encode(package.catalogJson!),
+        if (package.icon != null) 'icon.png': package.icon!,
+        if (package.fanart != null) 'fanart.jpg': package.fanart!,
+      };
+      for (final entry in payload.entries) {
+        await File('${tmp.path}$sep${entry.key}')
+            .writeAsBytes(entry.value);
+      }
+      if (await versionDir.exists()) {
+        await versionDir.delete(recursive: true);
+      }
+      await versionDir.parent.create(recursive: true);
+      await tmp.rename(versionDir.path);
+    } catch (_) {
+      try {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      } catch (_) {}
+      throw const AddonError.fetchFailed(
+        'Não foi possível salvar os arquivos do pacote.',
+      );
+    }
+    final info = AddonInfo(
+      manifest: manifest,
+      state: AddonState.inactive,
+      originTrusted: originTrusted,
+      installedAt: DateTime.now(),
+      approvedOrigin: manifest.catalogUrl == null
+          ? null
+          : _hostOf(manifest.catalogUrl!),
+      packageOrigin: packageOrigin,
+      packageSha256: package.sha256,
+      packageDir: versionDir.path,
+    );
+    _items[manifest.id] = info;
+    _previous.remove(manifest.id);
+    notifyListeners();
+    await _save();
+    return info;
+  }
+
+  /// Catálogo embutido do pacote, ou null quando não há (legado ou
+  /// reserva ausente). Nunca explode: falha vira isolamento no chamador.
+  Future<List<AddonCatalogItem>?> _readEmbeddedCatalog(
+      AddonInfo info) async {
+    final dir = info.packageDir;
+    if (dir == null) return null;
+    try {
+      final raw = await File(
+              '$dir${Platform.pathSeparator}catalog.json')
+          .readAsString();
+      final items = parseCatalogItems(raw);
+      return items.isEmpty ? null : items;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Apaga a árvore do add-on (<raiz>/<id>/), só dentro da raiz
+  /// de pacotes. Falha de disco aqui não bloqueia a remoção.
+  Future<void> _deletePackageTree(AddonInfo info) async {
+    final dir = info.packageDir;
+    if (dir == null) return;
+    await _deleteTree(dir);
+  }
+
+  Future<void> _deleteTree(String versionDir) async {
+    final root = _packageDir;
+    if (root == null) return;
+    try {
+      final target = Directory(versionDir).parent;
+      // Guarda com separador: prefixo puro aceitaria `<raiz>-evil`.
+      if (!target.path.startsWith(
+          '${root.path}${Platform.pathSeparator}')) {
+        return;
+      }
+      if (await target.exists()) {
+        await target.delete(recursive: true);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _deletePackageRoot() async {
+    final root = _packageDir;
+    if (root == null) return;
+    try {
+      if (await root.exists()) {
+        await root.delete(recursive: true);
+      }
+    } catch (_) {}
+  }
+
   @override
   Future<void> uninstall(String addonId) async {
-    _require(addonId);
+    final info = _require(addonId);
+    await _deletePackageTree(info);
     _items.remove(addonId);
-    _previous.remove(addonId);
+    final backup = _previous.remove(addonId);
+    final backupDir = backup?['packageDir'];
+    if (backupDir is String) {
+      await _deleteTree(backupDir);
+    }
     notifyListeners();
     await _save();
   }
@@ -249,6 +393,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     _repos.clear();
     _lastChange = null;
     _previous.clear();
+    await _deletePackageRoot();
     notifyListeners();
     await _save();
     await _saveRepos();
@@ -387,7 +532,21 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
       final catalogUrl = info.manifest.catalogUrl;
       if (catalogUrl != null) {
         // await dentro do try: sem ele o erro escapa do isolamento.
-        return await _loadRemoteCatalog(catalogUrl);
+        // Remoto tem prioridade; o embutido vira a reserva (T2).
+        try {
+          return await _loadRemoteCatalog(catalogUrl);
+        } catch (_) {
+          final embedded = await _readEmbeddedCatalog(info);
+          if (embedded != null) return embedded;
+          rethrow;
+        }
+      }
+      final embedded = await _readEmbeddedCatalog(info);
+      if (embedded != null) return embedded;
+      if (info.packageDir != null) {
+        throw const AddonError.fetchFailed(
+          'Falha ao carregar o catálogo embutido.',
+        );
       }
       return demoCatalog();
     } catch (_) {

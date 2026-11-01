@@ -246,6 +246,15 @@ void main() {
       expect(failed.manifest.id, 'demo.catalogo');
     });
 
+    test('copyWith zera a origem do pacote', () {
+      final withOrigin = info().copyWith(
+        packageOrigin: () => AddonPackageOrigin.file,
+      );
+      expect(withOrigin.packageOrigin, AddonPackageOrigin.file);
+      final cleared = withOrigin.copyWith(packageOrigin: () => null);
+      expect(cleared.packageOrigin, isNull);
+    });
+
     test('toMap/fromMap preservam os campos', () {
       final current = info().copyWith(
         state: AddonState.active,

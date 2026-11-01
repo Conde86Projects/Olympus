@@ -85,6 +85,8 @@ Future<void> _boot(void Function(StartupGuard) onGuard) async {
     store,
     adapters: const [OwnedTestSourceAdapter()],
     allowUnknownSources: () => preferences.current.allowUnknownSources,
+    packageDir: Directory(
+        '${support.path}${Platform.pathSeparator}addons'),
   );
   await Future.wait([library.load(), history.load()]);
   if (!guard.safeMode) {
