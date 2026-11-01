@@ -8,6 +8,24 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 Nada por enquanto.
 
+## [0.3.2] - 2026-10-31
+
+### Adicionado
+
+- Legendas: abrir um arquivo `.srt`, `.vtt` ou `.ass` pelo painel do player, nas
+  três plataformas. Arquivo inválido mostra um aviso, mantém a legenda que estava
+  ativa e não interrompe o vídeo.
+- Logo do Olympus na barra superior e nas boas-vindas.
+
+### Alterado
+
+- A tela Sobre não mostra mais "protótipo" ao lado da versão.
+
+### Corrigido
+
+- Depois de "Reproduzir novamente", o painel não some mais com as faixas de áudio
+  e legenda do vídeo.
+
 ## [0.3.1] - 2026-10-31
 
 ### Alterado
