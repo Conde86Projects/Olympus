@@ -8,6 +8,21 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 Nada por enquanto.
 
+## [0.3.3] - 2026-10-31
+
+### Adicionado
+
+- Legenda ao lado: em vídeo local, a legenda de mesmo nome na mesma pasta entra na
+  lista sozinha e só liga conforme "Ativar por padrão". No celular, isso depende de
+  o Android dar acesso à pasta: escolhendo o vídeo pelo seletor do sistema, a
+  legenda deve ser aberta pelo painel.
+
+### Corrigido
+
+- Celular: `.vtt` e `.ass` agora podem ser escolhidos no seletor do sistema.
+- O painel de legendas mostra a faixa ligada de fato. Com "Ativar por padrão"
+  ligado, ele dizia "Desativadas" com a legenda na tela.
+
 ## [0.3.2] - 2026-10-31
 
 ### Adicionado
