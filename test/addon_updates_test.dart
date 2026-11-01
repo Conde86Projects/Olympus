@@ -1,19 +1,25 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/core/errors/app_error.dart';
 import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/addon_info.dart';
 import 'package:player/models/addon_manifest.dart';
+import 'package:player/models/addon_repository.dart';
 import 'package:player/services/addon_fetcher.dart';
 import 'package:player/services/demo_addons.dart';
 import 'package:player/services/local_addon_service.dart';
 import 'package:player/services/startup_guard.dart';
 
 class _FakeFetcher extends AddonFetcher {
-  _FakeFetcher(this.bodies);
+  _FakeFetcher(this.bodies, {this.byteBodies = const {}});
 
   final Map<String, String> bodies;
+  final Map<String, Uint8List> byteBodies;
 
   @override
   Future<String> fetchText(String url, {Map<String, String> headers = const {}}) async {
@@ -23,25 +29,44 @@ class _FakeFetcher extends AddonFetcher {
     }
     return body;
   }
+
+  @override
+  Future<Uint8List> fetchBytes(
+    String url, {
+    Map<String, String> headers = const {},
+    void Function(int received, int? total)? onProgress,
+    Future<void>? cancel,
+  }) async {
+    final bytes = byteBodies[url];
+    if (bytes == null) {
+      throw const AddonError.fetchFailed('Não foi possível buscar.');
+    }
+    return bytes;
+  }
 }
 
 class _Harness {
   _Harness({
     Map<String, String>? bodies,
+    Map<String, Uint8List>? byteBodies,
     String platform = 'windows',
     Set<String> faultyIds = const {},
+    Directory? packages,
   })  : store = InMemoryLocalStore(),
-        bodies = bodies ?? {} {
+        bodies = bodies ?? {},
+        byteBodies = byteBodies ?? {} {
     addons = LocalAddonService(
       store,
       platform: platform,
       faultyIds: faultyIds,
-      fetcher: _FakeFetcher(this.bodies),
+      fetcher: _FakeFetcher(this.bodies, byteBodies: this.byteBodies),
+      packageDir: packages,
     );
   }
 
   final InMemoryLocalStore store;
   final Map<String, String> bodies;
+  final Map<String, Uint8List> byteBodies;
   late final LocalAddonService addons;
 
   static const updateUrl = 'https://exemplo.com/demo/manifest.json';
@@ -277,6 +302,284 @@ void main() {
       expect(updated.state, AddonState.inactive);
       expect(updated.diagnostic, isNull);
       expect(updated.manifest.version, '1.1.0');
+    });
+  });
+
+  group('pacote de repositório (T5)', () {
+    const repoOrigin = 'https://exemplo.com/repo.json';
+    const packageUrl = 'https://exemplo.com/demo.zip';
+
+    Uint8List packageZipBytes(
+        {String version = '1.0.0', Map<String, Object?>? extra}) {
+      final archive = Archive();
+      final manifest = utf8.encode(jsonEncode({
+        ...demoManifestJson(version: version),
+        if (extra != null) ...extra,
+      }));
+      archive.addFile(ArchiveFile('addon.json', manifest.length, manifest));
+      final catalog = utf8.encode(jsonEncode({
+        'items': [
+          {
+            'id': 'v1',
+            'title': 'Vídeo 1 ($version)',
+            'sourceUrl': 'https://cdn.exemplo.com/v1.mp4',
+          },
+        ],
+      }));
+      archive.addFile(ArchiveFile('catalog.json', catalog.length, catalog));
+      return Uint8List.fromList(ZipEncoder().encode(archive));
+    }
+
+    String packageListing({
+      required String version,
+      required String sha,
+      List<String>? platforms,
+    }) {
+      return jsonEncode({
+        'addons': [
+          {
+            ...demoManifestJson(version: version),
+            if (platforms != null) 'supportedPlatforms': platforms,
+            'packageUrl': packageUrl,
+            'sha256': sha,
+          },
+        ],
+      });
+    }
+
+    Future<Directory> tempPackages() async {
+      final dir = await Directory.systemTemp.createTemp('olympus-pacotes-t5-');
+      addTearDown(() async {
+        if (await dir.exists()) await dir.delete(recursive: true);
+      });
+      return dir;
+    }
+
+    Future<AddonRepository> installPackage(
+      _Harness harness, {
+      String version = '1.0.0',
+      List<String>? platforms,
+      String? sourceRepoId = 'auto',
+    }) async {
+      final zip = packageZipBytes(version: version);
+      final sha = sha256.convert(zip).toString();
+      final repo = await harness.addons.addRepository(
+        name: 'Comunidade',
+        originUrl: repoOrigin,
+        trusted: true,
+      );
+      harness.bodies[repoOrigin] = packageListing(
+        version: version,
+        sha: sha,
+        platforms: platforms,
+      );
+      harness.byteBodies[packageUrl] = zip;
+      final manifest = AddonManifest.fromMap({
+        ...demoManifestJson(version: version),
+        if (platforms != null) 'supportedPlatforms': platforms,
+        'packageUrl': packageUrl,
+        'sha256': sha,
+      });
+      await harness.addons.installPackageFromRepo(
+        manifest,
+        originTrusted: true,
+        sourceRepoId: sourceRepoId == 'auto' ? repo.id : sourceRepoId,
+      );
+      return repo;
+    }
+
+    Future<void> serveVersion(_Harness harness, String version,
+        {List<String>? platforms, Uint8List? bytesOverride}) async {
+      final zip = packageZipBytes(version: version);
+      harness.bodies[repoOrigin] = packageListing(
+        version: version,
+        sha: sha256.convert(zip).toString(),
+        platforms: platforms,
+      );
+      harness.byteBodies[packageUrl] = bytesOverride ?? zip;
+    }
+
+    String versionDir(Directory packages, String version) =>
+        '${packages.path}${Platform.pathSeparator}demo.catalogo'
+        '${Platform.pathSeparator}$version';
+
+    test('check encontra versão nova no repositório de origem', () async {
+      final harness = _Harness(packages: await tempPackages());
+      await installPackage(harness);
+      await serveVersion(harness, '2.0.0');
+
+      final found = await harness.addons.checkForUpdates();
+
+      expect(found.map((m) => m.version), ['2.0.0']);
+      expect(found.single.packageUrl, packageUrl);
+      expect(
+          harness.addons.findById('demo.catalogo')!.updateAvailable,
+          isTrue);
+    });
+
+    test('check ignora repositório removido', () async {
+      final harness = _Harness(packages: await tempPackages());
+      final repo = await installPackage(harness);
+      await harness.addons.removeRepository(repo.id);
+      await serveVersion(harness, '2.0.0');
+
+      expect(await harness.addons.checkForUpdates(), isEmpty);
+      expect(
+          harness.addons.findById('demo.catalogo')!.updateAvailable,
+          isFalse);
+    });
+
+    test('update aplica pacote guardando a anterior', () async {
+      final packages = await tempPackages();
+      final harness = _Harness(packages: packages);
+      final repo = await installPackage(harness);
+      await serveVersion(harness, '2.0.0');
+
+      final updated = await harness.addons.update('demo.catalogo');
+
+      expect(updated.manifest.version, '2.0.0');
+      expect(updated.packageOrigin, AddonPackageOrigin.repository);
+      expect(updated.packageSha256,
+          sha256.convert(packageZipBytes(version: '2.0.0')).toString());
+      expect(updated.packageDir, versionDir(packages, '2.0.0'));
+      expect(await Directory(versionDir(packages, '2.0.0')).exists(), isTrue);
+      expect(await Directory(versionDir(packages, '1.0.0')).exists(), isTrue);
+      expect(updated.updateAvailable, isFalse);
+      expect(harness.addons.previousVersion('demo.catalogo'), '1.0.0');
+      expect(updated.sourceRepoId, repo.id);
+    });
+
+    test('terceira atualização apaga a mais antiga', () async {
+      final packages = await tempPackages();
+      final harness = _Harness(packages: packages);
+      await installPackage(harness);
+      await serveVersion(harness, '2.0.0');
+      await harness.addons.update('demo.catalogo');
+      await serveVersion(harness, '3.0.0');
+      await harness.addons.update('demo.catalogo');
+
+      expect(await Directory(versionDir(packages, '3.0.0')).exists(), isTrue);
+      expect(await Directory(versionDir(packages, '2.0.0')).exists(), isTrue);
+      expect(await Directory(versionDir(packages, '1.0.0')).exists(), isFalse);
+      expect(harness.addons.previousVersion('demo.catalogo'), '2.0.0');
+      expect(harness.addons.findById('demo.catalogo')!.manifest.version,
+          '3.0.0');
+    });
+
+    test('rollback restaura manifesto e catálogo juntos', () async {
+      final packages = await tempPackages();
+      final harness = _Harness(packages: packages);
+      await installPackage(harness);
+      await serveVersion(harness, '2.0.0');
+      await harness.addons.update('demo.catalogo');
+
+      final restored = await harness.addons.rollback('demo.catalogo');
+
+      expect(restored.manifest.version, '1.0.0');
+      expect(restored.packageDir, versionDir(packages, '1.0.0'));
+      expect(await Directory(versionDir(packages, '1.0.0')).exists(), isTrue);
+      expect(await Directory(versionDir(packages, '2.0.0')).exists(), isFalse);
+      final catalog = await File(
+        '${versionDir(packages, '1.0.0')}${Platform.pathSeparator}catalog.json',
+      ).readAsString();
+      expect(catalog, contains('Vídeo 1 (1.0.0)'));
+      expect(restored.updateAvailable, isTrue);
+      expect(harness.addons.previousVersion('demo.catalogo'), isNull);
+    });
+
+    test('falha na atualização mantém a versão atual', () async {
+      final packages = await tempPackages();
+      final harness = _Harness(packages: packages);
+      await installPackage(harness);
+      final good = packageZipBytes(version: '2.0.0');
+      final tampered = Uint8List.fromList(good)..[10] = 0xFF ^ good[10];
+      await serveVersion(harness, '2.0.0', bytesOverride: tampered);
+      expect(await harness.addons.checkForUpdates(), hasLength(1));
+
+      await expectLater(
+        () => harness.addons.update('demo.catalogo'),
+        throwsA(isA<AddonError>()
+            .having((e) => e.code, 'code', 'addon.invalid-manifest')
+            .having((e) => e.message, 'message', contains('Checksum'))),
+      );
+
+      final current = harness.addons.findById('demo.catalogo')!;
+      expect(current.manifest.version, '1.0.0');
+      expect(current.packageDir, versionDir(packages, '1.0.0'));
+      expect(await Directory(versionDir(packages, '1.0.0')).exists(), isTrue);
+      expect(await Directory(versionDir(packages, '2.0.0')).exists(), isFalse);
+      expect(harness.addons.previousVersion('demo.catalogo'), isNull);
+      expect(current.updateAvailable, isTrue);
+    });
+
+    test('versão adiada não reaparece no repositório', () async {
+      final harness = _Harness(packages: await tempPackages());
+      await installPackage(harness);
+      await serveVersion(harness, '2.0.0');
+      expect(await harness.addons.checkForUpdates(), hasLength(1));
+
+      await harness.addons.deferUpdate('demo.catalogo');
+      expect(await harness.addons.checkForUpdates(), isEmpty);
+
+      await serveVersion(harness, '3.0.0');
+      final found = await harness.addons.checkForUpdates();
+      expect(found.map((m) => m.version), ['3.0.0']);
+    });
+
+    test('versão incompatível recusa na aplicação', () async {
+      final packages = await tempPackages();
+      final harness = _Harness(packages: packages);
+      await installPackage(harness);
+      await serveVersion(harness, '2.0.0', platforms: ['android']);
+
+      expect(await harness.addons.checkForUpdates(), hasLength(1));
+      await expectLater(
+        () => harness.addons.update('demo.catalogo'),
+        throwsA(isA<AddonError>().having(
+            (e) => e.code, 'code', 'addon.incompatible')),
+      );
+      expect(harness.addons.findById('demo.catalogo')!.manifest.version,
+          '1.0.0');
+      expect(harness.addons.previousVersion('demo.catalogo'), isNull);
+      expect(await Directory(versionDir(packages, '2.0.0')).exists(), isFalse);
+    });
+
+    test('rollback de pacote sem backup falha com motivo', () async {
+      final harness = _Harness(packages: await tempPackages());
+      await installPackage(harness);
+      await expectLater(
+        () => harness.addons.rollback('demo.catalogo'),
+        throwsA(isA<AddonError>().having(
+            (e) => e.code, 'code', 'addon.no-backup')),
+      );
+    });
+
+    test('sem repositório de origem usa o updateUrl', () async {
+      final packages = await tempPackages();
+      final harness = _Harness(packages: packages);
+      const updateUrl = 'https://exemplo.com/demo/manifest.json';
+      final zip = packageZipBytes(extra: {'updateUrl': updateUrl});
+      final sha = sha256.convert(zip).toString();
+      harness.byteBodies[packageUrl] = zip;
+      final manifest = AddonManifest.fromMap({
+        ...demoManifestJson(),
+        'updateUrl': updateUrl,
+        'packageUrl': packageUrl,
+        'sha256': sha,
+      });
+      await harness.addons.installPackageFromRepo(
+        manifest,
+        originTrusted: true,
+      );
+      final next = demoManifestJson(version: '1.1.0');
+      next['updateUrl'] = 'https://exemplo.com/demo/manifest.json';
+      harness.bodies['https://exemplo.com/demo/manifest.json'] =
+          jsonEncode(next);
+
+      final updated = await harness.addons.update('demo.catalogo');
+
+      expect(updated.manifest.version, '1.1.0');
+      expect(updated.packageDir, versionDir(packages, '1.0.0'));
     });
   });
 }

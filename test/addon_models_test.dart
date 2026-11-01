@@ -340,6 +340,18 @@ void main() {
       expect(cleared.packageOrigin, isNull);
     });
 
+    test('repositório de origem viaja no documento e falta no antigo',
+        () {
+      final withRepo = info().copyWith(sourceRepoId: () => 'abc123');
+      expect(withRepo.sourceRepoId, 'abc123');
+      final roundTrip = AddonInfo.fromMap(withRepo.toMap());
+      expect(roundTrip.sourceRepoId, 'abc123');
+      // Documento antigo carrega sem perda.
+      final legacy = Map<String, Object?>.of(withRepo.toMap())
+        ..remove('sourceRepoId');
+      expect(AddonInfo.fromMap(legacy).sourceRepoId, isNull);
+    });
+
     test('toMap/fromMap preservam os campos', () {
       final current = info().copyWith(
         state: AddonState.active,

@@ -59,6 +59,7 @@ abstract class AddonService extends ChangeNotifier {
     AddonPackage package, {
     required bool originTrusted,
     AddonPackageOrigin packageOrigin = AddonPackageOrigin.file,
+    String? sourceRepoId,
   });
 
   /// Plataforma atual no vocabulario de `supportedPlatforms`
@@ -72,11 +73,14 @@ abstract class AddonService extends ChangeNotifier {
   /// id ou a versao divergem, quando o item nao tem pacote ou quando
   /// o botao desliga fontes desconhecidas e a origem nao e
   /// confiavel. [onProgress]/[cancel] acompanham o download.
+  /// [sourceRepoId] guarda o repositorio de origem para o check de
+  /// atualizacoes (T5).
   Future<AddonInfo> installPackageFromRepo(
     AddonManifest manifest, {
     required bool originTrusted,
     void Function(int received, int? total)? onProgress,
     Future<void>? cancel,
+    String? sourceRepoId,
   });
 
   Future<void> uninstall(String addonId);

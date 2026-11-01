@@ -26,6 +26,7 @@ class AddonInfo {
     this.packageOrigin,
     this.packageSha256,
     this.packageDir,
+    this.sourceRepoId,
   });
 
   final AddonManifest manifest;
@@ -64,6 +65,10 @@ class AddonInfo {
   /// nulo quando não há arquivos de pacote.
   final String? packageDir;
 
+  /// Repositorio de origem do pacote (T5): id do cadastro de onde o
+  /// pacote veio. Nulo em documentos antigos e em pacotes avulsos.
+  final String? sourceRepoId;
+
   /// Verdadeiro quando o feed atual ainda nao foi aprovado: host
   /// diferente do aprovado (ou primeiro feed, aprovado nulo).
   bool get needsApproval =>
@@ -95,6 +100,7 @@ class AddonInfo {
     AddonPackageOrigin? Function()? packageOrigin,
     String? Function()? packageSha256,
     String? Function()? packageDir,
+    String? Function()? sourceRepoId,
   }) {
     return AddonInfo(
       manifest: manifest ?? this.manifest,
@@ -114,6 +120,8 @@ class AddonInfo {
       packageSha256:
           packageSha256 != null ? packageSha256() : this.packageSha256,
       packageDir: packageDir != null ? packageDir() : this.packageDir,
+      sourceRepoId:
+          sourceRepoId != null ? sourceRepoId() : this.sourceRepoId,
     );
   }
 
@@ -130,6 +138,7 @@ class AddonInfo {
         'packageOrigin': packageOrigin?.name,
         'packageSha256': packageSha256,
         'packageDir': packageDir,
+        'sourceRepoId': sourceRepoId,
       };
 
   factory AddonInfo.fromMap(Map<String, Object?> map) {
@@ -149,6 +158,7 @@ class AddonInfo {
       packageOrigin: _originFrom(map['packageOrigin']),
       packageSha256: map['packageSha256'] as String?,
       packageDir: map['packageDir'] as String?,
+      sourceRepoId: map['sourceRepoId'] as String?,
     );
   }
 }

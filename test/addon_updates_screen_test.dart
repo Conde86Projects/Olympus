@@ -1,5 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/app.dart';
@@ -19,9 +23,10 @@ import 'package:player/services/window_service.dart';
 import 'package:player/widgets/focusable_button.dart';
 
 class _FakeFetcher extends AddonFetcher {
-  _FakeFetcher(this.bodies);
+  _FakeFetcher(this.bodies, {this.byteBodies = const {}});
 
   final Map<String, String> bodies;
+  final Map<String, Uint8List> byteBodies;
 
   @override
   Future<String> fetchText(String url, {Map<String, String> headers = const {}}) async {
@@ -31,21 +36,37 @@ class _FakeFetcher extends AddonFetcher {
     }
     return body;
   }
+
+  @override
+  Future<Uint8List> fetchBytes(
+    String url, {
+    Map<String, String> headers = const {},
+    void Function(int received, int? total)? onProgress,
+    Future<void>? cancel,
+  }) async {
+    final bytes = byteBodies[url];
+    if (bytes == null) {
+      throw const AddonError.fetchFailed('Não foi possível buscar.');
+    }
+    return bytes;
+  }
 }
 
 class _Harness {
-  _Harness()
+  _Harness({Directory? packages})
       : preferences = InMemoryPreferencesService(),
         library = InMemoryLibraryService(),
         history = InMemoryHistoryService(),
         player = const NoOpMediaPlayerService(),
         windows = NoOpWindowService(),
         guard = StartupGuard(InMemoryLocalStore()),
-        bodies = {} {
+        bodies = {},
+        byteBodies = {} {
     addons = LocalAddonService(
       InMemoryLocalStore(),
       platform: 'windows',
-      fetcher: _FakeFetcher(bodies),
+      fetcher: _FakeFetcher(bodies, byteBodies: byteBodies),
+      packageDir: packages,
     );
     preferences.update(preferences.current.copyWith(showOnboarding: false));
   }
@@ -57,6 +78,7 @@ class _Harness {
   final NoOpWindowService windows;
   final StartupGuard guard;
   final Map<String, String> bodies;
+  final Map<String, Uint8List> byteBodies;
   late final LocalAddonService addons;
 
   static const updateUrl = 'https://exemplo.com/demo/manifest.json';
@@ -277,6 +299,118 @@ void main() {
           find.widgetWithText(FocusableButton, 'Ver atualização disponível'));
       await tester.pumpAndSettle();
       expect(find.text('Disponíveis (1)'), findsOneWidget);
+    });
+
+    testWidgets('pacote atualiza e volta pela tela', (tester) async {
+      const repoOrigin = 'https://exemplo.com/repo.json';
+      const packageUrl = 'https://exemplo.com/demo.zip';
+      final packages =
+          Directory.systemTemp.createTempSync('olympus-pacotes-tela-');
+      addTearDown(() {
+        if (packages.existsSync()) packages.deleteSync(recursive: true);
+      });
+      final harness = _Harness(packages: packages);
+      Uint8List packageZipBytes({String version = '1.0.0'}) {
+        final archive = Archive();
+        final manifest =
+            utf8.encode(jsonEncode(demoManifestJson(version: version)));
+        archive.addFile(ArchiveFile('addon.json', manifest.length, manifest));
+        final catalog = utf8.encode(jsonEncode({
+          'items': [
+            {
+              'id': 'v1',
+              'title': 'Vídeo 1 ($version)',
+              'sourceUrl': 'https://cdn.exemplo.com/v1.mp4',
+            },
+          ],
+        }));
+        archive.addFile(ArchiveFile('catalog.json', catalog.length, catalog));
+        return Uint8List.fromList(ZipEncoder().encode(archive));
+      }
+
+      Uint8List serveVersion(String version) {
+        final zip = packageZipBytes(version: version);
+        harness.bodies[repoOrigin] = jsonEncode({
+          'addons': [
+            {
+              ...demoManifestJson(version: version),
+              'packageUrl': packageUrl,
+              'sha256': sha256.convert(zip).toString(),
+            },
+          ],
+        });
+        harness.byteBodies[packageUrl] = zip;
+        return zip;
+      }
+
+      final repo = await harness.addons.addRepository(
+        name: 'Comunidade',
+        originUrl: repoOrigin,
+        trusted: true,
+      );
+      final zip1 = serveVersion('1.0.0');
+      // IO real (compute, disco) so completa em runAsync.
+      await tester.runAsync(() async {
+        await harness.addons.installPackageFromRepo(
+          AddonManifest.fromMap({
+            ...demoManifestJson(),
+            'packageUrl': packageUrl,
+            'sha256': sha256.convert(zip1).toString(),
+          }),
+          originTrusted: true,
+          sourceRepoId: repo.id,
+        );
+      });
+      serveVersion('2.0.0');
+      await harness.openUpdates(tester);
+
+      expect(find.text('v1.0.0 → v2.0.0'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FocusableButton, 'Atualizar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Atualizar add-on?'), findsOneWidget);
+      // IO real (compute, disco) so completa em runAsync.
+      await tester.runAsync(() async {
+        await tester.tap(dialogButton('Atualizar'));
+        for (var i = 0;
+            i < 200 &&
+                find
+                    .text('Catálogo Demo atualizado para v2.0.0.')
+                    .evaluate()
+                    .isEmpty;
+            i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+          await tester.pump();
+        }
+      });
+      await tester.pumpAndSettle();
+
+      expect(harness.installedVersion, '2.0.0');
+      expect(find.text('Catálogo Demo atualizado para v2.0.0.'),
+          findsOneWidget);
+      expect(find.text('Voltar para v1.0.0'), findsOneWidget);
+
+      await tester
+          .tap(find.widgetWithText(FocusableButton, 'Voltar para v1.0.0'));
+      await tester.pumpAndSettle();
+      expect(find.text('Voltar à versão anterior?'), findsOneWidget);
+      await tester.runAsync(() async {
+        await tester.tap(dialogButton('Voltar versão'));
+        for (var i = 0;
+            i < 200 &&
+                find
+                    .text('Catálogo Demo voltou para v1.0.0.')
+                    .evaluate()
+                    .isEmpty;
+            i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+          await tester.pump();
+        }
+      });
+      await tester.pumpAndSettle();
+
+      expect(harness.installedVersion, '1.0.0');
+      expect(find.text('Catálogo Demo voltou para v1.0.0.'),
+          findsOneWidget);
     });
   });
 }

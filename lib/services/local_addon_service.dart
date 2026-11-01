@@ -273,22 +273,21 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     return previewPackage(bytes);
   }
 
-  /// Instala o pacote já validado, sempre desativado. Os arquivos
-  /// vão para uma pasta temporária e só então para o lugar final;
-  /// falha no meio não deixa pasta nem registro (T2).
-  @override
-  Future<AddonInfo> installPackage(
-    AddonPackage package, {
-    required bool originTrusted,
-    AddonPackageOrigin packageOrigin = AddonPackageOrigin.file,
-  }) async {
-    if (!_allowUnknownSources() && !originTrusted) {
-      throw const AddonError.unknownSourcesDisabled();
-    }
-    final manifest = package.manifest;
-    if (_items.containsKey(manifest.id)) {
-      throw const AddonError.alreadyInstalled();
-    }
+  /// Arquivos que um pacote validado grava na pasta da versao.
+  static Map<String, List<int>> _payloadOf(AddonPackage package) => {
+        if (package.catalogJson != null)
+          'catalog.json': utf8.encode(package.catalogJson!),
+        if (package.icon != null) 'icon.png': package.icon!,
+        if (package.fanart != null) 'fanart.jpg': package.fanart!,
+      };
+
+  /// Grava o payload na pasta da versao via temporario + rename: falha
+  /// no meio nao deixa pasta nem registro. Devolve a pasta final.
+  Future<Directory> _writePackageDir(
+    String id,
+    String version,
+    Map<String, List<int>> payload,
+  ) async {
     final root = _packageDir;
     if (root == null) {
       throw const AddonError.fetchFailed(
@@ -296,19 +295,12 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
       );
     }
     final sep = Platform.pathSeparator;
-    final versionDir = Directory(
-        '${root.path}$sep${manifest.id}$sep${manifest.version}');
-    final tmp = Directory('${root.path}$sep.tmp-${manifest.id}-'
-        '${manifest.version}-${DateTime.now().microsecondsSinceEpoch}');
+    final versionDir = Directory('${root.path}$sep$id$sep$version');
+    final tmp = Directory('${root.path}$sep.tmp-$id-'
+        '$version-${DateTime.now().microsecondsSinceEpoch}');
     try {
       if (await tmp.exists()) await tmp.delete(recursive: true);
       await tmp.create(recursive: true);
-      final payload = <String, List<int>>{
-        if (package.catalogJson != null)
-          'catalog.json': utf8.encode(package.catalogJson!),
-        if (package.icon != null) 'icon.png': package.icon!,
-        if (package.fanart != null) 'fanart.jpg': package.fanart!,
-      };
       for (final entry in payload.entries) {
         await File('${tmp.path}$sep${entry.key}')
             .writeAsBytes(entry.value);
@@ -326,6 +318,31 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
         'Não foi possível salvar os arquivos do pacote.',
       );
     }
+    return versionDir;
+  }
+
+  /// Instala o pacote já validado, sempre desativado. Os arquivos
+  /// vão para uma pasta temporária e só então para o lugar final;
+  /// falha no meio não deixa pasta nem registro (T2).
+  @override
+  Future<AddonInfo> installPackage(
+    AddonPackage package, {
+    required bool originTrusted,
+    AddonPackageOrigin packageOrigin = AddonPackageOrigin.file,
+    String? sourceRepoId,
+  }) async {
+    if (!_allowUnknownSources() && !originTrusted) {
+      throw const AddonError.unknownSourcesDisabled();
+    }
+    final manifest = package.manifest;
+    if (_items.containsKey(manifest.id)) {
+      throw const AddonError.alreadyInstalled();
+    }
+    final versionDir = await _writePackageDir(
+      manifest.id,
+      manifest.version,
+      _payloadOf(package),
+    );
     final info = AddonInfo(
       manifest: manifest,
       state: AddonState.inactive,
@@ -337,6 +354,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
       packageOrigin: packageOrigin,
       packageSha256: package.sha256,
       packageDir: versionDir.path,
+      sourceRepoId: sourceRepoId,
     );
     _items[manifest.id] = info;
     _previous.remove(manifest.id);
@@ -345,20 +363,13 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     return info;
   }
 
-  /// Pacote de repositorio (T4): baixa, confere e instala. O portao e
-  /// o mesmo do pacote avulso; a conferencia (checksum/id/versao)
-  /// acontece antes de tocar o disco de pacotes, entao a recusa nao
-  /// deixa pasta nem registro.
-  @override
-  Future<AddonInfo> installPackageFromRepo(
+  /// Baixa o pacote anunciado e confere checksum, id e versao exata
+  /// antes de tocar o disco: a recusa nao deixa pasta nem registro.
+  Future<AddonPackage> _downloadVerifiedPackage(
     AddonManifest manifest, {
-    required bool originTrusted,
     void Function(int received, int? total)? onProgress,
     Future<void>? cancel,
   }) async {
-    if (!_allowUnknownSources() && !originTrusted) {
-      throw const AddonError.unknownSourcesDisabled();
-    }
     final packageUrl = manifest.packageUrl;
     final packageSha256 = manifest.packageSha256;
     if (packageUrl == null || packageSha256 == null) {
@@ -389,10 +400,34 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
         'O pacote baixado não é a versão anunciada (${manifest.version}).',
       );
     }
+    return package;
+  }
+
+  /// Pacote de repositorio (T4): baixa, confere e instala. O portao e
+  /// o mesmo do pacote avulso; a conferencia (checksum/id/versao)
+  /// acontece antes de tocar o disco de pacotes, entao a recusa nao
+  /// deixa pasta nem registro.
+  @override
+  Future<AddonInfo> installPackageFromRepo(
+    AddonManifest manifest, {
+    required bool originTrusted,
+    void Function(int received, int? total)? onProgress,
+    Future<void>? cancel,
+    String? sourceRepoId,
+  }) async {
+    if (!_allowUnknownSources() && !originTrusted) {
+      throw const AddonError.unknownSourcesDisabled();
+    }
+    final package = await _downloadVerifiedPackage(
+      manifest,
+      onProgress: onProgress,
+      cancel: cancel,
+    );
     return installPackage(
       package,
       originTrusted: originTrusted,
       packageOrigin: AddonPackageOrigin.repository,
+      sourceRepoId: sourceRepoId,
     );
   }
 
@@ -508,6 +543,10 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
   /// Baixa e valida o manifesto do updateUrl: mesmo id, versao mais
   /// nova e nao adiada. Propaga [AddonError] com o motivo.
   Future<AddonManifest> _fetchValidatedUpdate(AddonInfo info) async {
+    if (info.packageOrigin == AddonPackageOrigin.repository &&
+        info.sourceRepoId != null) {
+      return _fetchValidatedRepoUpdate(info);
+    }
     final url = info.manifest.updateUrl;
     if (url == null) throw const AddonError.noUpdate();
     final manifest = await fetchManifest(url);
@@ -527,12 +566,45 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     return manifest;
   }
 
+  /// Versao mais nova na listagem do repositorio de origem (T5):
+  /// mesmo id, mais nova e nao adiada. Lanca no-update quando nao ha
+  /// novidade (o check isola via [_fetchAvailable]); update e defer
+  /// propagam o motivo.
+  Future<AddonManifest> _fetchValidatedRepoUpdate(AddonInfo info) async {
+    final repoId = info.sourceRepoId!;
+    if (!_repos.containsKey(repoId)) throw const AddonError.noUpdate();
+    AddonManifest? best;
+    for (final manifest in await fetchRepoAddons(repoId)) {
+      if (manifest.id != info.manifest.id) continue;
+      if (best == null ||
+          AddonManifest.compareVersions(manifest.version, best.version) >
+              0) {
+        best = manifest;
+      }
+    }
+    final candidate = best;
+    if (candidate == null) throw const AddonError.noUpdate();
+    if (AddonManifest.compareVersions(
+            candidate.version, info.manifest.version) <=
+        0) {
+      throw const AddonError.noUpdate();
+    }
+    if (candidate.version == info.deferredVersion) {
+      throw const AddonError.noUpdate();
+    }
+    return candidate;
+  }
+
   @override
   Future<AddonInfo> update(String addonId) async {
     final info = _require(addonId);
     final manifest = await _fetchValidatedUpdate(info);
     if (!manifest.supports(_platform)) {
       throw const AddonError.incompatible();
+    }
+    if (info.packageOrigin == AddonPackageOrigin.repository &&
+        info.sourceRepoId != null) {
+      return _updateToPackage(info, manifest);
     }
     // Backup integral (manifesto + estado) para o rollback. No
     // prototipo o add-on nao tem prefs proprias: o envelope e tudo
@@ -553,6 +625,82 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     return updated;
   }
 
+  /// Troca a versao instalada pelo pacote validado (T5): baixa e
+  /// confere antes de mexer no instalado; a pasta anterior vira o
+  /// backup e a mais antiga e apagada. Falha em qualquer ponto
+  /// mantem a versao atual funcionando (nada foi trocado ainda ou a
+  /// pasta nova e removida).
+  Future<AddonInfo> _updateToPackage(
+      AddonInfo info, AddonManifest manifest) async {
+    final package = await _downloadVerifiedPackage(manifest);
+    final versionDir = await _writePackageDir(
+      info.manifest.id,
+      manifest.version,
+      _payloadOf(package),
+    );
+    try {
+      await _rotatePackageBackup(info, manifest.version);
+      _previous[info.manifest.id] = info.toMap();
+      _recordChange(info.manifest.id, info.manifest.name, 'update');
+      final updated = info.copyWith(
+        manifest: manifest,
+        state: info.state == AddonState.error
+            ? AddonState.inactive
+            : info.state,
+        updatedAt: () => DateTime.now(),
+        diagnostic: () => null,
+        updateAvailable: false,
+        deferredVersion: () => null,
+        packageSha256: () => package.sha256,
+        packageDir: () => versionDir.path,
+      );
+      await _update(updated);
+      return updated;
+    } catch (_) {
+      try {
+        if (await versionDir.exists()) {
+          await versionDir.delete(recursive: true);
+        }
+      } catch (_) {}
+      rethrow;
+    }
+  }
+
+  /// Guarda a pasta atual como backup e apaga a mais antiga (T5):
+  /// sob `<raiz>/<id>/` ficam so a versao nova e a anterior. O
+  /// melhor esforco nunca bloqueia a atualizacao.
+  Future<void> _rotatePackageBackup(AddonInfo info, String newVersion) async {
+    final root = _packageDir;
+    if (root == null) return;
+    final sep = Platform.pathSeparator;
+    final home = Directory('${root.path}$sep${info.manifest.id}');
+    final nextPath = '${home.path}$sep$newVersion';
+    final currentPath = info.packageDir;
+    try {
+      if (!await home.exists()) return;
+      await for (final entity in home.list()) {
+        if (entity is! Directory) continue;
+        if (entity.path == nextPath) continue;
+        if (currentPath != null && entity.path == currentPath) continue;
+        await entity.delete(recursive: true);
+      }
+    } catch (_) {}
+  }
+
+  /// Apaga so a pasta da versao, dentro da raiz de pacotes. Nada fora
+  /// da raiz e tocado (espelha a guarda do `_deleteTree`).
+  Future<void> _deleteVersionDir(String versionDir) async {
+    final root = _packageDir;
+    if (root == null) return;
+    try {
+      if (!versionDir.startsWith('${root.path}${Platform.pathSeparator}')) {
+        return;
+      }
+      final dir = Directory(versionDir);
+      if (await dir.exists()) await dir.delete(recursive: true);
+    } catch (_) {}
+  }
+
   @override
   Future<void> deferUpdate(String addonId) async {
     final info = _require(addonId);
@@ -565,12 +713,18 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
 
   @override
   Future<AddonInfo> rollback(String addonId) async {
-    _require(addonId);
+    final info = _require(addonId);
     final raw = _previous[addonId];
     if (raw == null) throw const AddonError.noBackup();
     final restored = AddonInfo.fromMap(raw).copyWith(updateAvailable: true);
     _previous.remove(addonId);
     _items[restored.manifest.id] = restored;
+    // Pacote (T5): a pasta da versao desfeita vira orfa; remove para
+    // manter so atual + anterior. Nunca bloqueia o rollback.
+    final currentDir = info.packageDir;
+    if (currentDir != null && currentDir != restored.packageDir) {
+      await _deleteVersionDir(currentDir);
+    }
     notifyListeners();
     await _save();
     return restored;
