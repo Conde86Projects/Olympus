@@ -7,6 +7,7 @@ import 'package:player/models/addon_info.dart';
 import 'package:player/services/addon_service.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/empty_state.dart';
+import 'package:player/widgets/focusable_button.dart';
 
 /// Gerenciador de add-ons (spec 6.1, Fase 5): instalados com seus
 /// estados. Detalhes, instalacao e repositorios vivem em telas proprias.
@@ -42,28 +43,78 @@ class AddonsScreen extends StatelessWidget {
         animation: addons,
         builder: (context, _) {
           final items = addons.addons;
+          // Entradas do hub (T6) antes da lista, sem roubar o foco
+          // inicial: o primeiro item segue com autofocus (TV/controle).
+          final children = <Widget>[
+            _EntryTile(
+              icon: Icons.storage_outlined,
+              title: 'Instalar de repositório',
+              subtitle: 'Catálogos publicados por repositórios.',
+              onTap: () => Navigator.of(context).pushNamed(
+                AppRoutes.addonRepos,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _EntryTile(
+              icon: Icons.archive_outlined,
+              title: 'Instalar de zip',
+              subtitle: 'Arquivo do aparelho ou link.',
+              onTap: () => Navigator.of(context).pushNamed(
+                AppRoutes.addonInstall,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ];
           if (items.isEmpty) {
-            return const EmptyState(
-              icon: Icons.extension_outlined,
-              title: 'Nenhum add-on instalado',
-              message: 'Add-ons adicionam catálogos e fontes de mídia. '
-                  'Instale a partir de um repositório ou manifesto.',
+            children.add(
+              EmptyState(
+                icon: Icons.extension_outlined,
+                title: 'Nenhum add-on instalado',
+                message: 'Add-ons adicionam catálogos e fontes de mídia. '
+                    'Instale de um repositório ou de um arquivo ou link.',
+                actions: [
+                  FocusableButton(
+                    label: 'Repositórios',
+                    icon: Icons.storage_outlined,
+                    onPressed: () => Navigator.of(context).pushNamed(
+                      AppRoutes.addonRepos,
+                    ),
+                  ),
+                  FocusableButton(
+                    label: 'Arquivo ou link',
+                    icon: Icons.archive_outlined,
+                    onPressed: () => Navigator.of(context).pushNamed(
+                      AppRoutes.addonInstall,
+                    ),
+                  ),
+                ],
+              ),
             );
-          }
-          return ListView.separated(
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
+          } else {
+            children.add(
+              Text(
+                'Meus add-ons (${items.length})',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            );
+            children.add(const SizedBox(height: 8));
+            for (var index = 0; index < items.length; index++) {
+              if (index > 0) children.add(const SizedBox(height: 8));
               final item = items[index];
-              return _AddonTile(
-                info: item,
-                autofocus: index == 0,
-                onTap: () => Navigator.of(context).pushNamed(
-                  AppRoutes.addonDetails,
-                  arguments: item.manifest.id,
+              children.add(
+                _AddonTile(
+                  info: item,
+                  autofocus: index == 0,
+                  onTap: () => Navigator.of(context).pushNamed(
+                    AppRoutes.addonDetails,
+                    arguments: item.manifest.id,
+                  ),
                 ),
               );
-            },
+            }
+          }
+          return ListView(
+            children: children,
           );
         },
       ),
@@ -95,6 +146,71 @@ class _UpdatesAction extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Entrada do hub (T6): cartao focavel por toque, teclado e
+/// controle remoto que leva direto ao fluxo.
+class _EntryTile extends StatelessWidget {
+  const _EntryTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      color: const Color(0xFF1C1C1E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: TvLayout.isTv(context)
+                    ? TvLayout.tokensOf(context).iconPrimary
+                    : 28,
+              ),
+              SizedBox(width: TvLayout.spacing(context, 12)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white54),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

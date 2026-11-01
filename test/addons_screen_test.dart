@@ -193,5 +193,59 @@ void main() {
       expect(find.text('Demonstração sem conteúdo real.'),
           findsOneWidget);
     });
+
+    testWidgets('três entradas levam direto a cada fluxo', (tester) async {
+      final harness = _Harness();
+      await harness.install('demo.catalogo');
+      await harness.pump(tester);
+      await tester.tap(find.byTooltip('Add-ons'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Meus add-ons (1)'), findsOneWidget);
+      expect(find.text('Instalar de repositório'), findsOneWidget);
+      expect(find.text('Instalar de zip'), findsOneWidget);
+
+      await tester.tap(find.text('Instalar de repositório'));
+      await tester.pumpAndSettle();
+      expect(find.text('Repositórios'), findsOneWidget);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Instalar de zip'));
+      await tester.pumpAndSettle();
+      expect(find.text('Instalar add-on'), findsOneWidget);
+    });
+
+    testWidgets('estado vazio aponta para as duas formas de instalar',
+        (tester) async {
+      final harness = _Harness();
+      await harness.pump(tester);
+      await tester.tap(find.byTooltip('Add-ons'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nenhum add-on instalado'), findsOneWidget);
+      expect(find.text('Repositórios'), findsOneWidget);
+      expect(find.text('Arquivo ou link'), findsOneWidget);
+
+      await tester.tap(find.text('Repositórios'));
+      await tester.pumpAndSettle();
+      expect(find.text('Adicionar repositório'), findsOneWidget);
+    });
+
+    testWidgets('cabe em 360 dp com e sem instalados', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 640));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final harness = _Harness();
+      await harness.install('demo.catalogo');
+      await harness.pump(tester);
+      await tester.tap(find.byTooltip('Add-ons'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await harness.addons.uninstall('demo.catalogo');
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Nenhum add-on instalado'), findsOneWidget);
+    });
   });
 }
