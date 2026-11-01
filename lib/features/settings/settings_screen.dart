@@ -361,8 +361,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       prefs.update(current.copyWith(restoreWindowGeometry: v)),
                 ),
               ]),
-              // Referencia de leitura: a spec manda deixar os atalhos
-              // configuraveis "futuramente" (12.3), nao nesta versao.
               _Section('Menu principal', [
                 for (final destination in MainDestination.values)
                   SwitchListTile(
@@ -379,21 +377,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     )),
                   ),
               ]),
+              // Atalhos: editaveis no computador e na TV (teclado/controle).
+              // No celular sem teclado a secao e so referencia: nao ha como
+              // pressionar a nova tecla, entao nada de edicao nem restaurar.
               _Section('Atalhos', [
                 for (final action in ShortcutAction.values)
                   ListTile(
                     dense: true,
                     title: Text(action.label),
                     trailing: Text(shortcutKeyLabel(current.keyFor(action))),
-                    onTap: () => _captureShortcut(action),
+                    onTap: MobileMode.of(context)
+                        ? null
+                        : () => _captureShortcut(action),
                   ),
-                ListTile(
-                  dense: true,
-                  title: const Text('Restaurar padrão'),
-                  trailing: const Icon(Icons.restart_alt),
-                  onTap: () =>
-                      prefs.update(current.copyWith(shortcuts: const {})),
-                ),
+                if (!MobileMode.of(context))
+                  ListTile(
+                    dense: true,
+                    title: const Text('Restaurar padrão'),
+                    trailing: const Icon(Icons.restart_alt),
+                    onTap: () =>
+                        prefs.update(current.copyWith(shortcuts: const {})),
+                  ),
                 const _ShortcutRow(
                     keys: 'Espaço', action: 'Reproduzir / pausar'),
                 const _ShortcutRow(

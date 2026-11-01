@@ -18,15 +18,17 @@ import 'package:player/services/window_service.dart';
 
 /// Atalhos de teclado configuraveis, pelo app inteiro.
 class _Harness {
-  _Harness()
+  _Harness({this.mobile = false, bool tv = false})
       : preferences = InMemoryPreferencesService(),
         library = InMemoryLibraryService(),
         history = InMemoryHistoryService(),
         guard = StartupGuard(InMemoryLocalStore()),
         addons = LocalAddonService(InMemoryLocalStore()) {
-    preferences.update(preferences.current.copyWith(showOnboarding: false));
+    preferences.update(
+        preferences.current.copyWith(showOnboarding: false, tvMode: tv));
   }
 
+  final bool mobile;
   final InMemoryPreferencesService preferences;
   final InMemoryLibraryService library;
   final InMemoryHistoryService history;
@@ -43,6 +45,7 @@ class _Harness {
         windowService: windows,
         addonService: addons,
         startupGuard: guard,
+        mobilePlatform: mobile,
         diagnosticsService: DiagnosticsService(
           store: InMemoryLocalStore(),
           preferences: preferences,
@@ -55,11 +58,12 @@ class _Harness {
       );
 }
 
-Future<_Harness> _boot(WidgetTester tester) async {
+Future<_Harness> _boot(WidgetTester tester,
+    {bool mobile = false, bool tv = false}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(1264, 900);
   addTearDown(tester.view.reset);
-  final harness = _Harness();
+  final harness = _Harness(mobile: mobile, tv: tv);
   await tester.pumpWidget(harness.app);
   await tester.pumpAndSettle();
   return harness;
@@ -164,6 +168,34 @@ void main() {
       }
       expect(find.text('Reproduzir / pausar'), findsOneWidget);
       expect(find.text('Espaço'), findsOneWidget);
+    });
+
+    testWidgets('celular: Atalhos e so referencia, sem edicao nem restaurar',
+        (tester) async {
+      await _boot(tester, mobile: true);
+      await tester.tap(find.descendant(
+          of: find.byType(NavigationBar), matching: find.text('Ajustes')));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Atalhos'), 200,
+          scrollable: find.byType(Scrollable).last);
+
+      final row = find.widgetWithText(ListTile, 'Mudo');
+      await tester.scrollUntilVisible(row, 200,
+          scrollable: find.byType(Scrollable).last);
+      await tester.ensureVisible(row);
+      await tester.pumpAndSettle();
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      expect(find.text('Pressione a nova tecla'), findsNothing);
+      expect(find.text('Restaurar padrão'), findsNothing);
+      expect(find.text('Reproduzir / pausar'), findsOneWidget);
+    });
+
+    testWidgets('TV: Atalhos continua editavel', (tester) async {
+      await _boot(tester, tv: true);
+      await _openSettings(tester);
+      await _tapRow(tester, 'Mudo');
+      expect(find.text('Pressione a nova tecla'), findsOneWidget);
     });
 
     testWidgets('trocar a tecla e restaurar o padrao', (tester) async {
