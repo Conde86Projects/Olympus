@@ -294,6 +294,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ]),
               // Referencia de leitura: a spec manda deixar os atalhos
               // configuraveis "futuramente" (12.3), nao nesta versao.
+              _Section('Menu principal', [
+                for (final destination in MainDestination.values)
+                  SwitchListTile(
+                    title: Text(destination.label),
+                    value: !current.hiddenDestinations.contains(destination),
+                    onChanged: (visible) => prefs.update(current.copyWith(
+                      hiddenDestinations: [
+                        for (final d in MainDestination.values)
+                          if (d == destination
+                              ? !visible
+                              : current.hiddenDestinations.contains(d))
+                            d,
+                      ],
+                    )),
+                  ),
+              ]),
               const _Section('Atalhos', [
                 _ShortcutRow(keys: 'Espaço', action: 'Reproduzir / pausar'),
                 _ShortcutRow(

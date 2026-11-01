@@ -114,7 +114,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// Destino pedido na saida (fim do video: Biblioteca/Inicio); null
   /// volta ao lugar de onde o usuario veio.
-  MainDestination? _exitDestination;
+  ExitTarget? _exitDestination;
 
   /// Saida real (pop) vs troca de item (replace): so a saida libera
   /// o motor no dispose. Padrao desligado = _playNext nao zera nada.
@@ -1431,9 +1431,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                                   next == null ? null : () => _playNext(next),
                               onClose: _exitPlayer,
                               onGoLibrary: () =>
-                                  _exitPlayer(MainDestination.library),
+                                  _exitPlayer(ExitTarget.library),
                               onGoHome: () =>
-                                  _exitPlayer(MainDestination.home),
+                                  _exitPlayer(ExitTarget.home),
                               onShowDetails: _showErrorDetails,
                               onPickOther: _pickOtherVideo,
                               onBackToAutomatic: _hlsVariants.isNotEmpty &&
@@ -1786,7 +1786,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// Saida pedida de proposito (X, Fechar do overlay, Q): sai salvando
   /// direto, sem o passo "BACK esconde a barra" da TV.
-  void _exitPlayer([MainDestination? destination]) {
+  void _exitPlayer([ExitTarget? destination]) {
     _exitRequested = true;
     _exitDestination = destination;
     Navigator.of(context).maybePop();
