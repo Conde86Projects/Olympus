@@ -28,6 +28,7 @@ import 'package:player/features/player/video_area.dart';
 import 'package:player/models/addon_catalog_item.dart';
 import 'package:player/models/history_entry.dart';
 import 'package:player/models/media_item.dart';
+import 'package:player/models/preferences.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/models/shortcut_action.dart';
 import 'package:player/services/media_permission_service.dart';
@@ -1367,17 +1368,24 @@ class _PlayerScreenState extends State<PlayerScreen>
           if (didPop) return;
           // Mesma hierarquia do _onBack (spec 18): dialogo e tratado
           // pela propria rota; tela cheia e cinema saem sem fechar.
+          // A saida pedida (_exitPlayer) fica sem efeito nesses retornos:
+          // zera para o proximo Voltar nao cair no destino por engano.
           if (_fullscreen) {
+            _exitRequested = false;
+            _exitDestination = null;
             await _toggleFullscreen();
             return;
           }
           if (_cinema) {
+            _exitRequested = false;
+            _exitDestination = null;
             _toggleCinema();
             return;
           }
           // TV: com a barra visivel, o primeiro BACK so a esconde; o
           // segundo sai salvando. X/Fechar/Q saem direto (_exitPlayer).
           if (_tvMode && _controlsVisible && !_overlayUp && !_exitRequested) {
+            _exitDestination = null;
             _hideControls();
             return;
           }
@@ -1451,8 +1459,16 @@ class _PlayerScreenState extends State<PlayerScreen>
                               onPlayNext:
                                   next == null ? null : () => _playNext(next),
                               onClose: _exitPlayer,
-                              onGoLibrary: () =>
-                                  _exitPlayer(ExitTarget.library),
+                              // Biblioteca escondida no Menu principal: o
+                              // botao some (no celular a aba nao existe).
+                              onGoLibrary: widget
+                                      .dependencies
+                                      .preferencesService
+                                      .current
+                                      .hiddenDestinations
+                                      .contains(MainDestination.library)
+                                  ? null
+                                  : () => _exitPlayer(ExitTarget.library),
                               onGoHome: () =>
                                   _exitPlayer(ExitTarget.home),
                               onShowDetails: _showErrorDetails,
@@ -1736,16 +1752,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final modalUp = _panelOpen || _overlayUp;
     final prefs = widget.dependencies.preferencesService.current;
     LogicalKeyboardKey keyOf(ShortcutAction a) => prefs.keyFor(a);
-    VoidCallback guarded(VoidCallback action) => () {
-          final focus = FocusManager.instance.primaryFocus?.context;
-          if (focus != null &&
-              (focus.widget is EditableText ||
-                  focus.findAncestorWidgetOfExactType<EditableText>() !=
-                      null)) {
-            return;
-          }
-          action();
-        };
+    const guarded = guardedByTextField;
     return {
       // Espaco visivel alterna play/pause; oculto, o handler global
       // cuida (so um dos dois existe por vez: sem disparo duplo).
@@ -2212,13 +2219,17 @@ class _PlayerScreenState extends State<PlayerScreen>
         title: 'Escolher vídeo');
     if (!mounted) return;
     if (path == null || path.isEmpty) return;
-    final saved = await widget.dependencies.libraryService.upsert(MediaItem(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      title: titleFromSource(path),
-      sourceType: MediaSourceType.local,
-      source: path,
-      addedAt: DateTime.now(),
-    ));
+    // Fonte ja cadastrada: reaproveita o item (o upsert trocaria o
+    // progresso pelos nulos do item novo e perderia o "continuar").
+    final library = widget.dependencies.libraryService;
+    final saved = library.findBySource(path) ??
+        await library.upsert(MediaItem(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          title: titleFromSource(path),
+          sourceType: MediaSourceType.local,
+          source: path,
+          addedAt: DateTime.now(),
+        ));
     if (!mounted) return;
     unawaited(ThumbnailService.backfill(
         widget.dependencies.libraryService, saved));
@@ -2332,3 +2343,16 @@ class _PlayerScreenState extends State<PlayerScreen>
 
 /// Area do video: superficie da implementacao com estados sobrepostos
 /// (carregando, erro, fim). A tela nao conhece a biblioteca de video.
+
+/// Envolve a acao de um atalho de tecla para que ela NAO dispare enquanto
+/// o foco esta num campo de texto (digitar "m" nao pode mutar o video).
+@visibleForTesting
+VoidCallback guardedByTextField(VoidCallback action) => () {
+      final focus = FocusManager.instance.primaryFocus?.context;
+      if (focus != null &&
+          (focus.widget is EditableText ||
+              focus.findAncestorWidgetOfExactType<EditableText>() != null)) {
+        return;
+      }
+      action();
+    };

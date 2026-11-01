@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/routes.dart';
+import 'package:player/features/player/player_screen.dart';
+import 'package:player/services/shared_preferences_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/preferences.dart';
@@ -18,15 +21,17 @@ import 'package:player/services/window_service.dart';
 
 /// Atalhos de teclado configuraveis, pelo app inteiro.
 class _Harness {
-  _Harness()
+  _Harness({this.mobile = false, bool tv = false})
       : preferences = InMemoryPreferencesService(),
         library = InMemoryLibraryService(),
         history = InMemoryHistoryService(),
         guard = StartupGuard(InMemoryLocalStore()),
         addons = LocalAddonService(InMemoryLocalStore()) {
-    preferences.update(preferences.current.copyWith(showOnboarding: false));
+    preferences.update(
+        preferences.current.copyWith(showOnboarding: false, tvMode: tv));
   }
 
+  final bool mobile;
   final InMemoryPreferencesService preferences;
   final InMemoryLibraryService library;
   final InMemoryHistoryService history;
@@ -43,6 +48,7 @@ class _Harness {
         windowService: windows,
         addonService: addons,
         startupGuard: guard,
+        mobilePlatform: mobile,
         diagnosticsService: DiagnosticsService(
           store: InMemoryLocalStore(),
           preferences: preferences,
@@ -55,11 +61,12 @@ class _Harness {
       );
 }
 
-Future<_Harness> _boot(WidgetTester tester) async {
+Future<_Harness> _boot(WidgetTester tester,
+    {bool mobile = false, bool tv = false}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(1264, 900);
   addTearDown(tester.view.reset);
-  final harness = _Harness();
+  final harness = _Harness(mobile: mobile, tv: tv);
   await tester.pumpWidget(harness.app);
   await tester.pumpAndSettle();
   return harness;
@@ -166,6 +173,34 @@ void main() {
       expect(find.text('Espaço'), findsOneWidget);
     });
 
+    testWidgets('celular: Atalhos e so referencia, sem edicao nem restaurar',
+        (tester) async {
+      await _boot(tester, mobile: true);
+      await tester.tap(find.descendant(
+          of: find.byType(NavigationBar), matching: find.text('Ajustes')));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Atalhos'), 200,
+          scrollable: find.byType(Scrollable).last);
+
+      final row = find.widgetWithText(ListTile, 'Mudo');
+      await tester.scrollUntilVisible(row, 200,
+          scrollable: find.byType(Scrollable).last);
+      await tester.ensureVisible(row);
+      await tester.pumpAndSettle();
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      expect(find.text('Pressione a nova tecla'), findsNothing);
+      expect(find.text('Restaurar padrão'), findsNothing);
+      expect(find.text('Reproduzir / pausar'), findsOneWidget);
+    });
+
+    testWidgets('TV: Atalhos continua editavel', (tester) async {
+      await _boot(tester, tv: true);
+      await _openSettings(tester);
+      await _tapRow(tester, 'Mudo');
+      expect(find.text('Pressione a nova tecla'), findsOneWidget);
+    });
+
     testWidgets('trocar a tecla e restaurar o padrao', (tester) async {
       final harness = await _boot(tester);
       await _openSettings(tester);
@@ -255,6 +290,59 @@ void main() {
       expect(find.byTooltip('Fechar'), findsOneWidget);
       await _press(tester, LogicalKeyboardKey.keyW);
       expect(find.byTooltip('Fechar'), findsNothing);
+    });
+  });
+
+  group('persistencia e campo de texto (ticket 23)', () {
+    test('o atalho trocado sobrevive a fechar e reabrir o app', () async {
+      SharedPreferences.setMockInitialValues({});
+      final first = SharedPreferencesPreferencesService();
+      await first.load();
+      await first.update(first.current.copyWith(
+          shortcuts: {ShortcutAction.mute: LogicalKeyboardKey.keyX}));
+
+      // "Reabre o app": servico novo lendo o mesmo armazenamento.
+      final second = SharedPreferencesPreferencesService();
+      await second.load();
+      expect(second.current.keyFor(ShortcutAction.mute),
+          LogicalKeyboardKey.keyX);
+      expect(second.current.keyFor(ShortcutAction.fullscreen),
+          LogicalKeyboardKey.keyF);
+    });
+
+    testWidgets('a tecla do atalho nao dispara com um campo de texto em foco',
+        (tester) async {
+      var disparos = 0;
+      final field = FocusNode();
+      final outside = FocusNode();
+      addTearDown(field.dispose);
+      addTearDown(outside.dispose);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.keyM):
+                  guardedByTextField(() => disparos++),
+            },
+            child: Column(children: [
+              TextField(focusNode: field),
+              Focus(focusNode: outside, child: const Text('fora')),
+            ]),
+          ),
+        ),
+      ));
+
+      field.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyM);
+      await tester.pump();
+      expect(disparos, 0);
+
+      outside.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyM);
+      await tester.pump();
+      expect(disparos, 1);
     });
   });
 }

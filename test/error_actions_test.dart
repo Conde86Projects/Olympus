@@ -176,6 +176,33 @@ void main() {
       expect(find.text('novo'), findsWidgets);
     });
 
+    testWidgets('fonte ja cadastrada mantem o continuar de onde parou',
+        (tester) async {
+      final h = await _open(tester,
+          local: true, pick: (_, {required title}) async => r'C:\v\novo.mp4');
+      await h.library.upsert(MediaItem(
+        id: 'antigo',
+        title: 'Novo antigo',
+        sourceType: MediaSourceType.local,
+        source: r'C:\v\novo.mp4',
+        lastPosition: const Duration(minutes: 5),
+        lastPlayedAt: DateTime(2026, 2, 1),
+        addedAt: DateTime(2026, 1, 1),
+      ));
+      h.player.simulateError(PlaybackErrorKind.source);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Escolher outro vídeo'));
+      await tester.pumpAndSettle();
+
+      final same =
+          h.library.items.where((i) => i.source == r'C:\v\novo.mp4').toList();
+      expect(same, hasLength(1));
+      expect(same.single.id, 'antigo');
+      expect(same.single.lastPosition, const Duration(minutes: 5));
+      expect(same.single.lastPlayedAt, DateTime(2026, 2, 1));
+    });
+
     testWidgets('cancelar o seletor volta ao erro', (tester) async {
       final h = await _open(tester,
           local: true, pick: (_, {required title}) async => null);

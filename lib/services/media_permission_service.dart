@@ -21,7 +21,8 @@ class MediaPermissionService {
     } on MissingPluginException {
       return true;
     } catch (_) {
-      return false;
+      // Sem prova de falta de acesso, nao afirma que falta.
+      return true;
     }
   }
 

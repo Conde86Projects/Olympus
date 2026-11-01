@@ -52,6 +52,12 @@ void main() {
       expect(await service.ensureAccess(), isFalse);
     });
 
+    test('excecao inesperada do canal nao afirma falta de acesso', () async {
+      messenger.setMockMethodCallHandler(
+          channel, (call) async => throw PlatformException(code: 'boom'));
+      expect(await service.hasAccess, isTrue);
+    });
+
     test('sem channel (desktop) libera o acesso', () async {
       // Sem mock: MissingPluginException -> true (não trava; o F9
       // explica se o open falhar de verdade).
