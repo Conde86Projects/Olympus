@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/playback_state.dart';
+import 'package:player/services/media_permission_service.dart';
 import 'package:player/services/media_player_service.dart';
 import 'package:player/services/playback_watchdog.dart';
 
@@ -42,7 +43,9 @@ class SupervisedPlayerService implements MediaPlayerService {
     this._inner, {
     this.loadTimeout = AppConstants.loadTimeout,
     this.bufferTimeout = AppConstants.bufferTimeout,
-  }) {
+    Future<bool> Function()? hasMediaAccess,
+  }) : _hasMediaAccess =
+            hasMediaAccess ?? (() => const MediaPermissionService().hasAccess) {
     _watchdog = PlaybackWatchdog(
       loadTimeout: loadTimeout,
       bufferTimeout: bufferTimeout,
@@ -56,6 +59,7 @@ class SupervisedPlayerService implements MediaPlayerService {
   }
 
   final MediaPlayerService _inner;
+  final Future<bool> Function() _hasMediaAccess;
   final Duration loadTimeout;
   final Duration bufferTimeout;
 
@@ -105,7 +109,19 @@ class SupervisedPlayerService implements MediaPlayerService {
       } catch (_) {
         // Parada best-effort: o erro segue.
       }
-      _fail(PlaybackErrorKind.source, generation);
+      // No Android recente, sem permissao de midia o sistema esconde o
+      // arquivo e exists() devolve false: sem acesso o erro e de
+      // permissao, nao de arquivo ausente.
+      var hasAccess = true;
+      try {
+        hasAccess = await _hasMediaAccess();
+      } catch (_) {
+        // Sem resposta da plataforma: trata como arquivo ausente.
+      }
+      _fail(
+        hasAccess ? PlaybackErrorKind.source : PlaybackErrorKind.permission,
+        generation,
+      );
       return;
     }
     _logEvent('precheck', outcome: 'ok');
