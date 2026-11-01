@@ -198,7 +198,7 @@ Ordem por valor e risco. Cada fatia pode ser entregue e testada sozinha.
 ### Resolução dos 20 itens (conferida em 01/11/2026)
 
 1. **Corrigido:** `docs/Olympus.md` agora diz `0.3.5` (pubspec `0.3.5+1011`, `appVersion` `0.3.5`).
-2. **Corrigido no que é atual:** `docs/Olympus.md` registra 930 testes (`flutter test`, 01/11/2026). Os números de `BACKLOG.md`, `NOTAS_2026-10-24.md` e do checklist da RC1 são de datas passadas e ficam como registro histórico.
+2. **Corrigido no que é atual:** `docs/Olympus.md` registra 942 testes (`flutter test`, 01/11/2026). Os números de `BACKLOG.md`, `NOTAS_2026-10-24.md` e do checklist da RC1 são de datas passadas e ficam como registro histórico.
 3. **Corrigido:** o roadmap da RC1 em `docs/Olympus.md` foi reescrito como "Concluído". As duas linhas já estavam marcadas.
 4. **Corrigido:** "Próxima etapa" reescrita; a configuração do Windows já está feita.
 5. **Corrigido:** modo seguro, exportação de logs e atualizações de add-ons saíram de "Futuro", e o estilo das legendas também (feito na 0.3.0).

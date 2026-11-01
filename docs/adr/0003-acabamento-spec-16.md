@@ -26,7 +26,7 @@ O ciclo da spec #16 (tickets #17 a #27) fecha o que a Especificação promete e 
 
 ## Consequences
 
-A configuração padrão não muda nada para quem não mexer em nada. Preferências novas (`textSize`, `hiddenDestinations`, `shortcuts`) caem no padrão quando o valor salvo é desconhecido. O que depende de aparelho (foco do painel e fim do vídeo na TCL, seletor e permissão no emulador, atalhos e texto maior no Windows) fica para o checklist da versão que publicar o ciclo.
+A configuração padrão não muda nada para quem não mexer em nada. Preferências novas (`textSize`, `hiddenDestinations`, `shortcuts`) caem no padrão quando o valor salvo é desconhecido. Foram conferidos em aparelho em 01/11/2026: na TCL, a data do cartão, o fim do vídeo, o menu principal e o foco do painel; no emulador, o texto maior, o erro de permissão, as informações técnicas e o aviso de legenda ao lado. Fica para o checklist da versão que publicar o ciclo: atalhos e texto maior no Windows, e as legendas de mesmo nome em pastas diferentes.
 
 ## Em aberto
 

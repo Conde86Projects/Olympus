@@ -7,7 +7,7 @@ comando direto do dono, no ticket #28 da spec #16.
 Versão publicada: `0.3.5+1011` (tag e release `v0.3.5`, 01/11/2026).
 O ciclo de acabamento da spec #16 (tickets #17 a #27) está na branch
 `integracao/acabamento-16`, no PR #29, **não publicado**. Itens marcados
-"(PR #29)" abaixo só existem nessa branch. Suíte: 930 testes aprovados e
+"(PR #29)" abaixo só existem nessa branch. Suíte: 942 testes aprovados e
 `flutter analyze` limpo nessa branch. Decisões do ciclo:
 `docs/adr/0003-acabamento-spec-16.md`.
 Foco: functions, buttons, pages, pendências gerais.
@@ -237,8 +237,13 @@ contra `lib/`, `test/`, `git tag` e `gh issue`.
 - Menu principal escolhido pelo usuário; atalhos configuráveis.
 - Celular retoma o play depois de um seletor do sistema; legendas homônimas;
   aviso de legenda ao lado não encontrada.
-- Falta conferir em aparelho: foco do painel e fim do vídeo na TCL; seletor e
-  permissão no emulador; atalhos e texto maior no Windows.
+- Conferido em 01/11/2026 na TCL: data do cartão, fim do vídeo com Biblioteca e
+  Início, menu principal (desligar e ligar Add-ons) e foco do painel de opções.
+  Conferido no emulador: tamanho do texto, erro de permissão (incluindo "Tentar
+  novamente" pedindo a permissão), informações técnicas e aviso de legenda ao lado.
+  Falta conferir no Windows: atalhos configuráveis, tamanho do texto e a legenda
+  ao lado em `.vtt` e `.ass`; e a legenda de mesmo nome em pastas diferentes, que
+  só tem teste automático.
 
 ### Em aberto
 

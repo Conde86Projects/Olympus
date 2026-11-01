@@ -333,7 +333,7 @@ Regra vigente, travada em testes (`test/volume_platform_test.dart`,
 ## Ciclo de acabamento da spec #16 (PR #29, não publicado)
 
 Entregue na branch `integracao/acabamento-16` (tickets #17 a #27); decisões em
-`docs/adr/0003-acabamento-spec-16.md`; 930 testes aprovados e análise limpa.
+`docs/adr/0003-acabamento-spec-16.md`; 942 testes aprovados e análise limpa.
 
 - Feito: tamanho do texto; data do último acesso; informações técnicas e
   escolha de outra fonte nos erros; permissão de arquivos separada de arquivo

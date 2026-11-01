@@ -6,9 +6,12 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
-Ciclo de acabamento da spec #16, no PR #29. Ainda não foi publicado nem
-conferido em todos os aparelhos. Na execução de 01/11/2026, a suíte passou com 930
-testes e a análise estática ficou limpa.
+Ciclo de acabamento da spec #16, no PR #29. Ainda não foi publicado. Na execução de
+01/11/2026, a suíte passou com 942 testes e a análise estática ficou limpa. Conferido
+na TCL: data do cartão, fim do vídeo com Biblioteca e Início, menu principal e foco do
+painel de opções. Conferido no emulador: tamanho do texto, erro de permissão,
+informações técnicas e aviso de legenda ao lado. Falta conferir no Windows: atalhos e
+o restante.
 
 ### Adicionado
 

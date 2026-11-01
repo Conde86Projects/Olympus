@@ -71,7 +71,7 @@ Refinamento de UX                        concluído
 Composição mobile (celular)              concluída
 Saída direta de vídeo (Android/TV)       concluída
 Padrão visual único (TV/desktop/celular) concluído
-Testes automatizados                     verdes (930 na execução do ciclo #16)
+Testes automatizados                     verdes (942 na execução do ciclo #16)
 flutter analyze                          limpo
 Estilo das legendas (0.3.0)              concluído
 Legenda externa e ao lado (0.3.2/0.3.3)  concluídas
@@ -384,7 +384,7 @@ Se ocorrer erro relacionado a `atlstr.h`, o componente ATL do MSVC não está in
 
 ## Testes
 
-A suíte atual possui **930 testes aprovados** (`flutter test` em `integracao/acabamento-16`, 01/11/2026; registrar o número real antes de cada release). `flutter analyze` sem avisos.
+A suíte atual possui **942 testes aprovados** (`flutter test` em `integracao/acabamento-16`, 01/11/2026; registrar o número real antes de cada release). `flutter analyze` sem avisos.
 
 Execute:
 
