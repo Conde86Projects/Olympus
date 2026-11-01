@@ -378,7 +378,9 @@ class MediaKitPlayerService implements MediaPlayerService {
     }
     final track = SubtitleTrack.uri(
       Uri.file(path).toString(),
-      title: path.split(RegExp(r'[\\/]')).last,
+      // O titulo leva o caminho todo: e ele que identifica o arquivo na
+      // lista do motor. O rotulo mostrado sai de [subtitleLabel].
+      title: path,
     );
     // O mesmo arquivo de novo vira a faixa que ja existe, sem duplicar.
     if (_externalSubtitles.contains(path) &&
@@ -515,7 +517,7 @@ class MediaKitPlayerService implements MediaPlayerService {
         .where((t) => isReal(t.id))
         .map((t) => MediaTrack(
               id: t.id,
-              label: _label(t),
+              label: subtitleLabel(t, _tracks.subtitle),
               // Legenda externa chega com o idioma "auto": nao e um idioma.
               language: t.language == 'auto' ? null : t.language,
               isExternal: t.language == 'auto',
@@ -567,6 +569,23 @@ class MediaKitPlayerService implements MediaPlayerService {
     final language = track.language as String?;
     if (language != null && language.isNotEmpty) return language;
     return 'Faixa ${track.id}';
+  }
+
+  /// Rotulo da legenda. Externa tem o caminho como titulo: mostra o nome do
+  /// arquivo, e a pasta tambem quando outra legenda aberta tem o mesmo nome.
+  @visibleForTesting
+  static String subtitleLabel(SubtitleTrack track, List<SubtitleTrack> all) {
+    if (track.language != 'auto') return _label(track);
+    final title = track.title;
+    if (title == null || title.isEmpty) return _label(track);
+    final parts = title.split(RegExp(r'[\\/]'));
+    final name = parts.last;
+    final repeated = all.any((t) =>
+        t.id != track.id &&
+        t.language == 'auto' &&
+        (t.title ?? '').split(RegExp(r'[\\/]')).last == name);
+    if (repeated && parts.length > 1) return '${parts[parts.length - 2]}/$name';
+    return name;
   }
 
   /// Sentinelas do mpv viram null (trilha desativada).
