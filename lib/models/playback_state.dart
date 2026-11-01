@@ -26,7 +26,14 @@ enum PlaybackRepeatMode { off, one, all }
 /// Tipo do erro de reproducao (spec 17, 26). Decide a mensagem
 /// exibida: rede, fonte, decodificador, tempo esgotado ou desconhecido.
 /// Erros nativos chegam como texto e passam por [classifyPlaybackError].
-enum PlaybackErrorKind { network, source, decoder, timeout, unknown }
+enum PlaybackErrorKind {
+  network,
+  source,
+  permission,
+  decoder,
+  timeout,
+  unknown
+}
 
 /// Classifica a mensagem nativa (mpv) por palavras-chave. Heuristica
 /// assumida: as strings do motor nao sao contrato estavel, entao o
@@ -38,6 +45,15 @@ PlaybackErrorKind classifyPlaybackError(String? message) {
   if (text.contains('timed out') || text.contains('timeout')) {
     return PlaybackErrorKind.timeout;
   }
+  // Falta de permissao de leitura tem tipo proprio, separado de arquivo
+  // ausente. Vem antes da fonte e da rede: o mpv diz "Failed to open ...
+  // Permission denied", que sozinho cairia em rede.
+  if (text.contains('permission denied') ||
+      text.contains('eperm') ||
+      text.contains('eacces') ||
+      text.contains('access is denied')) {
+    return PlaybackErrorKind.permission;
+  }
   if (text.contains('404') ||
       // 403 e resposta da fonte (link revogado/bloqueado), nao falta
       // de rede: vinha caindo em "http error" -> rede (TCL, 11/10/2026).
@@ -45,13 +61,7 @@ PlaybackErrorKind classifyPlaybackError(String? message) {
       text.contains('forbidden') ||
       text.contains('not found') ||
       text.contains('no such file') ||
-      text.contains('unable to open') ||
-      // F9 (Fase 4b): arquivo local sem permissao de leitura. Vem
-      // antes da rede porque o mpv diz "Failed to open ...", que
-      // sozinho cairia em rede (diagnostico errado no aparelho).
-      text.contains('permission denied') ||
-      text.contains('eperm') ||
-      text.contains('access is denied')) {
+      text.contains('unable to open')) {
     return PlaybackErrorKind.source;
   }
   if (text.contains('codec') ||
@@ -91,6 +101,7 @@ String mergePlaybackError(String? previous, String next) {
 String playbackErrorKindLabel(PlaybackErrorKind kind) => switch (kind) {
       PlaybackErrorKind.network => 'rede',
       PlaybackErrorKind.source => 'fonte',
+      PlaybackErrorKind.permission => 'permissão',
       PlaybackErrorKind.decoder => 'decodificador',
       PlaybackErrorKind.timeout => 'tempo esgotado',
       PlaybackErrorKind.unknown => 'desconhecido',
