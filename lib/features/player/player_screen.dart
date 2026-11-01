@@ -316,7 +316,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         _appliedAudio = true;
         _applyPreferredAudio(session);
       }
-      if (!_appliedSubtitles && session.subtitleTracks.isNotEmpty) {
+      if (!_appliedSubtitles && session.embeddedSubtitles.isNotEmpty) {
         _appliedSubtitles = true;
         _applyPreferredSubtitles(session);
       }
@@ -2068,7 +2068,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final player = widget.dependencies.playerService;
     final prefs = widget.dependencies.preferencesService.current;
     final id =
-        findTrackForLanguage(session.subtitleTracks, prefs.defaultSubtitle);
+        findTrackForLanguage(session.embeddedSubtitles, prefs.defaultSubtitle);
     if (id != null) {
       await player.selectSubtitle(id);
     } else if (!prefs.subtitlesByDefault) {

@@ -158,8 +158,11 @@ class NoOpMediaPlayerService implements MediaPlayerService {
 
   @override
   Future<void> addExternalSubtitle(String path) async {
-    final track =
-        MediaTrack(id: path, label: path.split(RegExp(r'[\\/]')).last);
+    final track = MediaTrack(
+      id: path,
+      label: path.split(RegExp(r'[\\/]')).last,
+      isExternal: true,
+    );
     _emit(session.copyWith(
       subtitleTracks: [...session.subtitleTracks, track],
       selectedSubtitleId: () => track.id,

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:media_kit/media_kit.dart' show SubtitleTrack;
+import 'package:media_kit/media_kit.dart' show SubtitleTrack, Track, Tracks;
 import 'package:player/features/open_media/tv_file_browser_screen.dart';
 import 'package:player/models/playback_state.dart';
 import 'package:player/services/media_kit_player_service.dart';
@@ -104,6 +104,20 @@ void main() {
     });
   });
 
+  test('preferencias so olham as legendas do proprio video', () {
+    const embedded = MediaTrack(id: '1', label: 'por', language: 'por');
+    const external =
+        MediaTrack(id: '2', label: 'externa.srt', isExternal: true);
+
+    expect(
+        const PlaybackSession(subtitleTracks: [external]).embeddedSubtitles,
+        isEmpty);
+    expect(
+        const PlaybackSession(subtitleTracks: [embedded, external])
+            .embeddedSubtitles,
+        [embedded]);
+  });
+
   group('faixa externa selecionada', () {
     final list = [
       const SubtitleTrack('1', 'por', 'pt'),
@@ -129,6 +143,63 @@ void main() {
           MediaKitPlayerService.isExternalSubtitleError(
               'tcp: Failed to resolve hostname'),
           isFalse);
+    });
+
+    group('fim do video', () {
+      test('a lista zerada no fim nao vale: o arquivo segue aberto', () {
+        expect(
+            MediaKitPlayerService.isEndOfFileReset(const Tracks(),
+                completed: true),
+            isTrue);
+        expect(
+            MediaKitPlayerService.isEndOfFileReset(const Track(),
+                completed: true),
+            isTrue);
+      });
+
+      test('lista zerada ao abrir outro arquivo vale', () {
+        expect(
+            MediaKitPlayerService.isEndOfFileReset(const Tracks(),
+                completed: false),
+            isFalse);
+      });
+
+      test('faixa escolhida depois do fim vale', () {
+        expect(
+            MediaKitPlayerService.isEndOfFileReset(
+                Track(subtitle: list.first),
+                completed: true),
+            isFalse);
+      });
+    });
+
+    group('apos falha, volta para a legenda anterior', () {
+      test('faixa embutida', () {
+        expect(
+            MediaKitPlayerService.subtitleToRestore(list.first, list).id, '1');
+      });
+
+      test('externa, pela faixa da lista e sem abrir o arquivo de novo', () {
+        final restored = MediaKitPlayerService.subtitleToRestore(
+            SubtitleTrack.uri('file:///a/externa.srt', title: 'externa.srt'),
+            list);
+        expect(restored.id, '2');
+        expect(restored.uri, isFalse);
+      });
+
+      test('desativada continua desativada', () {
+        expect(
+            MediaKitPlayerService.subtitleToRestore(SubtitleTrack.no(), list).id,
+            'no');
+      });
+
+      test('externa fora da lista desativa', () {
+        expect(
+            MediaKitPlayerService.subtitleToRestore(
+                SubtitleTrack.uri('file:///a/nova.srt', title: 'nova.srt'),
+                list).id,
+            'no');
+      });
     });
 
     test('antes de entrar na lista, mantem o endereco', () {

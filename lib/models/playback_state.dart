@@ -1,9 +1,18 @@
 /// Faixa de audio ou legenda disponivel na midia atual.
 class MediaTrack {
-  const MediaTrack({required this.id, required this.label, this.language});
+  const MediaTrack({
+    required this.id,
+    required this.label,
+    this.language,
+    this.isExternal = false,
+  });
 
   final String id;
   final String label;
+
+  /// Legenda aberta de um arquivo: nao vem do video e foi pedida agora, entao
+  /// as preferencias de legenda nao valem para ela.
+  final bool isExternal;
 
   /// Codigo de idioma da faixa (ex. "por", "eng"), quando o player informa.
   /// Usado para casar o idioma preferido das preferencias (spec 16).
@@ -153,6 +162,10 @@ class PlaybackSession {
   /// nativa vai para o log tecnico, nunca para a tela (pode conter
   /// caminhos e URLs).
   final PlaybackErrorKind? errorKind;
+
+  /// Legendas que vem do proprio video.
+  List<MediaTrack> get embeddedSubtitles =>
+      subtitleTracks.where((track) => !track.isExternal).toList();
 
   PlaybackSession copyWith({
     String? Function()? mediaId,

@@ -78,10 +78,12 @@ class MediaKitPlayerService implements MediaPlayerService {
         _emit();
       }),
       _player.stream.tracks.listen((tracks) {
+        if (isEndOfFileReset(tracks, completed: _completed)) return;
         _tracks = tracks;
         _emit();
       }),
       _player.stream.track.listen((track) {
+        if (isEndOfFileReset(track, completed: _completed)) return;
         _track = track;
         _emit();
       }),
@@ -160,6 +162,9 @@ class MediaKitPlayerService implements MediaPlayerService {
 
   /// Abrindo legenda externa: erro do motor nesse intervalo e da legenda.
   bool _addingSubtitle = false;
+
+  /// Legendas externas ja abertas neste arquivo (caminhos).
+  final Set<String> _externalSubtitles = {};
 
   NativePlayer get _native => _player.platform as NativePlayer;
 
@@ -260,6 +265,7 @@ class MediaKitPlayerService implements MediaPlayerService {
     _position = Duration.zero;
     _duration = Duration.zero;
     _tracks = const Tracks();
+    _externalSubtitles.clear();
     _emit(statusOverride: PlaybackStatus.loading);
     if (_compatOutput) await _restoreDirectOutput();
     final uri = item.sourceType == MediaSourceType.local
@@ -284,6 +290,7 @@ class MediaKitPlayerService implements MediaPlayerService {
     _position = Duration.zero;
     _duration = Duration.zero;
     _tracks = const Tracks();
+    _externalSubtitles.clear();
     _errorMessage = null;
     await _guard?.playbackStopped();
     await _player.stop();
@@ -363,16 +370,24 @@ class MediaKitPlayerService implements MediaPlayerService {
     if (!await File(path).exists()) {
       throw FileSystemException('Legenda nao encontrada', path);
     }
+    final track = SubtitleTrack.uri(
+      Uri.file(path).toString(),
+      title: path.split(RegExp(r'[\\/]')).last,
+    );
+    // O mesmo arquivo de novo vira a faixa que ja existe, sem duplicar.
+    if (_externalSubtitles.contains(path) &&
+        selectedSubtitleTrackId(track, _tracks.subtitle) != track.id) {
+      await _restoreSubtitle(track);
+      return;
+    }
+    final previous = _track.subtitle;
     var failed = false;
     final log = _player.stream.log.listen((entry) {
       if (entry.text.contains('sub-add')) failed = true;
     });
     _addingSubtitle = true;
     try {
-      await _player.setSubtitleTrack(SubtitleTrack.uri(
-        Uri.file(path).toString(),
-        title: path.split(RegExp(r'[\\/]')).last,
-      ));
+      await _player.setSubtitleTrack(track);
       // Os erros do motor chegam pelos streams logo depois do comando.
       await Future<void>.delayed(const Duration(milliseconds: 300));
     } finally {
@@ -380,9 +395,39 @@ class MediaKitPlayerService implements MediaPlayerService {
       await log.cancel();
     }
     if (failed) {
-      await _player.setSubtitleTrack(SubtitleTrack.no());
+      await _restoreSubtitle(previous);
       throw StateError('Legenda nao carregada');
     }
+    _externalSubtitles.add(path);
+  }
+
+  /// No fim do video o media_kit zera as faixas dele, mas o arquivo segue
+  /// aberto no motor, que nao as envia de novo ao voltar a tocar.
+  @visibleForTesting
+  static bool isEndOfFileReset(Object value, {required bool completed}) =>
+      completed && (value == const Tracks() || value == const Track());
+
+  /// A troca limpa o texto na tela, mas o motor nao saiu da faixa e so reenvia
+  /// quando o texto muda. Desligar antes faz a fala atual voltar na hora; a
+  /// espera deixa o motor notar o texto vazio.
+  Future<void> _restoreSubtitle(SubtitleTrack previous) async {
+    final track = subtitleToRestore(previous, _tracks.subtitle);
+    await _player.setSubtitleTrack(SubtitleTrack.no());
+    if (track.id == SubtitleTrack.no().id) return;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    await _player.setSubtitleTrack(track);
+  }
+
+  /// Faixa que volta quando uma legenda externa falha. Externa volta pela
+  /// faixa da lista: pelo endereco, o motor abriria o arquivo de novo.
+  @visibleForTesting
+  static SubtitleTrack subtitleToRestore(
+    SubtitleTrack previous,
+    List<SubtitleTrack> available,
+  ) {
+    final match =
+        _findById(available, selectedSubtitleTrackId(previous, available));
+    return match ?? (previous.uri ? SubtitleTrack.no() : previous);
   }
 
   @visibleForTesting
@@ -455,6 +500,7 @@ class MediaKitPlayerService implements MediaPlayerService {
               label: _label(t),
               // Legenda externa chega com o idioma "auto": nao e um idioma.
               language: t.language == 'auto' ? null : t.language,
+              isExternal: t.language == 'auto',
             ))
         .toList();
     final videoTracks = _tracks.video
