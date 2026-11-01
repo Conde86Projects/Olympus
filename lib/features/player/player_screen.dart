@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/main_navigation.dart';
 import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/routes.dart';
 import 'package:player/app/theme.dart';
@@ -111,6 +112,10 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// Saida intencional em curso (ver [_exitPlayer]).
   bool _exitRequested = false;
+
+  /// Destino pedido na saida (fim do video: Biblioteca/Inicio); null
+  /// volta ao lugar de onde o usuario veio.
+  ExitTarget? _exitDestination;
 
   /// Saida real (pop) vs troca de item (replace): so a saida libera
   /// o motor no dispose. Padrao desligado = _playNext nao zera nada.
@@ -1275,13 +1280,33 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// posicao sem pausar. O video segue tocando no minimizado e, se o
   /// app for encerrado la, a retomada nao se perde. No Windows o
   /// minimizar chega por [WindowService.minimized] (ver initState).
+  ///
+  /// No celular, qualquer seletor do sistema aberto de dentro do player
+  /// (legenda, arquivo) leva o app a segundo plano e o motor pausa ao
+  /// perder a superficie. Guarda se estava tocando ao sair e, ao voltar,
+  /// devolve o play so nesse caso; video pausado segue pausado.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.hidden ||
         state == AppLifecycleState.paused) {
+      // Os dois estados chegam em sequencia (hidden, depois paused): so
+      // o primeiro conta, antes de o motor pausar.
+      _playingBeforeBackground ??=
+          _session.status == PlaybackStatus.playing;
       unawaited(_saveSession(pause: false));
+    } else if (state == AppLifecycleState.resumed) {
+      final wasPlaying = _playingBeforeBackground ?? false;
+      _playingBeforeBackground = null;
+      if (_mobile &&
+          wasPlaying &&
+          _session.status == PlaybackStatus.paused) {
+        unawaited(widget.dependencies.playerService.play());
+      }
     }
   }
+
+  /// Estava tocando quando o app saiu de cena; null com o app em primeiro plano.
+  bool? _playingBeforeBackground;
 
   /// Overlay modal de erro ou fim de video no ar (spec 11, 17).
   bool get _overlayUp =>
@@ -1357,12 +1382,19 @@ class _PlayerScreenState extends State<PlayerScreen>
             return;
           }
           _exitRequested = false;
+          final destination = _exitDestination;
+          _exitDestination = null;
+          final navigator = Navigator.of(context);
+          final mobile = MobileMode.of(context);
           await _saveSession();
           // Saida real (nao troca de item): libera o motor no dispose.
           _stopOnDispose = true;
           if (!context.mounted) return;
           setState(() => _allowPop = true);
-          Navigator.of(context).pop();
+          navigator.pop();
+          if (destination != null) {
+            MainNavigation.go(navigator, destination, mobile: mobile);
+          }
         },
         child: CallbackShortcuts(
           bindings: _shortcuts(),
@@ -1419,6 +1451,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                               onPlayNext:
                                   next == null ? null : () => _playNext(next),
                               onClose: _exitPlayer,
+                              onGoLibrary: () =>
+                                  _exitPlayer(ExitTarget.library),
+                              onGoHome: () =>
+                                  _exitPlayer(ExitTarget.home),
                               onShowDetails: _showErrorDetails,
                               onPickOther: _pickOtherVideo,
                               onBackToAutomatic: _hlsVariants.isNotEmpty &&
@@ -1785,8 +1821,9 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// Saida pedida de proposito (X, Fechar do overlay, Q): sai salvando
   /// direto, sem o passo "BACK esconde a barra" da TV.
-  void _exitPlayer() {
+  void _exitPlayer([ExitTarget? destination]) {
     _exitRequested = true;
+    _exitDestination = destination;
     Navigator.of(context).maybePop();
   }
 
