@@ -108,6 +108,27 @@ void main() {
     expect(find.byTooltip('Configurações'), findsOneWidget);
   });
 
+  testWidgets(
+      'Biblioteca em tela cheia so sai da tela cheia; o Voltar seguinte '
+      'volta de onde veio', (tester) async {
+    final h = _Harness();
+    await h.pump(tester);
+    await h.openAndFinish(tester);
+    await tester.tap(find.byTooltip('Tela cheia'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(_button('Biblioteca'));
+    await tester.pumpAndSettle();
+    // So saiu da tela cheia: o player segue na tela.
+    expect(find.text('Reprodução concluída'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    // Voltou de onde veio (o Inicio), nao foi parar na Biblioteca.
+    expect(find.text('Reprodução concluída'), findsNothing);
+    expect(find.byTooltip('Configurações'), findsOneWidget);
+  });
+
   testWidgets('Inicio salva a sessao e volta a tela inicial', (tester) async {
     final h = _Harness();
     await h.pump(tester);

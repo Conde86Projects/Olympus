@@ -1367,17 +1367,24 @@ class _PlayerScreenState extends State<PlayerScreen>
           if (didPop) return;
           // Mesma hierarquia do _onBack (spec 18): dialogo e tratado
           // pela propria rota; tela cheia e cinema saem sem fechar.
+          // A saida pedida (_exitPlayer) fica sem efeito nesses retornos:
+          // zera para o proximo Voltar nao cair no destino por engano.
           if (_fullscreen) {
+            _exitRequested = false;
+            _exitDestination = null;
             await _toggleFullscreen();
             return;
           }
           if (_cinema) {
+            _exitRequested = false;
+            _exitDestination = null;
             _toggleCinema();
             return;
           }
           // TV: com a barra visivel, o primeiro BACK so a esconde; o
           // segundo sai salvando. X/Fechar/Q saem direto (_exitPlayer).
           if (_tvMode && _controlsVisible && !_overlayUp && !_exitRequested) {
+            _exitDestination = null;
             _hideControls();
             return;
           }
