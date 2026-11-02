@@ -6,16 +6,11 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
-Ciclo de acabamento da spec #16, no PR #29. Ainda não foi publicado. Na execução de
-01/11/2026, a suíte passou com 942 testes e a análise estática ficou limpa. Conferido
-na TCL: data do cartão, fim do vídeo com Biblioteca e Início, menu principal e foco do
-painel de opções. Conferido no emulador: tamanho do texto, erro de permissão,
-informações técnicas e aviso de legenda ao lado. Falta conferir no Windows: atalhos e
-o restante.
+## [0.4.0] - 2026-11-01
 
-A spec #30 (add-ons por zip e repositório e tela principal) também está aqui, na branch
-`integracao/addons-zip`. Na execução de 01/11/2026, a suíte passou com 1139 testes. O que
-foi conferido em aparelho e o que falta está em `docs/RELEASE_v0.4.0_CHECKLIST.md`.
+Instalar add-on por zip e por repositório, tela principal em fileiras e o acabamento da
+spec #16. Na execução de 01/11/2026, a suíte passou com 1144 testes. O que foi conferido
+em aparelho e o que falta está em `docs/RELEASE_v0.4.0_CHECKLIST.md`.
 
 ### Adicionado
 

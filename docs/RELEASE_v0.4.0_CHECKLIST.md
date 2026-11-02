@@ -1,12 +1,10 @@
 # Release Checklist — v0.4.0
 
-Ainda não publicada. O número 0.4.0 é a proposta para esta entrega; `pubspec.yaml` e
-`appVersion` seguem em `0.3.5` até a publicação. Branch `integracao/addons-zip`, spec
-#30. Sem tag.
+Preparada em 01/11/2026, `0.4.0+1012`. Ainda não publicada, sem tag. Spec #30.
 
 ## Automático
 
-- [x] `flutter analyze` limpo e COUNT testes passando (01/11/2026)
+- [x] `flutter analyze` limpo e 1144 testes passando (01/11/2026)
 - [x] `integration_test/addons_desktop_test.dart` no Windows real, com disco, rede e
   motor de vídeo de verdade, em pastas temporárias
 
@@ -60,9 +58,11 @@ Ainda não publicada. O número 0.4.0 é a proposta para esta entrega; `pubspec.
 
 ## Publicação (só com ordem do dono)
 
-- [ ] subir `pubspec.yaml` e `appVersion`
-- [ ] mover o `[Não lançado]` do `CHANGELOG.md` para a versão
-- [ ] gerar o APK e o zip do Windows e registrar os SHA-256 aqui
+- [x] subir `pubspec.yaml` e `appVersion`
+- [x] mover o `[Não lançado]` do `CHANGELOG.md` para a versão
+- [x] gerar o APK e o zip do Windows e registrar os SHA-256 aqui
+- [x] pacote do Windows abre pelo zip; versão `0.4.0+1012` no `player.exe`
+- [x] versionName `0.4.0` na TCL (`dumpsys`)
 - [ ] criar a tag e a release
 
 ## Limites conhecidos
@@ -76,3 +76,12 @@ Ainda não publicada. O número 0.4.0 é a proposta para esta entrega; `pubspec.
 - Sem assinatura de pacote: zip por arquivo ou link mostra o SHA-256 para conferir, e só
   repositório compara com um valor publicado.
 - Linux e macOS não foram testados.
+- Pacote só funciona se trouxer `addon.json`; link de repositório do Kodi é recusado.
+- Em Android 13 ou mais novo, o acesso de mídia do app pode não listar zip; nesse caso, use
+  o link. A TCL (Android 9) lista normalmente.
+
+## SHA-256
+
+- `Olympus-0.4.0.apk`: `f6ffad1b433aff52f8708e339def24f95e9567f2741c81479a7a7b4401605e81`
+- `Olympus-0.4.0-windows.zip`: `a003fc2da0e048669b0a1c502e7f41dda2f15089fdd6736045aa1992ebd196a5`
+- `olympus-teste.zip`: `96915359e78fed5fd1a5c6b1430417c01f1510c495093a3c722191d7b17006ec`
