@@ -132,6 +132,10 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// preserva o historico concluido.
   bool _openedCompleted = false;
 
+  /// O motor já informou posição acima de zero nesta abertura. Antes
+  /// disso, o zero é "ainda não chegou ao ponto salvo", não um recuo.
+  bool _sawPosition = false;
+
   /// Item em reproducao. Comeca como o da rota e muda ao localizar o
   /// arquivo novamente (spec 17.5), sem sair da tela.
   late MediaItem _currentItem;
@@ -312,6 +316,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _subscription = player.sessionStream.listen((session) {
       if (!mounted) return;
       final was = _session.status;
+      if (session.position > Duration.zero) _sawPosition = true;
       setState(() {
         _session = session;
         if (session.status == PlaybackStatus.error ||
@@ -423,6 +428,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     _replayOffer = false;
     _replayOffer = false;
     _openedCompleted = false;
+    _sawPosition = false;
     var openItem = _currentItem;
     // Teto HLS por classe (SoC fraco): compacto/normal abrem a
     // variante <=720p; grande (4K) segue no master. Falha, timeout
@@ -2348,8 +2354,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     // Replay de concluido: a base do progresso e o zero, nao o fim salvo.
     final base = _openedCompleted ? Duration.zero : prior;
     final hadResume = prior != null && prior > Duration.zero;
-    final hasProgress =
-        position > Duration.zero || (duration != null && position != base);
+    // Sair antes de o motor chegar ao ponto salvo lê zero aqui: sem ter
+    // visto posição nenhuma, isso não é progresso e o ponto fica.
+    final hasProgress = position > Duration.zero ||
+        (_sawPosition && duration != null && position != base);
     if (widget.dependencies.preferencesService.current.rememberPosition &&
         (hasProgress || !hadResume)) {
       final history = widget.dependencies.historyService;
