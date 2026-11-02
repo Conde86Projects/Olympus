@@ -16,6 +16,47 @@ abstract final class PlayerTheme {
   /// Fundo do balão de ajuda: o mesmo cartão escuro dos avisos.
   static const tooltipSurface = Color(0xF2242428);
 
+  /// Balão de nome da barra do topo: o único lugar com balão no app. Fora
+  /// dela valem [tooltipsOff]; o [AppShell] aplica este na barra.
+  static TooltipThemeData topBarTooltips({required bool tvMode}) =>
+      TooltipThemeData(
+        waitDuration: const Duration(milliseconds: 350),
+        exitDuration: const Duration(milliseconds: 100),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 12),
+        verticalOffset: tvMode ? 30 : 26,
+        decoration: BoxDecoration(
+          color: tooltipSurface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x66000000),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        textStyle: TextStyle(
+          color: primaryText,
+          fontSize: tvMode ? 16 : 13,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+
+  /// Padrão do app: balão invisível. O `tooltip` dos botões continua, porque
+  /// é o nome que o leitor de tela anuncia; esconder com `TooltipVisibility`
+  /// tiraria esse nome também. A espera longa não basta: com outro balão
+  /// aberto, o Flutter mostra o próximo na hora.
+  static const tooltipsOff = TooltipThemeData(
+    triggerMode: TooltipTriggerMode.manual,
+    waitDuration: Duration(days: 1),
+    padding: EdgeInsets.zero,
+    margin: EdgeInsets.zero,
+    decoration: BoxDecoration(),
+    textStyle: TextStyle(color: Color(0x00000000)),
+  );
+
   /// Superficie neutra do player (spec 3.5): sem neon — controles,
   /// selecao e foco em branco (selecionado = branco 10%). Aplica-se aos
   /// controles e ao painel flutuante; o restante do app mantem o tema.
@@ -178,30 +219,7 @@ abstract final class PlayerTheme {
       // Icones convergiram: 24 no desktop e na TV (verificado na TCL).
       // Sem cor aqui, icone sem cor propria saia preto no fundo escuro.
       iconTheme: const IconThemeData(size: 24, color: primaryText),
-      tooltipTheme: TooltipThemeData(
-        waitDuration: const Duration(milliseconds: 350),
-        exitDuration: const Duration(milliseconds: 100),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        margin: const EdgeInsets.symmetric(horizontal: 12),
-        verticalOffset: tvMode ? 30 : 26,
-        decoration: BoxDecoration(
-          color: tooltipSurface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x66000000),
-              blurRadius: 12,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        textStyle: TextStyle(
-          color: primaryText,
-          fontSize: tvMode ? 16 : 13,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
+      tooltipTheme: tooltipsOff,
       textTheme: const TextTheme(
         titleLarge: TextStyle(color: primaryText),
         titleMedium: TextStyle(color: primaryText),

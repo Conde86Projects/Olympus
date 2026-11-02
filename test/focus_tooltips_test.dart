@@ -10,19 +10,28 @@ Future<void> _pump(WidgetTester tester, {bool enabled = true}) async {
     child: MaterialApp(
       theme: PlayerTheme.dark(),
       home: Scaffold(
+        appBar: AppBar(
+          actions: [
+            IconButton(
+              autofocus: true,
+              tooltip: 'Biblioteca',
+              icon: const Icon(Icons.video_library_outlined),
+              onPressed: () {},
+            ),
+            IconButton(
+              tooltip: 'Favoritos',
+              icon: const Icon(Icons.favorite_outline),
+              onPressed: () {},
+            ),
+          ],
+        ),
         body: Center(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                autofocus: true,
-                tooltip: 'Biblioteca',
-                icon: const Icon(Icons.video_library_outlined),
-                onPressed: () {},
-              ),
-              IconButton(
-                tooltip: 'Favoritos',
-                icon: const Icon(Icons.favorite_outline),
+                tooltip: 'Fora da barra',
+                icon: const Icon(Icons.more_vert),
                 onPressed: () {},
               ),
               TextButton(onPressed: () {}, child: const Text('Sem balão')),
@@ -63,9 +72,20 @@ void main() {
     await _pump(tester);
 
     await _arrow(tester, LogicalKeyboardKey.arrowRight);
-    await _arrow(tester, LogicalKeyboardKey.arrowRight);
+    await _arrow(tester, LogicalKeyboardKey.arrowDown);
 
     expect(find.text('Favoritos'), findsNothing);
+  });
+
+  testWidgets('fora da barra do topo a seleção não mostra balão',
+      (tester) async {
+    await _pump(tester);
+
+    await _arrow(tester, LogicalKeyboardKey.arrowDown);
+
+    final focused = FocusManager.instance.primaryFocus!.context!;
+    expect(focused.findAncestorWidgetOfExactType<AppBar>(), isNull);
+    expect(find.text('Fora da barra'), findsNothing);
   });
 
   testWidgets('balão some sozinho depois de um tempo', (tester) async {
@@ -102,7 +122,7 @@ void main() {
 
   testWidgets('balão usa o desenho do app', (tester) async {
     await _pump(tester);
-    final theme = Theme.of(tester.element(find.byType(Scaffold))).tooltipTheme;
+    final theme = PlayerTheme.topBarTooltips(tvMode: false);
     final box = theme.decoration! as BoxDecoration;
 
     expect(box.color, PlayerTheme.tooltipSurface);

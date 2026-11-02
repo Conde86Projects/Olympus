@@ -4,10 +4,10 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Mostra o balão do controle quando a seleção chega nele pelo teclado ou
-/// pelo controle remoto. O [Tooltip] do Flutter só reage a mouse e a toque
-/// longo, então na TV nenhum ícone dizia o que era. Vale para todo tooltip
-/// do app, sem mexer em quem o usa.
+/// Mostra o balão dos ícones da barra do topo quando a seleção chega neles
+/// pelo teclado ou pelo controle remoto. O [Tooltip] do Flutter só reage a
+/// mouse e a toque longo, então na TV esses ícones não diziam o que eram.
+/// Fora da barra do topo, a seleção não mostra balão.
 ///
 /// Só reage a tecla: foco dado pelo app ao abrir uma tela ou por um clique
 /// não mostra balão. Desligado no celular, onde a barra inferior tem nomes.
@@ -63,7 +63,9 @@ class _FocusTooltipsState extends State<FocusTooltips> {
     _lastFocus = node;
     _dismiss();
     if (!widget.enabled || !_keyDriven) return;
-    final tooltip = node?.context?.findAncestorStateOfType<TooltipState>();
+    final context = node?.context;
+    if (context?.findAncestorWidgetOfExactType<AppBar>() == null) return;
+    final tooltip = context?.findAncestorStateOfType<TooltipState>();
     if (tooltip == null) return;
     tooltip.ensureTooltipVisible();
     _showing = true;

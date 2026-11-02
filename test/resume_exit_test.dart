@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/app.dart';
@@ -116,6 +117,23 @@ Future<void> _close(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('player não mostra balão de nome', (tester) async {
+    await _open(tester, const NoOpMediaPlayerService());
+
+    final gesture =
+        await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await gesture.moveTo(tester.getCenter(find.byTooltip('Fechar')));
+    await tester.pump(const Duration(seconds: 1));
+    final close = tester.element(find.byTooltip('Fechar'));
+    expect(TooltipTheme.of(close).textStyle?.color?.a, 0);
+
+    await gesture.moveTo(Offset.zero);
+    await tester.pump();
+    await _close(tester);
+  });
+
   testWidgets('vídeo que falhou ao abrir não vira visita', (tester) async {
     final (_, history) =
         await _open(tester, const _FailedPlayer(), seeded: false);

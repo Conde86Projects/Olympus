@@ -55,7 +55,9 @@ class AppShell extends StatelessWidget {
   Widget _scaffold(BuildContext context) {
     final tv = TvMode.of(context);
     return Scaffold(
-      appBar: AppBar(
+      appBar: _TopBar(
+        tvMode: tv,
+        bar: AppBar(
         automaticallyImplyLeading: showBack,
         title: showLogo
             ? Row(
@@ -74,6 +76,7 @@ class AppShell extends StatelessWidget {
               )
             : Text(title),
         actions: actions,
+      ),
       ),
       // Celular: telas abertas por cima das abas reservam a barra de
       // gestos e o recorte da camera (o fim da lista e botoes como
@@ -112,4 +115,22 @@ class AppShell extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Barra do topo com o balão de nome ligado: é o único lugar do app onde
+/// ele aparece (mouse, seta e toque longo).
+class _TopBar extends StatelessWidget implements PreferredSizeWidget {
+  const _TopBar({required this.tvMode, required this.bar});
+
+  final bool tvMode;
+  final AppBar bar;
+
+  @override
+  Size get preferredSize => bar.preferredSize;
+
+  @override
+  Widget build(BuildContext context) => TooltipTheme(
+        data: PlayerTheme.topBarTooltips(tvMode: tvMode),
+        child: bar,
+      );
 }

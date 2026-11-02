@@ -1,7 +1,9 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/theme.dart';
 import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/history_entry.dart';
 import 'package:player/models/media_item.dart';
@@ -366,6 +368,34 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Adicionar aos favoritos'), findsOneWidget);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('mouse mostra balão só na barra do topo', (tester) async {
+      final harness = await _boot(tester, const Size(1280, 800));
+      await _seedResume(harness);
+      await tester.pumpAndSettle();
+      final gesture =
+          await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: Offset.zero);
+      addTearDown(gesture.removePointer);
+
+      await gesture.moveTo(tester.getCenter(find.byTooltip('Biblioteca')));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Biblioteca'), findsOneWidget);
+      final top = tester.element(find.byTooltip('Biblioteca'));
+      expect(TooltipTheme.of(top).textStyle?.color, PlayerTheme.primaryText);
+
+      // Vindo direto da barra, o Flutter pula a espera do próximo balão:
+      // quem garante que não aparece é o desenho invisível.
+      await gesture.moveTo(tester.getCenter(find.byTooltip('Opções').first));
+      await tester.pump(const Duration(seconds: 1));
+      final card = tester.element(find.byTooltip('Opções').first);
+      expect(TooltipTheme.of(card).textStyle?.color?.a, 0);
+      expect(TooltipTheme.of(card).decoration, const BoxDecoration());
+
+      await gesture.moveTo(Offset.zero);
       await tester.pumpAndSettle();
     });
 
