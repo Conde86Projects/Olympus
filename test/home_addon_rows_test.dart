@@ -24,7 +24,7 @@ import 'package:player/services/startup_guard.dart';
 import 'package:player/services/window_service.dart';
 import 'package:player/widgets/media_card.dart';
 
-/// T8: fileira por add-on ativo no Início do desktop. Corpo por URL;
+/// T8/T9: fileira por add-on ativo no Início do desktop e da TV. Corpo por URL;
 /// sem corpo, falha; [gate] segura a resposta para flagrar a tela
 /// desenhada antes da rede.
 class _Fetcher extends AddonFetcher {
@@ -564,7 +564,8 @@ void main() {
       expect(safe.fetcher.calls, isEmpty);
     });
 
-    testWidgets('TV segue sem fileiras de add-on', (tester) async {
+    testWidgets('TV mostra a fileira do add-on como no desktop (T9)',
+        (tester) async {
       final harness = _Harness();
       harness.fetcher.bodies[_url('a')] = _feed('a', 1);
       await _install(harness.addons, 'a', 'Catálogo A');
@@ -573,8 +574,10 @@ void main() {
 
       await harness.pump(tester, size: const Size(960, 540));
 
-      expect(find.text('Catálogo A'), findsNothing);
-      expect(harness.fetcher.calls, isEmpty);
+      expect(find.text('Catálogo A'), findsOneWidget);
+      expect(find.text('a título 0'), findsOneWidget);
+      expect(harness.fetcher.calls, isNotEmpty);
+      expect(tester.takeException(), isNull);
     });
   });
 }

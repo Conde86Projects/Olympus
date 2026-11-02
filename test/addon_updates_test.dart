@@ -309,6 +309,9 @@ void main() {
     const repoOrigin = 'https://exemplo.com/repo.json';
     const packageUrl = 'https://exemplo.com/demo.zip';
 
+    // Carimbo fixo: o ArchiveFile usa a hora atual por padrão e dois
+    // zips gerados em segundos distintos teriam SHA distinto (flake).
+    const zippedAt = 1767225600; // 2026-01-01 UTC.
     Uint8List packageZipBytes(
         {String version = '1.0.0', Map<String, Object?>? extra}) {
       final archive = Archive();
@@ -316,7 +319,8 @@ void main() {
         ...demoManifestJson(version: version),
         if (extra != null) ...extra,
       }));
-      archive.addFile(ArchiveFile('addon.json', manifest.length, manifest));
+      archive.addFile(ArchiveFile('addon.json', manifest.length, manifest)
+        ..lastModTime = zippedAt);
       final catalog = utf8.encode(jsonEncode({
         'items': [
           {
@@ -326,7 +330,8 @@ void main() {
           },
         ],
       }));
-      archive.addFile(ArchiveFile('catalog.json', catalog.length, catalog));
+      archive.addFile(ArchiveFile('catalog.json', catalog.length, catalog)
+        ..lastModTime = zippedAt);
       return Uint8List.fromList(ZipEncoder().encode(archive));
     }
 

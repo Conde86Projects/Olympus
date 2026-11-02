@@ -267,6 +267,22 @@ class _MediaPosterCardState extends State<MediaPosterCard> {
 
   void _openMenu() => _menu.currentState?.showButtonMenu();
 
+  /// O foco mora na imagem, e a lista só rola até ela: na última fileira
+  /// visível o título ficava para fora. Janela menor que o cartão fica
+  /// como está, senão a imagem focada é que sairia.
+  void _revealCaption() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final height = context.size?.height ?? 0;
+      if (height >= MediaQuery.sizeOf(context).height * 0.7) return;
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 120),
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
@@ -293,7 +309,10 @@ class _MediaPosterCardState extends State<MediaPosterCard> {
             child: Focus(
               canRequestFocus: false,
               skipTraversal: true,
-              onFocusChange: (value) => setState(() => _focused = value),
+              onFocusChange: (value) {
+                setState(() => _focused = value);
+                if (value) _revealCaption();
+              },
               onKeyEvent: (node, event) {
                 if (_hasMenu &&
                     event is KeyDownEvent &&
@@ -357,7 +376,12 @@ class _MediaPosterCardState extends State<MediaPosterCard> {
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: borderColor,
-                                  width: _focused ? 3 : 1,
+                                  width: _focused
+                                      ? (TvLayout.isTv(context)
+                                          ? TvLayout.tokensOf(context)
+                                              .focusRingWidth
+                                          : 3)
+                                      : 1,
                                 ),
                               ),
                             ),
@@ -399,7 +423,11 @@ class _MediaPosterCardState extends State<MediaPosterCard> {
                   ),
                 ),
                 if (_hasMenu)
+                  // Controle remoto não tem clique direito nem tecla de
+                  // menu garantida: na TV o botão entra na navegação
+                  // (seta para baixo a partir da imagem).
                   ExcludeFocus(
+                    excluding: !TvLayout.isTv(context),
                     child: _OverflowMenu(
                       menuKey: _menu,
                       item: item,

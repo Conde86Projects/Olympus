@@ -17,9 +17,10 @@ import 'package:player/services/window_service.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/media_card.dart';
 
-/// T7: Início no desktop com fileiras; celular e TV presos na lista
-/// vertical de antes. Segue o idioma de small_window_test (superfície
-/// + MediaQuery pela view, takeException para estouro).
+/// T7/T9: Início no desktop e na TV com fileiras; o celular segue na
+/// lista vertical de antes até a T10. Segue o idioma de
+/// small_window_test (superfície + MediaQuery pela view, takeException
+/// para estouro).
 class _Harness {
   _Harness({this.mobile = false})
       : preferences = InMemoryPreferencesService(),
@@ -209,6 +210,25 @@ void main() {
       expect(rect.left, greaterThanOrEqualTo(0));
     });
 
+    testWidgets('descer com as setas mostra o título do cartão',
+        (tester) async {
+      final harness = await _boot(tester, const Size(1280, 720));
+      await _seedResume(harness);
+      await harness.library.upsert(video('l', type: MediaSourceType.local));
+      await harness.library.upsert(video('f', favorite: true));
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+
+      final focused = FocusManager.instance.primaryFocus!.context!;
+      final card = focused.findAncestorWidgetOfExactType<MediaPosterCard>()!;
+      expect(tester.getRect(find.byWidget(card)).bottom,
+          lessThanOrEqualTo(720));
+    });
+
     testWidgets('posição volta depois do player', (tester) async {
       final harness = await _boot(tester, const Size(1280, 800));
       for (var i = 1; i <= 15; i++) {
@@ -252,20 +272,26 @@ void main() {
     });
   });
 
-  group('tela atual presa em TV e celular', () {
-    testWidgets('TV mantém a lista vertical', (tester) async {
+  group('fileiras em TV e celular (T9/T10)', () {
+    testWidgets('TV usa fileiras como no desktop (T9)', (tester) async {
       final harness =
           await _boot(tester, const Size(960, 540), tvMode: true);
       await _seedResume(harness);
+      await harness.library.upsert(video('l', type: MediaSourceType.local));
       await tester.pumpAndSettle();
 
       expect(find.text('Continuar assistindo'), findsOneWidget);
-      expect(find.byType(MediaCard), findsWidgets);
-      expect(_horizontalRows, findsNothing);
+      expect(find.text('Arquivos locais'), findsOneWidget);
+      expect(find.byType(MediaPosterCard), findsWidgets);
+      expect(_horizontalRows, findsWidgets);
+      final focused = FocusManager.instance.primaryFocus?.context;
+      expect(
+          focused?.findAncestorWidgetOfExactType<MediaPosterCard>(), isNotNull);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('celular mantém lista e abas', (tester) async {
+    testWidgets('celular usa fileiras dentro das abas (T10)',
+        (tester) async {
       final harness =
           await _boot(tester, const Size(390, 844), mobile: true);
       await _seedResume(harness);
@@ -273,7 +299,8 @@ void main() {
 
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(find.text('Continuar assistindo'), findsOneWidget);
-      expect(_horizontalRows, findsNothing);
+      expect(find.byType(MediaPosterCard), findsWidgets);
+      expect(_horizontalRows, findsWidgets);
       expect(tester.takeException(), isNull);
     });
   });

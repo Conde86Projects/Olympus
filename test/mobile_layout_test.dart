@@ -15,10 +15,12 @@ import 'package:player/services/history_service.dart';
 import 'package:player/services/library_service.dart';
 import 'package:player/services/local_addon_service.dart';
 import 'package:player/services/media_player_service.dart';
+import 'package:player/services/demo_addons.dart';
 import 'package:player/services/mobile_chrome_service.dart';
 import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/services/window_service.dart';
+import 'package:player/widgets/media_card.dart';
 
 /// Composicao de celular (MobileMode): retrato e paisagem de um
 /// aparelho comum, em dp.
@@ -195,6 +197,99 @@ void main() {
         expect(size.height, greaterThanOrEqualTo(48));
         expect(size.width, greaterThanOrEqualTo(48));
       }
+    });
+  });
+
+  group('Início com fileiras (T10)', () {
+    Future<_Harness> seedHome(WidgetTester tester) async {
+      final harness = await _boot(tester, const Size(360, 800));
+      for (var i = 0; i < 6; i++) {
+        await harness.library.upsert(MediaItem(
+          id: 'l$i',
+          title: 'Local $i',
+          sourceType: MediaSourceType.local,
+          source: '/videos/l$i.mp4',
+          addedAt: DateTime(2026, 1, 1),
+        ));
+      }
+      await harness.library.upsert(MediaItem(
+        id: 'fav',
+        title: 'Favorito',
+        sourceType: MediaSourceType.local,
+        source: '/videos/fav.mp4',
+        addedAt: DateTime(2026, 1, 1),
+        isFavorite: true,
+      ));
+      await tester.pumpAndSettle();
+      return harness;
+    }
+
+    Finder horizontalRows() => find.byWidgetPredicate(
+          (widget) =>
+              widget is ListView &&
+              widget.scrollDirection == Axis.horizontal,
+        );
+
+    testWidgets('fileiras cabem em 360 dp sem estouro', (tester) async {
+      await seedHome(tester);
+
+      expect(find.text('Arquivos locais'), findsOneWidget);
+      // 'Favoritos' existe na fileira e na aba inferior.
+      expect(find.text('Favoritos'), findsWidgets);
+      expect(find.byType(MediaPosterCard), findsWidgets);
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('fileira rola por gesto', (tester) async {
+      await seedHome(tester);
+
+      expect(horizontalRows(), findsWidgets);
+      await tester.drag(horizontalRows().first, const Offset(-200, 0));
+      await tester.pumpAndSettle();
+      expect(horizontalRows(), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('voltar do sistema volta ao Início com fileiras',
+        (tester) async {
+      await seedHome(tester);
+
+      await tester.tap(find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Biblioteca'),
+      ));
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Arquivos locais'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('fileira de add-on no celular (T10)', () {
+    testWidgets('nome da fonte não divide a linha com os botões',
+        (tester) async {
+      final harness = await _boot(tester, const Size(360, 800));
+      final json = demoManifestJson()
+        ..['id'] = 'a'
+        ..['name'] = 'Catálogo Aberto';
+      await harness.addons
+          .install(await harness.addons.validate(json), originTrusted: true);
+      await harness.addons.enable('a');
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Ver tudo'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      final name = tester.getRect(find.text('Catálogo Aberto'));
+      final button = tester.getRect(find.text('Ver tudo'));
+      expect(button.top, greaterThan(name.bottom));
+      expect(tester.takeException(), isNull);
     });
   });
 

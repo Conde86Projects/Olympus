@@ -1203,4 +1203,136 @@ void main() {
           FocusHighlightStrategy.automatic);
     });
   });
+
+  group('Início na TV (T9)', () {
+    Future<_Harness> tvHome(WidgetTester tester) async {
+      final harness = _Harness();
+      await harness.preferences
+          .update(harness.preferences.current.copyWith(tvMode: true));
+      await tester.binding.setSurfaceSize(const Size(960, 540));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      for (final (id, title, favorite) in [
+        ('a.mp4', 'Filme A', true),
+        ('b.mp4', 'Filme B', false),
+      ]) {
+        await harness.library.upsert(MediaItem(
+          id: id,
+          title: title,
+          sourceType: MediaSourceType.local,
+          source: 'C:\\videos\\$id',
+          addedAt: DateTime(2026, 1, 1),
+        ));
+        if (favorite) await harness.library.toggleFavorite(id);
+      }
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      return harness;
+    }
+
+    bool focusInPosterCard() {
+      var node = FocusManager.instance.primaryFocus?.context;
+      if (node == null) return false;
+      var found = false;
+      node.visitAncestorElements((e) {
+        if (e.widget is MediaPosterCard) found = true;
+        return true;
+      });
+      return found;
+    }
+
+    testWidgets('fileiras com tokens da TV e foco inicial no cartão',
+        (tester) async {
+      await tvHome(tester);
+
+      expect(find.text('Arquivos locais'), findsOneWidget);
+      expect(find.text('Favoritos'), findsOneWidget);
+      expect(focusInPosterCard(), isTrue);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('setas andam entre fileiras sem perder o foco',
+        (tester) async {
+      await tvHome(tester);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      expect(focusInPosterCard(), isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(focusInPosterCard(), isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      expect(focusInPosterCard(), isTrue);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('voltar sai das fileiras para as ações', (tester) async {
+      await tvHome(tester);
+      expect(focusInPosterCard(), isTrue);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      final focused = FocusManager.instance.primaryFocus?.context;
+      final button = focused?.findAncestorWidgetOfExactType<FocusableButton>();
+      expect(button?.label, 'Abrir arquivo');
+      expect(find.text('Arquivos locais'), findsOneWidget);
+    });
+
+    testWidgets('segundo voltar sai do app', (tester) async {
+      await tvHome(tester);
+      var exits = 0;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'SystemNavigator.pop') exits++;
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(exits, 0);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(exits, 1);
+    });
+
+    testWidgets('voltar de uma fileira distante sobe até as ações',
+        (tester) async {
+      final harness = await tvHome(tester);
+      for (var i = 0; i < 4; i++) {
+        await harness.library.toggleFavorite('a.mp4');
+      }
+      for (var i = 0; i < 6; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pumpAndSettle();
+      }
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      final focused = FocusManager.instance.primaryFocus?.context;
+      final button = focused?.findAncestorWidgetOfExactType<FocusableButton>();
+      expect(button?.label, 'Abrir arquivo');
+    });
+
+    testWidgets('seta para baixo chega às opções do cartão', (tester) async {
+      await tvHome(tester);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('favoritos'), findsWidgets);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+    });
+  });
 }

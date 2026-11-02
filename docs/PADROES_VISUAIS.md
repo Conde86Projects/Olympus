@@ -47,7 +47,9 @@ que for "selecionado" usa `accent`.
 - Foco: borda `accent` de 3 px. Mouse em cima: borda branca a 24%.
   Parado: branca a 8%.
 - Setas andam de cartão em cartão. O menu abre pelo botão, pelo clique
-  direito e pela tecla de menu.
+  direito e pela tecla de menu. Na TV, a seta para baixo chega ao botão
+  do menu, porque nem todo controle tem tecla de menu.
+- Na TV, o primeiro voltar leva às ações do topo, e o seguinte sai do app.
 - Fileira de add-on: nome da fonte, "Ver tudo" e "Atualizar" no topo.
   Carregando: barra de progresso no lugar dos cartões, sem pular a tela.
   Falha: motivo e "Tentar de novo" só naquela fileira. Erro salvo de uma

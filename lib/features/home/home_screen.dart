@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:player/app/app.dart';
 import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/routes.dart';
@@ -40,17 +41,16 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildScreen(BuildContext context, List<MainDestination> hidden) {
     bool shown(MainDestination d) => !hidden.contains(d);
-    final guard = dependencies.startupGuard;
     // No celular, Biblioteca, Add-ons, Favoritos e Configuracoes moram
     // na navegacao inferior ([MobileShell]); o Historico fica aqui.
     final mobile = MobileMode.of(context);
-    // T7: no desktop o Início mostra fileiras e ocupa a janela toda;
-    // celular e TV seguem na lista vertical de antes.
-    final desktop = !mobile && !TvLayout.isTv(context);
+    // T7/T9/T10: desktop, TV e celular mostram fileiras e ocupam a
+    // janela toda (margem anti-overscan da TV vem do [AppShell]; no
+    // celular a largura da tela manda).
     return AppShell(
       title: 'Olympus',
       showLogo: true,
-      maxWidth: desktop ? null : 1080,
+      maxWidth: null,
       actions: [
         if (!mobile && shown(MainDestination.library))
         IconButton(
@@ -83,68 +83,7 @@ class HomeScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.settings),
         ),
       ],
-      body: desktop
-          ? _DesktopHome(home: this)
-          : _classicBody(context, guard),
-    );
-  }
-
-  /// Lista vertical de antes (celular e TV, T7): "Continuar
-  /// assistindo" com a regra movida para [continueWatchingItems].
-  Widget _classicBody(BuildContext context, StartupGuard guard) {
-    final library = dependencies.libraryService;
-    final history = dependencies.historyService;
-    return Column(
-      children: [
-        AnimatedBuilder(
-          animation: guard,
-          builder: (context, _) => guard.safeMode
-              ? _SafeModeBanner(guard: guard)
-              : const SizedBox.shrink(),
-        ),
-        Expanded(
-          child: AnimatedBuilder(
-            animation: Listenable.merge([library, history]),
-            builder: (context, _) {
-              final resume = continueWatchingItems(
-                entries: history.entries,
-                byId: itemsById(library.items),
-              );
-              if (resume.isEmpty) return _empty(context);
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Continuar assistindo',
-                      style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: resume.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final item = resume[index];
-                        return MediaCard(
-                          item: item,
-                          autofocus: index == 0,
-                          onTap: () => _play(context, item),
-                          onRestart: () =>
-                              _play(context, item, fromStart: true),
-                          onToggleFavorite: () =>
-                              library.toggleFavorite(item.id),
-                          onRemove: () =>
-                              _removeFromHistory(context, item),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _openActions(context),
-                ],
-              );
-            },
-          ),
-        ),
-      ],
+      body: _RowsHome(home: this),
     );
   }
 
@@ -199,13 +138,14 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _openActions(BuildContext context) {
+  Widget _openActions(BuildContext context, {FocusNode? firstNode}) {
     return Wrap(
       spacing: 12,
       children: [
         FocusableButton(
           label: 'Abrir arquivo',
           icon: Icons.folder_open,
+          focusNode: firstNode,
           onPressed: () => _openMedia(context, OpenMediaTab.file),
         ),
         FocusableButton(
@@ -230,19 +170,26 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-/// Início do desktop: fileiras locais (T7) e uma por add-on ativo (T8).
-/// Os catálogos ficam em memória aqui: voltar do player não busca de novo.
-class _DesktopHome extends StatefulWidget {
-  const _DesktopHome({required this.home});
+/// Início com fileiras: locais (T7) e uma por add-on ativo (T8) no
+/// desktop, na TV (T9) e no celular (T10). Os catálogos ficam em
+/// memória aqui: voltar do player não busca de novo.
+class _RowsHome extends StatefulWidget {
+  const _RowsHome({required this.home});
 
   final HomeScreen home;
 
   @override
-  State<_DesktopHome> createState() => _DesktopHomeState();
+  State<_RowsHome> createState() => _RowsHomeState();
 }
 
-class _DesktopHomeState extends State<_DesktopHome> {
+class _RowsHomeState extends State<_RowsHome> {
   late final HomeAddonRows _rows;
+
+  /// Primeira acao acima das fileiras: destino do voltar da TV.
+  final FocusNode _actionsFirst = FocusNode();
+
+  /// Lista das fileiras: o voltar da TV sobe ao topo antes de focar.
+  final ScrollController _list = ScrollController();
 
   AppDependencies get _deps => widget.home.dependencies;
 
@@ -265,6 +212,8 @@ class _DesktopHomeState extends State<_DesktopHome> {
     _deps.preferencesService.removeListener(_rows.reconcile);
     _deps.startupGuard.removeListener(_rows.reconcile);
     _rows.dispose();
+    _actionsFirst.dispose();
+    _list.dispose();
     super.dispose();
   }
 
@@ -274,6 +223,9 @@ class _DesktopHomeState extends State<_DesktopHome> {
     final history = _deps.historyService;
     final guard = _deps.startupGuard;
     final hidden = _deps.preferencesService.current.hiddenDestinations;
+    // No celular o foco inicial fica na navegação inferior; as fileiras
+    // não roubam o foco (T10). TV e desktop mantêm o autofocus (T9).
+    final autofocusRows = !MobileMode.of(context);
     return Column(
       children: [
         AnimatedBuilder(
@@ -298,17 +250,24 @@ class _DesktopHomeState extends State<_DesktopHome> {
                   withAddons: !hidden.contains(MainDestination.addons),
                 );
               }
-              return ListView.separated(
+              final rowsList = ListView.separated(
+                controller: _list,
                 itemCount: 1 + sections.length + addons.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 24),
+                separatorBuilder: (_, __) =>
+                    SizedBox(height: TvLayout.spacing(context, 24)),
                 itemBuilder: (context, index) {
-                  if (index == 0) return widget.home._openActions(context);
+                  if (index == 0) {
+                    return widget.home._openActions(
+                      context,
+                      firstNode: _actionsFirst,
+                    );
+                  }
                   final at = index - 1;
                   if (at < sections.length) {
                     return _localRow(
                       context,
                       sections[at],
-                      autofocusFirst: at == 0,
+                      autofocusFirst: autofocusRows && at == 0,
                     );
                   }
                   final position = at - sections.length;
@@ -318,17 +277,58 @@ class _DesktopHomeState extends State<_DesktopHome> {
                     dependencies: _deps,
                     info: info,
                     state: _rows.stateOf(info.manifest.id),
-                    autofocusFirst: sections.isEmpty && position == 0,
+                    autofocusFirst: autofocusRows &&
+                        sections.isEmpty &&
+                        position == 0,
                     onRefresh: () => _rows.refresh(info.manifest.id),
                     onRetry: () => _rows.retry(info.manifest.id),
                   );
                 },
+              );
+              // TV (T9): o primeiro voltar sai das fileiras para as ações;
+              // o seguinte sai do app, como em toda tela inicial de TV.
+              if (!TvLayout.isTv(context)) return rowsList;
+              return PopScope(
+                canPop: false,
+                onPopInvokedWithResult: (didPop, _) {
+                  if (didPop) return;
+                  if (_focusInRows()) {
+                    _focusActions();
+                  } else {
+                    SystemNavigator.pop();
+                  }
+                },
+                child: rowsList,
               );
             },
           ),
         ),
       ],
     );
+  }
+
+  /// As ações moram no topo da lista: longe dali elas nem estão montadas,
+  /// então sobe primeiro e foca depois de desenhar.
+  void _focusActions() {
+    if (_list.hasClients) _list.jumpTo(0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _actionsFirst.requestFocus();
+    });
+    // Já no topo, nada pediria quadro novo e o foco não viria.
+    WidgetsBinding.instance.scheduleFrame();
+  }
+
+  /// Foco dentro de um cartao de fileira: so as fileiras usam
+  /// [MediaPosterCard] nesta tela.
+  bool _focusInRows() {
+    final context = FocusManager.instance.primaryFocus?.context;
+    if (context == null) return false;
+    var found = false;
+    context.visitAncestorElements((element) {
+      if (element.widget is MediaPosterCard) found = true;
+      return true;
+    });
+    return found;
   }
 
   Widget _localRow(
@@ -343,7 +343,7 @@ class _DesktopHomeState extends State<_DesktopHome> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(section.title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        SizedBox(height: TvLayout.spacing(context, 12)),
         SizedBox(
           height: MediaPosterCard.heightFor(
             context,
@@ -354,7 +354,8 @@ class _DesktopHomeState extends State<_DesktopHome> {
             key: PageStorageKey<String>('home-row-${section.kind.name}'),
             scrollDirection: Axis.horizontal,
             itemCount: section.items.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 16),
+            separatorBuilder: (_, __) =>
+                SizedBox(width: TvLayout.spacing(context, 16)),
             itemBuilder: (context, i) {
               final item = section.items[i];
               return MediaPosterCard(
@@ -404,6 +405,8 @@ class _AddonRow extends StatefulWidget {
 }
 
 class _AddonRowState extends State<_AddonRow> {
+  static const _stackHeaderBelow = 520.0;
+
   bool _opening = false;
 
   String get _addonId => widget.info.manifest.id;
@@ -463,46 +466,53 @@ class _AddonRowState extends State<_AddonRow> {
       width: width,
       aspectRatio: MediaPosterCard.posterAspect,
     );
+    final title = Text(
+      widget.info.manifest.name,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.titleLarge,
+    );
+    // Wrap: com texto "Maior" em tela estreita, o segundo botão desce.
+    final actions = Wrap(
+      spacing: TvLayout.spacing(context, 8),
+      runSpacing: 8,
+      children: [
+        FocusableButton(
+          label: 'Ver tudo',
+          onPressed: () => Navigator.of(context).pushNamed(
+            AppRoutes.sourceCatalog,
+            arguments: _addonId,
+          ),
+        ),
+        // Sempre habilitado: desabilitar tiraria o foco do teclado no
+        // meio da carga. Clicar de novo enquanto carrega não repete.
+        FocusableButton(
+          label: 'Atualizar',
+          icon: Icons.refresh,
+          onPressed: widget.onRefresh,
+        ),
+      ],
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                widget.info.manifest.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleLarge,
-              ),
-            ),
-            FocusableButton(
-              label: 'Ver tudo',
-              onPressed: () => Navigator.of(context).pushNamed(
-                AppRoutes.sourceCatalog,
-                arguments: _addonId,
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Sempre habilitado: desabilitar tiraria o foco do teclado no
-            // meio da carga. Clicar de novo enquanto carrega não repete.
-            FocusableButton(
-              label: 'Atualizar',
-              icon: Icons.refresh,
-              onPressed: widget.onRefresh,
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
+        // Tela estreita: os botões iam ao lado e o nome virava "Catálo…".
+        if (MediaQuery.sizeOf(context).width < _stackHeaderBelow) ...[
+          title,
+          const SizedBox(height: 8),
+          Align(alignment: Alignment.centerLeft, child: actions),
+        ] else
+          Row(children: [Expanded(child: title), actions]),
+        SizedBox(height: TvLayout.spacing(context, 12)),
         if (state.error != null)
           Row(
             children: [
               Icon(Icons.error_outline, color: theme.colorScheme.error),
-              const SizedBox(width: 8),
+              SizedBox(width: TvLayout.spacing(context, 8)),
               Flexible(
                 child: Text(state.error!, style: theme.textTheme.bodyMedium),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: TvLayout.spacing(context, 12)),
               FocusableButton(
                 label: 'Tentar de novo',
                 icon: Icons.refresh,
@@ -526,7 +536,8 @@ class _AddonRowState extends State<_AddonRow> {
               key: PageStorageKey<String>('home-addon-row-$_addonId'),
               scrollDirection: Axis.horizontal,
               itemCount: state.items.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 16),
+              separatorBuilder: (_, __) =>
+                  SizedBox(width: TvLayout.spacing(context, 16)),
               itemBuilder: (context, i) {
                 final item = state.items[i];
                 return MediaPosterCard(
