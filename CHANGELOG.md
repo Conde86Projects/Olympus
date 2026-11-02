@@ -6,6 +6,8 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
+## [0.4.2] - 2026-11-01
+
 ### Corrigido
 
 - Add-on sem catálogo não mostra mais filmes de demonstração como se fossem dele.

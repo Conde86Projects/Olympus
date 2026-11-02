@@ -39,7 +39,8 @@ seletor de qualidade HLS, legendas com estilo), 0.3.1 (nome Olympus e
 pacote `com.conde86.olympus`), 0.3.2 (legenda externa pelo painel), 0.3.3
 (legenda ao lado), 0.3.4 (busca e ordem na Biblioteca), 0.3.5 (miniatura
 de vídeo local no Windows) 0.4.0 (add-ons por zip e repositório, tela
-principal em fileiras) e 0.4.1 (correções de segurança e de perda de dados). Detalhes no `CHANGELOG.md`.
+principal em fileiras) 0.4.1 (correções de segurança e de perda de dados)
+e 0.4.2 (acabamento da auditoria). Detalhes no `CHANGELOG.md`.
 
 Ciclo de acabamento da spec #16 (publicado na 0.4.0):
 tamanho do texto, data do último acesso nos cartões, erros com
