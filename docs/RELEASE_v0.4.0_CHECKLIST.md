@@ -6,7 +6,7 @@ Ainda não publicada. O número 0.4.0 é a proposta para esta entrega; `pubspec.
 
 ## Automático
 
-- [x] `flutter analyze` limpo e 1132 testes passando (01/11/2026)
+- [x] `flutter analyze` limpo e 1139 testes passando (01/11/2026)
 
 ## TV TCL (controle pelo adb, 01/11/2026)
 
@@ -16,8 +16,8 @@ Ainda não publicada. O número 0.4.0 é a proposta para esta entrega; `pubspec.
 - [x] voltar do item aberto mantém o foco no mesmo cartão
 - [x] primeiro voltar leva a "Abrir arquivo"; o segundo sai do app
 - [x] arquivo ausente abre a tela de erro e, ao voltar, fica fora de "Continuar assistindo"
-- [ ] vídeo tocando a partir do Início (o item testado tinha o arquivo ausente e caiu
-  na tela de erro)
+- [x] vídeo tocando a partir do Início, retomando do ponto salvo
+- [x] balão de ajuda ao chegar com a seta nos ícones do topo, nas opções e no player
 - [ ] fileira de add-on real
 - [ ] zip por link e pelo caminho digitado
 - [ ] seletor de arquivos em "Neste aparelho": abre, ou o app orienta a usar caminho
@@ -48,6 +48,7 @@ Ainda não publicada. O número 0.4.0 é a proposta para esta entrega; `pubspec.
 - [ ] tela cheia no monitor de 34": largura total, sem cartão gigante, setas funcionando
 - [ ] derrubar a rede com um add-on ativo: só a fileira dele mostra erro
 - [ ] mouse: passar por cima, clique direito e menu do cartão
+- [ ] balão de ajuda com o desenho novo: mouse em cima e seta do teclado
 
 ## Publicação (só com ordem do dono)
 

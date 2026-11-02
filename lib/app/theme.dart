@@ -13,6 +13,9 @@ abstract final class PlayerTheme {
   static const error = Color(0xFFD06060);
   static const success = Color(0xFF5FA86B);
 
+  /// Fundo do balão de ajuda: o mesmo cartão escuro dos avisos.
+  static const tooltipSurface = Color(0xF2242428);
+
   /// Superficie neutra do player (spec 3.5): sem neon — controles,
   /// selecao e foco em branco (selecionado = branco 10%). Aplica-se aos
   /// controles e ao painel flutuante; o restante do app mantem o tema.
@@ -175,6 +178,30 @@ abstract final class PlayerTheme {
       // Icones convergiram: 24 no desktop e na TV (verificado na TCL).
       // Sem cor aqui, icone sem cor propria saia preto no fundo escuro.
       iconTheme: const IconThemeData(size: 24, color: primaryText),
+      tooltipTheme: TooltipThemeData(
+        waitDuration: const Duration(milliseconds: 350),
+        exitDuration: const Duration(milliseconds: 100),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 12),
+        verticalOffset: tvMode ? 30 : 26,
+        decoration: BoxDecoration(
+          color: tooltipSurface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x66000000),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        textStyle: TextStyle(
+          color: primaryText,
+          fontSize: tvMode ? 16 : 13,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
       textTheme: const TextTheme(
         titleLarge: TextStyle(color: primaryText),
         titleMedium: TextStyle(color: primaryText),

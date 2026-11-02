@@ -19,6 +19,7 @@ import 'package:player/services/startup_guard.dart';
 import 'package:player/services/system_volume_service.dart';
 import 'package:player/services/video_output_guard.dart';
 import 'package:player/services/window_service.dart';
+import 'package:player/widgets/focus_tooltips.dart';
 
 /// Raiz do aplicativo. Recebe os servicos por construtor para manter a UI
 /// desacoplada das implementacoes de reproducao e armazenamento (spec 4.1).
@@ -85,6 +86,8 @@ class PlayerApp extends StatelessWidget {
         }
         return MobileMode(
           enabled: mobilePlatform && !prefs.tvMode,
+          child: FocusTooltips(
+          enabled: !mobilePlatform || prefs.tvMode,
           child: TvMode(
           enabled: prefs.tvMode,
           child: MaterialApp(
@@ -153,6 +156,7 @@ class PlayerApp extends StatelessWidget {
           ),
           ),
           ),
+        ),
         );
       },
     );

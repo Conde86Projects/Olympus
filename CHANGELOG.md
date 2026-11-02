@@ -14,7 +14,7 @@ informações técnicas e aviso de legenda ao lado. Falta conferir no Windows: a
 o restante.
 
 A spec #30 (add-ons por zip e repositório e tela principal) também está aqui, na branch
-`integracao/addons-zip`. Na execução de 01/11/2026, a suíte passou com 1132 testes. O que
+`integracao/addons-zip`. Na execução de 01/11/2026, a suíte passou com 1139 testes. O que
 foi conferido em aparelho e o que falta está em `docs/RELEASE_v0.4.0_CHECKLIST.md`.
 
 ### Adicionado
@@ -50,6 +50,8 @@ foi conferido em aparelho e o que falta está em `docs/RELEASE_v0.4.0_CHECKLIST.
 
 ### Alterado
 
+- Balão de ajuda com desenho novo. No computador e na TV, ele também aparece quando a
+  seleção chega no ícone pelo teclado ou pelo controle, para dizer o que o ícone faz.
 - Na TV, no Início, o primeiro voltar leva às ações do topo, e o segundo sai do app.
 - Fonte salva com erro tenta carregar sozinha uma vez ao abrir o app. Queda de rede
   durante o uso continua esperando "Tentar de novo".

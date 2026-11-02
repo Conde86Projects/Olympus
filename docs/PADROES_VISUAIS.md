@@ -71,6 +71,19 @@ que for "selecionado" usa `accent`.
   foco; um aviso novo substitui o anterior.
 - Teste: `test/app_toast_test.dart`.
 
+## Balão de ajuda (tooltip)
+
+- Todo ícone sem texto usa o `tooltip` do próprio botão, e o desenho vem
+  do tema: fundo `tooltipSurface` (`#242428` a 95%), raio 10, borda branca
+  a 12%, sombra 12, texto `primaryText` (13 no desktop, 16 na TV).
+- Mouse: aparece depois de 350 ms em cima. Teclado e controle: aparece
+  quando a seta chega no controle e some em 4 s ou ao sair dele
+  (`FocusTooltips`, `lib/widgets/focus_tooltips.dart`).
+- O foco inicial de uma tela e o clique não mostram balão.
+- Celular: desligado, porque a barra inferior já tem os nomes. Só o toque
+  longo mostra.
+- Teste: `test/focus_tooltips_test.dart`.
+
 ## Alvos de toque e tamanhos
 
 | Plataforma | Alvo mínimo | Observação |
