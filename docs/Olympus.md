@@ -49,6 +49,11 @@ de opções na TV, celular que retoma o play depois de um seletor,
 legendas homônimas e aviso de legenda ao lado no celular. Decisões em
 `docs/adr/0003-acabamento-spec-16.md`.
 
+Spec #30 (na branch `integracao/addons-zip`, não publicada): instalar add-on por zip e
+por repositório, botão de fontes desconhecidas, tela Add-ons com as entradas à vista e
+tela principal em fileiras no computador, na TV e no celular. Estado em
+`docs/RELEASE_v0.4.0_CHECKLIST.md`.
+
 Marco 0.2.0 (19/10/2026): composição mobile, janela pequena no
 Windows, catálogo da fonte própria, saída direta do vídeo no
 Android/TV, menus compactos da TV e padrão visual único. Detalhes em
@@ -175,7 +180,10 @@ Windows: ele empurrava os botões de pausar/play/voltar.
 - itens inválidos ignorados individualmente;
 - isolamento de falhas por fonte;
 - miniaturas e qualidades opcionais;
-- adaptadores independentes por fonte.
+- adaptadores independentes por fonte;
+- botão "Permitir fontes desconhecidas", desligado por padrão (spec #30, não publicada);
+- instalar por zip, do aparelho ou por link, e por repositório com checksum conferido (spec #30, não publicada);
+- fileira por add-on ativo na tela principal, com falha isolada (spec #30, não publicada).
 
 ### Segurança
 
@@ -292,6 +300,10 @@ Adicionar fonte
 → salvar desativada
 → usuário ativar quando desejar
 ```
+
+Antes desse fluxo vale o botão "Permitir fontes desconhecidas", em Configurações, desligado por padrão. Desligado, ele bloqueia instalar por arquivo, texto, link ou zip, usar repositório não confiável, cadastrar repositório e trocar uma fonte para outro host. O que já está instalado segue funcionando, e repositório já marcado como confiável continua instalando.
+
+O zip passa pelas mesmas etapas: entra revisão, aprovação e instalação desativada. O pacote traz só dados, conforme `docs/adr/0004-pacote-zip-so-dados.md`. Zip com código é recusado, inclusive add-on do Kodi em Python, que o Olympus não executa.
 
 Fontes desconhecidas podem fornecer dados compatíveis, mas não podem executar código arbitrário. Pacotes executáveis exigirão uma política própria de permissões, assinatura, checksum, sandbox e isolamento antes de serem suportados.
 
@@ -451,6 +463,11 @@ Só o dono autoriza push, tag e release. Não coloque tokens, senhas ou chaves n
 
 - [x] tamanho do texto, data do último acesso, erros com informações técnicas e escolha de outra fonte, permissão de arquivos separada, fim do vídeo com Biblioteca e Início, menu principal, atalhos configuráveis, foco do painel na TV, retomada do play no celular, legendas homônimas e aviso de legenda ao lado;
 - [ ] conferir em aparelho o que a suíte não cobre (foco na TCL, seletor e permissão no emulador, atalhos e texto no Windows) e registrar no checklist da próxima versão.
+
+### Na branch `integracao/addons-zip` (spec #30), não publicado
+
+- [x] fontes desconhecidas, instalar por zip e por repositório, atualizar e voltar versão de pacote, tela Add-ons e tela principal em fileiras (T1 a T10);
+- [ ] conferir o que falta em `docs/RELEASE_v0.4.0_CHECKLIST.md` (Windows com zip real e monitor de 34", add-on real na TV, celular físico).
 
 ### Próxima etapa
 

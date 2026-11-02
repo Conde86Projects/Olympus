@@ -173,7 +173,7 @@ Além disso, o Início é uma lista de "Continuar assistindo" limitada a 1080 de
 | Checksum | Obrigatório em repositório; zip local ou por link mostra o valor na revisão | Sem listagem não há valor publicado para comparar |
 | Primeira entrega da tela principal | Só desktop; TV e celular em tickets próprios | Protege o layout já validado |
 
-**Formato do pacote** (registrar em `docs/adr/0003-pacote-zip-so-dados.md`)
+**Formato do pacote** (registrado em `docs/adr/0004-pacote-zip-so-dados.md`)
 
 ```text
 pacote.zip
@@ -347,7 +347,7 @@ Ordem pronta para o `/to-tickets`. Cada ticket termina com `flutter analyze` lim
 
 **Bloqueado por:** T1.
 
-- [ ] `docs/adr/0003-pacote-zip-so-dados.md` escrito e termos novos no glossário.
+- [ ] `docs/adr/0004-pacote-zip-so-dados.md` escrito e termos novos no glossário.
 - [ ] Todos os casos obrigatórios do módulo de pacote cobertos.
 - [ ] Segmento "Zip" com seletor e caminho digitado; a revisão mostra SHA-256 e catálogo.
 - [ ] `addon.xml` mostra a mensagem do Kodi.

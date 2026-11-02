@@ -47,6 +47,22 @@ URL http/https → SSRF (literal/DNS, falha fechado) → fetch (timeout,
 DNS-rebinding completo (pinar IP + Host/SNI) entra no adaptador real
 se a fonte exigir; o bloqueio direto já está fechado.
 
+## Pacote zip e repositório
+
+Pacote de add-on e repositório são entradas de dados, não adaptadores: nada aqui muda o
+contrato acima, e a regra de segurança vale igual. Formato e limites do zip estão em
+`docs/adr/0004-pacote-zip-so-dados.md`, e quem aplica é `lib/services/addon_package.dart`.
+
+- O download passa pelo mesmo pipeline de rede, com teto de 10 MB (`fetchBytes`).
+- A listagem do repositório segue `{"addons": [...]}` e estrita. A entrada aceita
+  `packageUrl` e `sha256`; o primeiro sem o segundo reprova a listagem inteira. Entrada
+  sem `packageUrl` segue o fluxo de manifesto.
+- Checksum, id ou versão diferentes do publicado recusam o pacote.
+- "Permitir fontes desconhecidas" é aplicado no `AddonService`, e a tela só apresenta o
+  estado: desligado, recusa origem nova, repositório não confiável e troca de host.
+- Add-on de pacote serve o catálogo guardado. Com `catalogUrl`, o feed tem prioridade e
+  o guardado vira a reserva.
+
 ## Credenciais
 
 `SourceCredentialStore`: uma chave opaca por fonte. Produção usa

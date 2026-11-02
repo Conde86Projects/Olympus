@@ -13,8 +13,25 @@ painel de opções. Conferido no emulador: tamanho do texto, erro de permissão,
 informações técnicas e aviso de legenda ao lado. Falta conferir no Windows: atalhos e
 o restante.
 
+A spec #30 (add-ons por zip e repositório e tela principal) também está aqui, na branch
+`integracao/addons-zip`. Na execução de 01/11/2026, a suíte passou com 1129 testes. O que
+foi conferido em aparelho e o que falta está em `docs/RELEASE_v0.4.0_CHECKLIST.md`.
+
 ### Adicionado
 
+- Tela principal em fileiras no computador, na TV e no celular: Continuar assistindo,
+  Arquivos locais, Favoritos e uma fileira por add-on ativo, com "Ver tudo" e
+  "Atualizar". No computador, ela usa toda a largura da janela: mais janela mostra mais
+  cartões, não cartões maiores.
+- Instalar add-on por zip, do aparelho ou por link, com revisão antes de instalar. O
+  pacote traz só dados; zip de add-on do Kodi é recusado com uma mensagem própria.
+- Repositórios agora podem oferecer zips. O app confere o checksum, o id e a versão
+  antes de instalar, e repositórios antigos, só com manifestos, continuam funcionando.
+- Add-on instalado por zip atualiza pela tela de Atualizações e volta à versão anterior
+  com o catálogo daquela versão.
+- Configurações: "Permitir fontes desconhecidas", desligado por padrão. Com ele
+  desligado, nenhuma origem nova entra; o que já está instalado continua funcionando.
+- Tela Add-ons com "Instalar de repositório", "Instalar de zip" e "Meus add-ons" à vista.
 - Configurações: "Tamanho do texto" (Normal, Grande ou Maior) para todo o app. A
   legenda continua com o ajuste dela, em Legendas.
 - Os cartões mostram "Visto hoje", "Visto ontem" ou a data da última vez que o vídeo
@@ -33,6 +50,9 @@ o restante.
 
 ### Alterado
 
+- Na TV, no Início, o primeiro voltar leva às ações do topo, e o segundo sai do app.
+- Fonte salva com erro tenta carregar sozinha uma vez ao abrir o app. Queda de rede
+  durante o uso continua esperando "Tentar de novo".
 - Na TV, o painel de opções do player segura o foco: as setas no primeiro e no último
   item não saem dele.
 - Duas legendas com o mesmo nome em pastas diferentes aparecem como `pasta/nome` na
@@ -40,6 +60,9 @@ o restante.
 
 ### Corrigido
 
+- Sair do vídeo logo depois de abrir, antes de ele chegar ao ponto salvo, apagava a
+  posição. Agora ela fica.
+- Ícones sem cor própria saíam pretos no fundo escuro, como os das telas de add-ons.
 - Modo cinema no desktop: agora tem o botão "Sair do modo cinema" na tela. Antes, só
   dava para sair pelas teclas C ou Esc. O modo também esconde a barra de título da
   janela, sem mudar o tamanho dela, e a janela se move arrastando o vídeo.
