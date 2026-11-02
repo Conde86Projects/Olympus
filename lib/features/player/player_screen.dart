@@ -2326,7 +2326,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// apenas pausa: nada e registrado. Sem informacao nova (posicao zero,
   /// sem duracao) sobre uma retomada anterior, tambem nao registra:
   /// preserva o ponto salvo (abertura falhada na TV). Estreia sem
-  /// progresso registra normal (visita aparece no historico).
+  /// progresso registra normal (visita aparece no historico), menos
+  /// quando a abertura falhou.
   /// [pause] falso so grava (minimizar): a reproducao continua.
   Future<void> _saveSession({bool pause = true}) async {
     // Posição HLS não verificada (retomada ou troca): nunca marca
@@ -2354,11 +2355,15 @@ class _PlayerScreenState extends State<PlayerScreen>
     // Replay de concluido: a base do progresso e o zero, nao o fim salvo.
     final base = _openedCompleted ? Duration.zero : prior;
     final hadResume = prior != null && prior > Duration.zero;
+    // Falhou sem nunca ter tocado: não houve visita, e o vídeo não pode
+    // entrar em "Continuar assistindo" nem no histórico.
+    final neverPlayed = live.status == PlaybackStatus.error && !_sawPosition;
     // Sair antes de o motor chegar ao ponto salvo lê zero aqui: sem ter
     // visto posição nenhuma, isso não é progresso e o ponto fica.
     final hasProgress = position > Duration.zero ||
         (_sawPosition && duration != null && position != base);
     if (widget.dependencies.preferencesService.current.rememberPosition &&
+        !neverPlayed &&
         (hasProgress || !hadResume)) {
       final history = widget.dependencies.historyService;
       final library = widget.dependencies.libraryService;

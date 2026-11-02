@@ -29,12 +29,33 @@ class _NotLandedPlayer extends NoOpMediaPlayerService {
   Future<void> seek(Duration position) async {}
 }
 
+/// Vídeo que falhou ao abrir: o motor está em erro e nunca informou posição.
+class _FailedPlayer extends NoOpMediaPlayerService {
+  const _FailedPlayer();
+
+  @override
+  PlaybackSession get session =>
+      super.session.copyWith(status: PlaybackStatus.error);
+}
+
+/// Tocou um trecho e depois deu erro: o que foi visto continua valendo.
+class _FailedAfterPlayingPlayer extends NoOpMediaPlayerService {
+  const _FailedAfterPlayingPlayer();
+
+  @override
+  PlaybackSession get session => super.session.copyWith(
+        status: PlaybackStatus.error,
+        duration: () => const Duration(seconds: 90),
+      );
+}
+
 const _saved = Duration(seconds: 64);
 
 Future<(InMemoryLibraryService, InMemoryHistoryService)> _open(
   WidgetTester tester,
-  MediaPlayerService player,
-) async {
+  MediaPlayerService player, {
+  bool seeded = true,
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(1280, 800);
   addTearDown(tester.view.reset);
@@ -47,18 +68,22 @@ Future<(InMemoryLibraryService, InMemoryHistoryService)> _open(
   await library.upsert(MediaItem(
     id: 'v',
     title: 'Vídeo',
-    sourceType: MediaSourceType.url,
-    source: 'https://exemplo.org/v.mp4',
     duration: const Duration(seconds: 90),
     addedAt: DateTime(2026),
-    lastPosition: _saved,
+    lastPosition: seeded ? _saved : null,
+    sourceType: MediaSourceType.url,
+    source: 'https://exemplo.org/v.mp4',
+    // Sem histórico, a fileira de Favoritos é que mostra o cartão.
+    isFavorite: !seeded,
   ));
-  await history.record(HistoryEntry(
-    mediaId: 'v',
-    accessedAt: DateTime(2026, 1, 2),
-    position: _saved,
-    percentWatched: 0.7,
-  ));
+  if (seeded) {
+    await history.record(HistoryEntry(
+      mediaId: 'v',
+      accessedAt: DateTime(2026, 1, 2),
+      position: _saved,
+      percentWatched: 0.7,
+    ));
+  }
   await tester.pumpWidget(PlayerApp(
     preferencesService: preferences,
     libraryService: library,
@@ -91,6 +116,38 @@ Future<void> _close(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('vídeo que falhou ao abrir não vira visita', (tester) async {
+    final (_, history) =
+        await _open(tester, const _FailedPlayer(), seeded: false);
+
+    await _close(tester);
+
+    expect(history.latestFor('v'), isNull);
+    expect(find.text('Continuar assistindo'), findsNothing);
+    expect(find.text('Favoritos'), findsOneWidget);
+  });
+
+  testWidgets('estreia sem erro continua registrando a visita',
+      (tester) async {
+    final (_, history) =
+        await _open(tester, const NoOpMediaPlayerService(), seeded: false);
+
+    await _close(tester);
+
+    expect(history.latestFor('v'), isNotNull);
+  });
+
+  testWidgets('erro depois de tocar guarda o que foi visto', (tester) async {
+    const player = _FailedAfterPlayingPlayer();
+    final (_, history) = await _open(tester, player, seeded: false);
+    await player.seek(const Duration(seconds: 20));
+    await tester.pump();
+
+    await _close(tester);
+
+    expect(history.latestFor('v')?.position, const Duration(seconds: 20));
+  });
+
   testWidgets('sair antes de chegar ao ponto salvo mantém o ponto',
       (tester) async {
     final (library, history) = await _open(tester, const _NotLandedPlayer());

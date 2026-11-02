@@ -6,7 +6,7 @@ Ainda não publicada. O número 0.4.0 é a proposta para esta entrega; `pubspec.
 
 ## Automático
 
-- [x] `flutter analyze` limpo e 1129 testes passando (01/11/2026)
+- [x] `flutter analyze` limpo e 1132 testes passando (01/11/2026)
 
 ## TV TCL (controle pelo adb, 01/11/2026)
 
@@ -15,6 +15,7 @@ Ainda não publicada. O número 0.4.0 é a proposta para esta entrega; `pubspec.
 - [x] seta para baixo chega às opções do cartão, e o menu abre com OK
 - [x] voltar do item aberto mantém o foco no mesmo cartão
 - [x] primeiro voltar leva a "Abrir arquivo"; o segundo sai do app
+- [x] arquivo ausente abre a tela de erro e, ao voltar, fica fora de "Continuar assistindo"
 - [ ] vídeo tocando a partir do Início (o item testado tinha o arquivo ausente e caiu
   na tela de erro)
 - [ ] fileira de add-on real
@@ -61,7 +62,8 @@ Ainda não publicada. O número 0.4.0 é a proposta para esta entrega; `pubspec.
 - O cartão 2:3 de catálogo corta ao centro as imagens horizontais.
 - Catálogo vazio some da tela principal e só volta ao reabrir o app ou se o add-on mudar.
 - Na TV, o menu do cartão abre sem item destacado; o destaque vem na primeira seta.
-- Vídeo que falha ao abrir entra em "Continuar assistindo" mesmo sem ter tocado.
+- Registro antigo de vídeo que falhou continua em "Continuar assistindo" até ser removido
+  pelo menu do cartão; a correção vale para as próximas aberturas.
 - Sem assinatura de pacote: zip por arquivo ou link mostra o SHA-256 para conferir, e só
   repositório compara com um valor publicado.
 - Linux e macOS não foram testados.

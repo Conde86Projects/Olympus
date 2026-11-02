@@ -14,7 +14,7 @@ informações técnicas e aviso de legenda ao lado. Falta conferir no Windows: a
 o restante.
 
 A spec #30 (add-ons por zip e repositório e tela principal) também está aqui, na branch
-`integracao/addons-zip`. Na execução de 01/11/2026, a suíte passou com 1129 testes. O que
+`integracao/addons-zip`. Na execução de 01/11/2026, a suíte passou com 1132 testes. O que
 foi conferido em aparelho e o que falta está em `docs/RELEASE_v0.4.0_CHECKLIST.md`.
 
 ### Adicionado
@@ -62,6 +62,8 @@ foi conferido em aparelho e o que falta está em `docs/RELEASE_v0.4.0_CHECKLIST.
 
 - Sair do vídeo logo depois de abrir, antes de ele chegar ao ponto salvo, apagava a
   posição. Agora ela fica.
+- Vídeo que falhava ao abrir entrava em "Continuar assistindo" e no histórico sem ter
+  tocado. Agora só entra o que tocou de verdade.
 - Ícones sem cor própria saíam pretos no fundo escuro, como os das telas de add-ons.
 - Modo cinema no desktop: agora tem o botão "Sair do modo cinema" na tela. Antes, só
   dava para sair pelas teclas C ou Esc. O modo também esconde a barra de título da
