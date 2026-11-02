@@ -37,10 +37,11 @@ O projeto prioriza:
 Versões publicadas depois do marco 0.2.0: 0.3.0 (volume por plataforma,
 seletor de qualidade HLS, legendas com estilo), 0.3.1 (nome Olympus e
 pacote `com.conde86.olympus`), 0.3.2 (legenda externa pelo painel), 0.3.3
-(legenda ao lado), 0.3.4 (busca e ordem na Biblioteca) e 0.3.5 (miniatura
-de vídeo local no Windows). Detalhes no `CHANGELOG.md`.
+(legenda ao lado), 0.3.4 (busca e ordem na Biblioteca), 0.3.5 (miniatura
+de vídeo local no Windows) e 0.4.0 (add-ons por zip e repositório, tela
+principal em fileiras). Detalhes no `CHANGELOG.md`.
 
-Ciclo de acabamento da spec #16 (na branch, PR #29, não publicado):
+Ciclo de acabamento da spec #16 (publicado na 0.4.0):
 tamanho do texto, data do último acesso nos cartões, erros com
 informações técnicas e escolha de outra fonte, erro de permissão
 separado de arquivo ausente, fim do vídeo com Biblioteca e Início, menu
@@ -49,7 +50,7 @@ de opções na TV, celular que retoma o play depois de um seletor,
 legendas homônimas e aviso de legenda ao lado no celular. Decisões em
 `docs/adr/0003-acabamento-spec-16.md`.
 
-Spec #30 (na branch `integracao/addons-zip`, não publicada): instalar add-on por zip e
+Spec #30 (publicada na 0.4.0): instalar add-on por zip e
 por repositório, botão de fontes desconhecidas, tela Add-ons com as entradas à vista e
 tela principal em fileiras no computador, na TV e no celular. Estado em
 `docs/RELEASE_v0.4.0_CHECKLIST.md`.
@@ -157,10 +158,10 @@ Windows: ele empurrava os botões de pausar/play/voltar.
 - pôster remoto quando disponível;
 - placeholder quando a imagem não existe ou falha;
 - busca pelo título e ordem por recentes, título ou duração (0.3.4);
-- data do último acesso no cartão: "Visto hoje", "Visto ontem" ou dia e mês (ciclo #16, não publicado);
+- data do último acesso no cartão: "Visto hoje", "Visto ontem" ou dia e mês (0.4.0);
 - miniatura de vídeo local no Windows, tirada pelo próprio motor do app (0.3.5).
 
-### Personalização (ciclo #16, não publicado)
+### Personalização (0.4.0)
 
 - Tamanho do texto: Normal, Grande e Maior (1,0, 1,15 e 1,3 vezes o texto do sistema), em Configurações > Aparência. A legenda desenhada pelo app tem ajuste próprio.
 - Menu principal: Biblioteca, Favoritos, Add-ons e Histórico podem ser escondidos; Início e Configurações nunca saem. Esconder não desliga add-ons instalados.
@@ -181,9 +182,9 @@ Windows: ele empurrava os botões de pausar/play/voltar.
 - isolamento de falhas por fonte;
 - miniaturas e qualidades opcionais;
 - adaptadores independentes por fonte;
-- botão "Permitir fontes desconhecidas", desligado por padrão (spec #30, não publicada);
-- instalar por zip, do aparelho ou por link, e por repositório com checksum conferido (spec #30, não publicada);
-- fileira por add-on ativo na tela principal, com falha isolada (spec #30, não publicada).
+- botão "Permitir fontes desconhecidas", desligado por padrão (0.4.0);
+- instalar por zip, do aparelho ou por link, e por repositório com checksum conferido (0.4.0);
+- fileira por add-on ativo na tela principal, com falha isolada (0.4.0).
 
 ### Segurança
 
@@ -459,12 +460,12 @@ Só o dono autoriza push, tag e release. Não coloque tokens, senhas ou chaves n
 - [x] volume por plataforma, estilo das legendas, legenda externa e ao lado, busca e ordem da Biblioteca, miniatura no Windows (0.3.0 a 0.3.5);
 - [x] modo seguro, diagnóstico com exportação sem credenciais e atualizações controladas de add-ons.
 
-### No PR #29 (spec #16), não publicado
+### Spec #16, publicada na 0.4.0
 
 - [x] tamanho do texto, data do último acesso, erros com informações técnicas e escolha de outra fonte, permissão de arquivos separada, fim do vídeo com Biblioteca e Início, menu principal, atalhos configuráveis, foco do painel na TV, retomada do play no celular, legendas homônimas e aviso de legenda ao lado;
 - [ ] conferir em aparelho o que a suíte não cobre (foco na TCL, seletor e permissão no emulador, atalhos e texto no Windows) e registrar no checklist da próxima versão.
 
-### Na branch `integracao/addons-zip` (spec #30), não publicado
+### Spec #30, publicada na 0.4.0
 
 - [x] fontes desconhecidas, instalar por zip e por repositório, atualizar e voltar versão de pacote, tela Add-ons e tela principal em fileiras (T1 a T10);
 - [ ] conferir o que falta em `docs/RELEASE_v0.4.0_CHECKLIST.md` (Windows com zip real e monitor de 34", add-on real na TV, celular físico).

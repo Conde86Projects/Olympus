@@ -1,6 +1,6 @@
 # Release Checklist — v0.4.0
 
-Preparada em 01/11/2026, `0.4.0+1012`. Ainda não publicada, sem tag. Spec #30.
+Versão publicada em 01/11/2026, `0.4.0+1012`. Spec #16 e #30.
 
 ## Automático
 
@@ -63,7 +63,7 @@ Preparada em 01/11/2026, `0.4.0+1012`. Ainda não publicada, sem tag. Spec #30.
 - [x] gerar o APK e o zip do Windows e registrar os SHA-256 aqui
 - [x] pacote do Windows abre pelo zip; versão `0.4.0+1012` no `player.exe`
 - [x] versionName `0.4.0` na TCL (`dumpsys`)
-- [ ] criar a tag e a release
+- [x] criar a tag e a release
 
 ## Limites conhecidos
 
