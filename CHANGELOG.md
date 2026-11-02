@@ -6,6 +6,8 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
+## [0.4.1] - 2026-11-01
+
 ### Corrigido
 
 - Um zip pequeno que vira gigabytes ao descompactar não derruba mais o app: a leitura

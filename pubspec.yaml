@@ -1,7 +1,7 @@
 name: player
 description: Player de midia minimalista, multiplataforma (especificacao v0.1).
 publish_to: "none"
-version: 0.4.0+1012
+version: 0.4.1+1013
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
