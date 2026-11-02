@@ -19,8 +19,9 @@ formato e as regras de validação; o código que as aplica é
 - O pacote precisa ter `catalog.json` ou `catalogUrl` no manifesto:
   sem isso, um pacote mostraria o catálogo de demonstração como se
   fosse dele.
-- Limites: 10 MB compactado, 30 MB descompactado (verificado durante
-  a extração, sem confiar no tamanho declarado) e 16 entradas.
+- Limites: 10 MB compactado, 30 MB descompactado (contado durante a
+  extração, sem guardar os bytes e sem confiar no tamanho declarado) e
+  16 entradas.
   `addon.json` e `catalog.json` seguem os limites atuais de 256 KB e
   500 itens.
 - Recusa caminho absoluto, `..`, barra invertida, link simbólico,

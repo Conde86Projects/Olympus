@@ -8,6 +8,7 @@ import 'package:player/app/theme.dart';
 import 'package:player/core/errors/app_error.dart';
 import 'package:player/core/utils/media_utils.dart';
 import 'package:player/models/media_item.dart';
+import 'package:player/services/library_service.dart';
 import 'package:player/services/thumbnail_service.dart';
 import 'package:player/widgets/app_shell.dart';
 import 'package:player/widgets/dpad_field_exit.dart';
@@ -280,7 +281,7 @@ class _OpenMediaScreenState extends State<OpenMediaScreen> {
   Future<void> _play(MediaItem item) async {
     setState(() => _error = null);
     final library = widget.dependencies.libraryService;
-    final saved = await library.upsert(item);
+    final saved = await library.upsert(withSavedProgress(library, item));
     // Miniatura em segundo plano (spec 15.1). Não depende de mounted:
     // esta rota é substituída pelo player.
     unawaited(ThumbnailService.backfill(library, saved));

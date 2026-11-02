@@ -377,6 +377,18 @@ void main() {
           'O pacote passa do limite descompactado (30 MB).');
     });
 
+    test('para de descompactar assim que passa do limite', () {
+      // 64 MB de zeros viram poucos KB: um zip bomb pequeno. Medir não
+      // pode descompactar tudo antes de comparar com o limite.
+      final zip = zipOf({'catalog.json': List<int>.filled(64 << 20, 0)});
+      final files = ZipDecoder().decodeBytes(zip).files;
+
+      final measured = extractedBytesTotal(files, limit: 1 << 20);
+
+      expect(measured, greaterThan(1 << 20));
+      expect(measured, lessThan(8 << 20), reason: 'parou no meio');
+    });
+
     test('soma usa bytes reais, não o tamanho declarado', () {
       final files = [
         ArchiveFile('a', 1, [1, 2, 3, 4, 5]),

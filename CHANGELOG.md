@@ -6,6 +6,16 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
+### Corrigido
+
+- Um zip pequeno que vira gigabytes ao descompactar não derruba mais o app: a leitura
+  para assim que passa do limite de 30 MB.
+- Uma queda durante a gravação não apaga mais a biblioteca, o histórico nem os add-ons:
+  o arquivo anterior só é trocado quando o novo está completo.
+- Abrir de novo um vídeo pelo catálogo, por arquivo ou por link continua de onde parou.
+- Atualizar um add-on que muda o catálogo para outro servidor agora desativa o add-on e
+  pede aprovação.
+
 ## [0.4.0] - 2026-11-01
 
 Instalar add-on por zip e por repositório, tela principal em fileiras e o acabamento da

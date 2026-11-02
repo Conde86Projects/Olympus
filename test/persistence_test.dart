@@ -55,6 +55,66 @@ void main() {
       expect(await store.read('broken'), isNull);
     });
 
+    test('falha no meio da gravação preserva o arquivo anterior', () async {
+      final store = FileLocalStore(temp);
+      await store.write('library', {'versao': 1});
+      // O temporário vira pasta: a escrita falha antes de trocar o arquivo.
+      await Directory('${temp.path}${Platform.pathSeparator}library.json.tmp')
+          .create();
+
+      await expectLater(store.write('library', {'versao': 2}), throwsA(anything));
+
+      expect(await store.read('library'), {'versao': 1});
+    });
+
+    test('gravações seguidas terminam na última, com JSON inteiro', () async {
+      final store = FileLocalStore(temp);
+
+      await Future.wait([
+        for (var i = 0; i < 40; i++)
+          store.write('history', {'n': i, 'recheio': 'x' * 20000}),
+      ]);
+
+      expect((await store.read('history'))!['n'], 39);
+      final tmp =
+          File('${temp.path}${Platform.pathSeparator}history.json.tmp');
+      expect(tmp.existsSync(), isFalse);
+    });
+
+    test('leitura logo depois de gravar vê o valor novo', () async {
+      final store = FileLocalStore(temp);
+
+      final write = store.write('prefs', {'a': 1});
+      final read = await store.read('prefs');
+      await write;
+
+      expect(read, {'a': 1});
+    });
+
+    test('JSON que não é objeto e bytes inválidos retornam null', () async {
+      final store = FileLocalStore(temp);
+      final sep = Platform.pathSeparator;
+      await File('${temp.path}${sep}lista.json').writeAsString('[1, 2]');
+      await File('${temp.path}${sep}bytes.json')
+          .writeAsBytes([0xFF, 0xFE, 0x00]);
+
+      expect(await store.read('lista'), isNull);
+      expect(await store.read('bytes'), isNull);
+    });
+
+    test('limpar leva o temporário junto', () async {
+      final store = FileLocalStore(temp);
+      final sep = Platform.pathSeparator;
+      await store.write('library', {'a': 1});
+      final tmp = File('${temp.path}${sep}library.json.tmp');
+      await tmp.writeAsString('sobra de uma queda');
+
+      await store.clear();
+
+      expect(await store.read('library'), isNull);
+      expect(tmp.existsSync(), isFalse);
+    });
+
     test('rejeita chave insegura', () async {
       final store = FileLocalStore(temp);
       expect(() => store.read('../fora'), throwsArgumentError);

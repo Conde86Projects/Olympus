@@ -626,7 +626,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     // que ha para preservar.
     _previous[addonId] = info.toMap();
     _recordChange(info.manifest.id, info.manifest.name, 'update');
-    final updated = info.copyWith(
+    final updated = _requireApprovalOfNewOrigin(info.copyWith(
       manifest: manifest,
       state: info.state == AddonState.error
           ? AddonState.inactive
@@ -635,9 +635,22 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
       diagnostic: () => null,
       updateAvailable: false,
       deferredVersion: () => null,
-    );
+    ));
     await _update(updated);
     return updated;
+  }
+
+  /// A versao nova nao herda aprovacao de outro host: desativa e pede de
+  /// novo, como na edicao de endereco. Sem feed, nao ha o que aprovar.
+  AddonInfo _requireApprovalOfNewOrigin(AddonInfo updated) {
+    if (_hostOf(updated.manifest.catalogUrl) == null) {
+      return updated.copyWith(approvedOrigin: () => null);
+    }
+    if (!updated.needsApproval) return updated;
+    return updated.copyWith(
+      state: AddonState.inactive,
+      diagnostic: () => approvalDiagnostic,
+    );
   }
 
   /// Troca a versao instalada pelo pacote validado (T5): baixa e
@@ -657,7 +670,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
       await _rotatePackageBackup(info, manifest.version);
       _previous[info.manifest.id] = info.toMap();
       _recordChange(info.manifest.id, info.manifest.name, 'update');
-      final updated = info.copyWith(
+      final updated = _requireApprovalOfNewOrigin(info.copyWith(
         manifest: manifest,
         state: info.state == AddonState.error
             ? AddonState.inactive
@@ -668,7 +681,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
         deferredVersion: () => null,
         packageSha256: () => package.sha256,
         packageDir: () => versionDir.path,
-      );
+      ));
       await _update(updated);
       return updated;
     } catch (_) {

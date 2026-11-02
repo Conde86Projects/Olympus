@@ -166,14 +166,74 @@ bool _isKodiPackage(List<ArchiveFile> files) {
 }
 
 /// Soma dos bytes reais extraídos, nunca o tamanho declarado no
-/// cabeçalho (um zip bomb mente no cabeçalho). Pública para teste
+/// cabeçalho (um zip bomb mente no cabeçalho). Descompacta sem guardar
+/// e para ao passar de [limit]: 10 MB de zip podem virar 10 GB, que não
+/// caberiam na memória para só então comparar. Pública para teste
 /// direto, como [indexPackageFiles].
-int extractedBytesTotal(List<ArchiveFile> files) {
-  var total = 0;
+int extractedBytesTotal(
+  List<ArchiveFile> files, {
+  int limit = AddonPackageLimits.maxUncompressedBytes,
+}) {
+  final counter = _ByteCounter(limit);
   for (final file in files) {
-    total += _contentOf(file).length;
+    try {
+      file.decompress(counter);
+    } catch (_) {
+      if (counter.exceeded) return counter.length;
+      throw const AddonError.invalidManifest(
+        'O pacote está corrompido ou não é um zip válido.',
+      );
+    }
+    if (counter.exceeded) return counter.length;
   }
-  return total;
+  return counter.length;
+}
+
+/// Saída que só conta os bytes e interrompe ao passar do limite.
+class _ByteCounter extends OutputStream {
+  _ByteCounter(this.limit) : super(byteOrder: ByteOrder.littleEndian);
+
+  final int limit;
+  bool exceeded = false;
+  int _count = 0;
+
+  void _add(int bytes) {
+    _count += bytes;
+    if (_count > limit) {
+      exceeded = true;
+      throw const _LimitReached();
+    }
+  }
+
+  @override
+  int get length => _count;
+
+  @override
+  void clear() => _count = 0;
+
+  @override
+  void flush() {}
+
+  @override
+  void writeByte(int value) => _add(1);
+
+  @override
+  void writeBytes(List<int> bytes, {int? length}) =>
+      _add(length ?? bytes.length);
+
+  @override
+  void writeStream(InputStream stream) => _add(stream.length);
+
+  // O inflate copia trechos anteriores por aqui: basta contar o tamanho.
+  @override
+  void writeBackReference(int distance, int count) => _add(count);
+
+  @override
+  Uint8List subset(int start, [int? end]) => Uint8List(0);
+}
+
+class _LimitReached implements Exception {
+  const _LimitReached();
 }
 
 /// Índice base → arquivo da lista fechada (`baseNames` já normalizados,

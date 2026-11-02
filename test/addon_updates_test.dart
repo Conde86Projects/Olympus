@@ -97,6 +97,72 @@ class _Harness {
 }
 
 void main() {
+  group('update que muda a origem do catálogo', () {
+    const feedA = 'https://a.exemplo.org/feed.json';
+    const feedB = 'https://b.exemplo.org/feed.json';
+
+    Future<_Harness> activeOn(String feed) async {
+      final harness = _Harness();
+      await harness.addons.install(
+        AddonManifest.fromMap({
+          ...demoManifestJson(),
+          'updateUrl': _Harness.updateUrl,
+          'catalogUrl': feed,
+        }),
+        originTrusted: true,
+      );
+      await harness.addons.enable('demo.catalogo');
+      return harness;
+    }
+
+    void serve(_Harness harness, String? feed) {
+      harness.bodies[_Harness.updateUrl] = jsonEncode({
+        ...demoManifestJson(version: '1.1.0'),
+        'updateUrl': _Harness.updateUrl,
+        if (feed != null) 'catalogUrl': feed,
+      });
+    }
+
+    test('host novo desativa, sem buscar nele antes de aprovar', () async {
+      final harness = await activeOn(feedA);
+      serve(harness, feedB);
+      harness.bodies[feedB] = jsonEncode({'items': []});
+
+      final updated = await harness.addons.update('demo.catalogo');
+
+      expect(updated.state, AddonState.inactive);
+      expect(updated.diagnostic, LocalAddonService.approvalDiagnostic);
+      expect(updated.needsApproval, isTrue);
+
+      await harness.addons.enable('demo.catalogo');
+      expect(harness.addons.getStatus('demo.catalogo'), AddonState.inactive);
+
+      await harness.addons.approveSource('demo.catalogo');
+      await harness.addons.enable('demo.catalogo');
+      expect(harness.addons.getStatus('demo.catalogo'), AddonState.active);
+    });
+
+    test('mesmo host segue ativo', () async {
+      final harness = await activeOn(feedA);
+      serve(harness, 'https://a.exemplo.org/outro.json');
+
+      final updated = await harness.addons.update('demo.catalogo');
+
+      expect(updated.state, AddonState.active);
+      expect(updated.diagnostic, isNull);
+    });
+
+    test('versão sem feed não fica presa pedindo aprovação', () async {
+      final harness = await activeOn(feedA);
+      serve(harness, null);
+
+      final updated = await harness.addons.update('demo.catalogo');
+
+      expect(updated.state, AddonState.active);
+      expect(updated.needsApproval, isFalse);
+    });
+  });
+
   group('updates no service', () {
     test('check marca a flag e devolve o manifesto mais novo', () async {
       final harness = _Harness();
@@ -339,12 +405,14 @@ void main() {
       required String version,
       required String sha,
       List<String>? platforms,
+      String? catalogUrl,
     }) {
       return jsonEncode({
         'addons': [
           {
             ...demoManifestJson(version: version),
             if (platforms != null) 'supportedPlatforms': platforms,
+            if (catalogUrl != null) 'catalogUrl': catalogUrl,
             'packageUrl': packageUrl,
             'sha256': sha,
           },
@@ -432,6 +500,24 @@ void main() {
       expect(
           harness.addons.findById('demo.catalogo')!.updateAvailable,
           isFalse);
+    });
+
+    test('pacote novo em outro host desativa e pede aprovação', () async {
+      final harness = _Harness(packages: await tempPackages());
+      await installPackage(harness);
+      await harness.addons.enable('demo.catalogo');
+      final zip = packageZipBytes(version: '2.0.0');
+      harness.bodies[repoOrigin] = packageListing(
+        version: '2.0.0',
+        sha: sha256.convert(zip).toString(),
+        catalogUrl: 'https://outro.exemplo.org/feed.json',
+      );
+      harness.byteBodies[packageUrl] = zip;
+
+      final updated = await harness.addons.update('demo.catalogo');
+
+      expect(updated.state, AddonState.inactive);
+      expect(updated.diagnostic, LocalAddonService.approvalDiagnostic);
     });
 
     test('update aplica pacote guardando a anterior', () async {

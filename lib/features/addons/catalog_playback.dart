@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:player/app/app.dart';
 import 'package:player/models/addon_catalog_item.dart';
 import 'package:player/models/media_item.dart';
+import 'package:player/services/library_service.dart';
 import 'package:player/services/thumbnail_service.dart';
 
 /// Fluxo único para tocar um item de catálogo (tela da fonte e fileiras
@@ -14,7 +15,8 @@ Future<MediaItem> prepareCatalogItem(
   AddonCatalogItem item,
 ) async {
   final media = await dependencies.addonService.resolvePlayback(addonId, item);
-  final saved = await dependencies.libraryService.upsert(media);
-  unawaited(ThumbnailService.backfill(dependencies.libraryService, saved));
+  final library = dependencies.libraryService;
+  final saved = await library.upsert(withSavedProgress(library, media));
+  unawaited(ThumbnailService.backfill(library, saved));
   return saved;
 }

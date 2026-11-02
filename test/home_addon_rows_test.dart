@@ -504,6 +504,41 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
     });
 
+    testWidgets('abrir de novo pelo pôster mantém a posição salva',
+        (tester) async {
+      final harness = _Harness();
+      harness.fetcher.bodies[_url('a')] = _feed('a', 1);
+      await _install(harness.addons, 'a', 'Catálogo A');
+      final seen = DateTime(2026, 10, 30);
+      await harness.library.upsert(MediaItem(
+        id: 'a:a0',
+        title: 'a título 0',
+        sourceType: MediaSourceType.url,
+        source: 'https://cdn.exemplo.org/a0.mp4',
+        duration: const Duration(minutes: 90),
+        addedAt: DateTime(2026),
+        lastPosition: const Duration(minutes: 5),
+        lastPlayedAt: seen,
+      ));
+
+      await harness.pump(tester);
+      final poster = find.byWidgetPredicate((widget) =>
+          widget is MediaPosterCard &&
+          widget.aspectRatio == MediaPosterCard.posterAspect);
+      await tester.ensureVisible(poster);
+      await tester.pumpAndSettle();
+      await tester.tap(poster);
+      await tester.pumpAndSettle();
+
+      final saved = harness.library.findById('a:a0')!;
+      expect(saved.lastPosition, const Duration(minutes: 5));
+      expect(saved.duration, const Duration(minutes: 90));
+      expect(saved.lastPlayedAt, seen);
+      await tester.tap(find.byTooltip('Fechar'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
+    });
+
     testWidgets('setas andam pelos pôsteres e Enter abre o item',
         (tester) async {
       final harness = _Harness();

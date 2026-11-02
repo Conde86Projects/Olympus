@@ -4,6 +4,19 @@ import 'package:flutter/foundation.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/services/thumbnail_service.dart';
 
+/// [item] recém-montado (catálogo, arquivo ou link), com o progresso que a
+/// biblioteca já tem desse endereço. Sem isso, salvar apagaria a posição e
+/// o vídeo voltaria ao começo.
+MediaItem withSavedProgress(LibraryService library, MediaItem item) {
+  final saved = library.findBySource(item.source);
+  if (saved == null) return item;
+  return item.copyWith(
+    duration: () => item.duration ?? saved.duration,
+    lastPosition: () => item.lastPosition ?? saved.lastPosition,
+    lastPlayedAt: () => item.lastPlayedAt ?? saved.lastPlayedAt,
+  );
+}
+
 /// Biblioteca local do usuario (spec 15.1). Notifica ouvintes a cada mudanca.
 /// Remover um item nunca apaga o arquivo original (spec 15.2).
 abstract class LibraryService extends ChangeNotifier {
