@@ -7,6 +7,9 @@ import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:player/features/open_media/tv_file_browser_screen.dart';
+import 'package:player/services/video_file_listing.dart';
+import 'package:player/widgets/focusable_button.dart';
 import 'package:player/app/app.dart';
 import 'package:player/core/errors/app_error.dart';
 import 'package:player/models/addon_info.dart';
@@ -194,6 +197,40 @@ class _Harness {
 }
 
 void main() {
+  testWidgets('na TV, Procurar pacote abre o navegador próprio',
+      (tester) async {
+    final harness = _Harness(Directory.systemTemp);
+    await harness.preferences.update(harness.preferences.current
+        .copyWith(allowUnknownSources: true, tvMode: true));
+    await harness.pump(tester);
+    await harness.openZip(tester);
+
+    final focused = FocusManager.instance.primaryFocus?.context;
+    expect(
+      focused?.findAncestorWidgetOfExactType<FocusableButton>()?.label,
+      'Procurar pacote…',
+    );
+
+    await tester.tap(find.text('Procurar pacote…'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(TvFileBrowserScreen), findsOneWidget);
+    expect(find.text('Escolher pacote'), findsOneWidget);
+  });
+
+  test('o navegador lista só zip e pastas', () async {
+    final dir = await Directory.systemTemp.createTemp('olympus-zip');
+    addTearDown(() => dir.delete(recursive: true));
+    File('${dir.path}/pacote.ZIP').writeAsStringSync('x');
+    File('${dir.path}/filme.mp4').writeAsStringSync('x');
+    Directory('${dir.path}/pasta').createSync();
+
+    final entries = await listFolderWithExtension(dir.path, '.zip');
+
+    expect(entries.map((entry) => entry.name), ['pasta', 'pacote.ZIP']);
+  });
+
   testWidgets('zip por caminho instala e mostra SHA na revisão',
       (tester) async {
     // IO sincrono no corpo: testWidgets roda em FakeAsync e IO real

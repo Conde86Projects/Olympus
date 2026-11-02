@@ -6,7 +6,9 @@ Ainda não publicada. O número 0.4.0 é a proposta para esta entrega; `pubspec.
 
 ## Automático
 
-- [x] `flutter analyze` limpo e 1139 testes passando (01/11/2026)
+- [x] `flutter analyze` limpo e COUNT testes passando (01/11/2026)
+- [x] `integration_test/addons_desktop_test.dart` no Windows real, com disco, rede e
+  motor de vídeo de verdade, em pastas temporárias
 
 ## TV TCL (controle pelo adb, 01/11/2026)
 
@@ -17,11 +19,13 @@ Ainda não publicada. O número 0.4.0 é a proposta para esta entrega; `pubspec.
 - [x] primeiro voltar leva a "Abrir arquivo"; o segundo sai do app
 - [x] arquivo ausente abre a tela de erro e, ao voltar, fica fora de "Continuar assistindo"
 - [x] vídeo tocando a partir do Início, retomando do ponto salvo
-- [x] balão de ajuda ao chegar com a seta nos ícones do topo, nas opções e no player
-- [ ] fileira de add-on real
-- [ ] zip por link e pelo caminho digitado
-- [ ] seletor de arquivos em "Neste aparelho": abre, ou o app orienta a usar caminho
-  ou link
+- [x] balão só nos ícones da barra do topo; nada nas opções do cartão
+- [x] instalar de zip bloqueado, ativar fontes e entrar na aba Zip com foco em "Procurar"
+- [x] "Procurar pacote…" abre o navegador próprio da TV; `olympus-teste.zip` revisa,
+  instala desativado e ativa
+- [x] fileira de add-on real, com pôster, e o filme toca pelo pôster
+- [ ] caminho digitado e link na TV: o teclado da TV não aceita texto pelo adb. Mesmo
+  código do Windows e do emulador, onde passaram
 
 ## Celular (emulador, 360 dp, 01/11/2026)
 
@@ -32,23 +36,27 @@ Ainda não publicada. O número 0.4.0 é a proposta para esta entrega; `pubspec.
 - [x] fonte de teste por link: revisão, aceite e instalação desativada
 - [x] ativar e ver a fileira no Início, com pôster 2:3
 - [x] tocar o pôster abre e reproduz o vídeo
+- [x] zip por link público real: baixa, segue redirecionamento e recusa o que não é pacote
 - [ ] instalar zip pelo seletor de arquivos
 - [ ] celular físico
 
-## Windows
+## Windows (teste de integração, 01/11/2026)
 
-- [x] Início abre com as fileiras e as miniaturas reais (só imagem da janela, sem
-  clique)
-- [ ] instalação limpa: instalar zip bloqueado, com motivo e atalho
-- [ ] instalar um zip válido: revisão completa e entrada desativada
-- [ ] ativar e tocar um item, que aparece em "Continuar assistindo"
-- [ ] zip do Kodi, zip com `.py` e zip cortado: três mensagens diferentes, nada instalado
-- [ ] desligar fontes desconhecidas: o add-on segue ativo e instalar outro é bloqueado
-- [ ] remover o add-on: a pasta some e as mídias locais ficam
-- [ ] tela cheia no monitor de 34": largura total, sem cartão gigante, setas funcionando
-- [ ] derrubar a rede com um add-on ativo: só a fileira dele mostra erro
-- [ ] mouse: passar por cima, clique direito e menu do cartão
-- [ ] balão de ajuda com o desenho novo: mouse em cima e seta do teclado
+- [x] instalação limpa: instalar zip bloqueado, com motivo e atalho
+- [x] zip do Kodi, zip com `.py` e zip cortado: três mensagens diferentes, nada instalado
+- [x] zip válido pelo caminho digitado: revisão com SHA-256 e entrada desativada
+- [x] zip válido por link (servidor local): baixa, revisa e instala
+- [x] ativar: a fileira aparece e o filme toca pelo pôster, com o motor real
+- [x] o vídeo tocado aparece em "Continuar assistindo"
+- [x] desligar fontes desconhecidas: o add-on segue ativo e instalar outro é bloqueado
+- [x] remover o add-on: a pasta some e as mídias locais ficam
+- [x] mouse: balão na barra do topo, invisível no cartão e no player; clique direito
+  abre o menu do cartão
+- [x] Início abre com as fileiras e as miniaturas reais
+- [ ] seletor de arquivos do Windows em "Procurar pacote…" (janela do sistema)
+- [ ] tela cheia no monitor de 34": conferido só em simulação de 3440 x 1440
+- [ ] derrubar a rede com um add-on ativo: coberto por teste automático, sem conferir
+  no aparelho
 
 ## Publicação (só com ordem do dono)
 

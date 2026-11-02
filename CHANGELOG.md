@@ -50,8 +50,9 @@ foi conferido em aparelho e o que falta está em `docs/RELEASE_v0.4.0_CHECKLIST.
 
 ### Alterado
 
-- Balão de ajuda com desenho novo. No computador e na TV, ele também aparece quando a
-  seleção chega no ícone pelo teclado ou pelo controle, para dizer o que o ícone faz.
+- O balão com o nome do botão agora só aparece na barra do topo, com desenho novo. No
+  computador e na TV, ele também aparece quando a seleção chega no ícone pelo teclado
+  ou pelo controle. O player e o restante do app não mostram mais balão, nem com o mouse.
 - Na TV, no Início, o primeiro voltar leva às ações do topo, e o segundo sai do app.
 - Fonte salva com erro tenta carregar sozinha uma vez ao abrir o app. Queda de rede
   durante o uso continua esperando "Tentar de novo".
@@ -62,6 +63,8 @@ foi conferido em aparelho e o que falta está em `docs/RELEASE_v0.4.0_CHECKLIST.
 
 ### Corrigido
 
+- Na TV, "Procurar pacote…" não fazia nada, porque o seletor do sistema não abre no
+  Google TV. Agora abre o navegador de arquivos do próprio app.
 - Sair do vídeo logo depois de abrir, antes de ele chegar ao ponto salvo, apagava a
   posição. Agora ela fica.
 - Vídeo que falhava ao abrir entrava em "Continuar assistindo" e no histórico sem ter

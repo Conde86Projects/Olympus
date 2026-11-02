@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:player/app/app.dart';
+import 'package:player/app/mobile_mode.dart';
 import 'package:player/app/tv_layout.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/core/constants/app_constants.dart';
 import 'package:player/core/errors/app_error.dart';
 import 'package:player/features/addons/addon_display.dart';
+import 'package:player/features/addons/pick_addon_file.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/services/addon_service.dart';
 import 'package:player/widgets/app_shell.dart';
@@ -240,27 +241,19 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
                 ),
               ),
             ),
-            segments: const [
-              ButtonSegment(
-                value: AddonInstallSource.file,
-                icon: Icon(Icons.folder_open),
-                label: Text('Arquivo'),
-              ),
-              ButtonSegment(
-                value: AddonInstallSource.paste,
-                icon: Icon(Icons.content_paste),
-                label: Text('Colar'),
-              ),
-              ButtonSegment(
-                value: AddonInstallSource.link,
-                icon: Icon(Icons.link),
-                label: Text('Link'),
-              ),
-              ButtonSegment(
-                value: AddonInstallSource.zip,
-                icon: Icon(Icons.folder_zip),
-                label: Text('Zip'),
-              ),
+            segments: [
+              for (final (value, icon, label) in const [
+                (AddonInstallSource.file, Icons.folder_open, 'Arquivo'),
+                (AddonInstallSource.paste, Icons.content_paste, 'Colar'),
+                (AddonInstallSource.link, Icons.link, 'Link'),
+                (AddonInstallSource.zip, Icons.folder_zip, 'Zip'),
+              ])
+                ButtonSegment(
+                  value: value,
+                  // Em 360 dp, ícone e nome não cabem: "Arquivo" quebrava.
+                  icon: MobileMode.of(context) ? null : Icon(icon),
+                  label: Text(label),
+                ),
             ],
             selected: {_source},
             onSelectionChanged: _busy
@@ -301,6 +294,9 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
           label: 'Procurar pacote…',
           icon: Icons.folder_zip,
           primary: true,
+          // Depois de ativar as fontes o botão de antes some: sem foco aqui,
+          // a primeira seta da TV caía em "Voltar".
+          autofocus: true,
           onPressed: _busy ? null : _browseZip,
         ),
         const SizedBox(height: 20),
@@ -386,13 +382,12 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
   }
 
   Future<void> _browseZip() async {
-    final files = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['zip'],
-      dialogTitle: 'Escolher pacote',
+    final path = await pickAddonFile(
+      context,
+      extension: 'zip',
+      title: 'Escolher pacote',
     );
-    final path = files.singleOrNull?.path;
-    if (path == null || path.isEmpty) return;
+    if (path == null || path.isEmpty || !mounted) return;
     _zipPathController.text = path;
     await _readZip();
   }
@@ -820,13 +815,12 @@ class _AddonInstallScreenState extends State<AddonInstallScreen> {
   }
 
   Future<void> _browseFile() async {
-    final files = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-      dialogTitle: 'Escolher manifesto',
+    final path = await pickAddonFile(
+      context,
+      extension: 'json',
+      title: 'Escolher manifesto',
     );
-    final path = files.singleOrNull?.path;
-    if (path == null || path.isEmpty) return;
+    if (path == null || path.isEmpty || !mounted) return;
     _fileController.text = path;
     await _readFile();
   }

@@ -57,6 +57,11 @@ Future<List<BrowserEntry>> listVideoFolder(String dirPath) =>
 Future<List<BrowserEntry>> listSubtitleFolder(String dirPath) =>
     _listFolder(dirPath, isSubtitleFileName);
 
+/// Igual a [listVideoFolder], mostrando arquivos com [extension] (com ponto).
+Future<List<BrowserEntry>> listFolderWithExtension(
+        String dirPath, String extension) =>
+    _listFolder(dirPath, (name) => _hasExtension(name, {extension}));
+
 Future<List<BrowserEntry>> _listFolder(
     String dirPath, bool Function(String name) wanted) async {
   final dir = Directory(dirPath);
