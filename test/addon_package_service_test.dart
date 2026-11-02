@@ -12,7 +12,7 @@ import 'package:player/models/addon_info.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/services/addon_fetcher.dart';
 import 'package:player/services/addon_package.dart';
-import 'package:player/services/demo_addons.dart';
+import 'support/demo_addons.dart';
 import 'package:player/services/local_addon_service.dart';
 
 /// T2: gerenciador de pacotes. Costuras da Parte 2: [LocalAddonService]

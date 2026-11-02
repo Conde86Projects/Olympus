@@ -15,7 +15,7 @@ import 'package:player/services/media_player_service.dart';
 import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
 import 'package:player/services/window_service.dart';
-import 'package:player/services/sources/demo_source_adapter.dart';
+import 'support/demo_source_adapter.dart';
 import 'package:player/widgets/media_card.dart';
 import 'package:player/widgets/player_panel_options.dart';
 import 'package:player/widgets/player_settings_panel.dart';
@@ -283,6 +283,7 @@ void main() {
           as Image;
       expect(net.loadingBuilder, isNotNull);
       expect(net.errorBuilder, isNotNull);
+      expect((net.image as ResizeImage).width, 960);
     });
 
     testWidgets('poster com falha de rede cai no icone', (tester) async {

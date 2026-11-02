@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:player/core/errors/app_error.dart';
+import 'package:player/core/utils/internal_address.dart';
 import 'package:player/core/utils/media_utils.dart';
 
 /// Qualidade/rendicao informada pela fonte (5C). Opcional: sem ela,
@@ -73,7 +74,9 @@ class AddonCatalogItem {
       );
     }
     final sourceUrl = json['sourceUrl'];
-    if (sourceUrl is! String || !isSupportedUrl(sourceUrl)) {
+    if (sourceUrl is! String ||
+        !isSupportedUrl(sourceUrl) ||
+        pointsToInternalAddress(sourceUrl)) {
       throw const AddonError.invalidManifest(
         'Item de catálogo sem endereço de mídia válido.',
       );
@@ -99,7 +102,9 @@ class AddonCatalogItem {
     }
     final thumbnailUrl = json['thumbnailUrl'];
     if (thumbnailUrl != null &&
-        (thumbnailUrl is! String || !isSupportedUrl(thumbnailUrl))) {
+        (thumbnailUrl is! String ||
+            !isSupportedUrl(thumbnailUrl) ||
+            pointsToInternalAddress(thumbnailUrl))) {
       throw const AddonError.invalidManifest(
         'Miniatura do item de catálogo inválida.',
       );

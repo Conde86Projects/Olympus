@@ -1,4 +1,5 @@
 import 'package:player/models/addon_catalog_item.dart';
+import 'package:player/models/addon_info.dart';
 
 /// Add-ons ficticios para demonstracao e testes (spec 23: testar com
 /// add-on ficticio antes de integrar fontes reais). Nenhum executa codigo
@@ -39,3 +40,16 @@ List<AddonCatalogItem> demoCatalog() => const [
         duration: Duration(minutes: 12),
       ),
     ];
+
+/// Catálogo de teste para add-on sem feed nem pacote.
+List<AddonCatalogItem> demoCatalogFor(AddonInfo info) => demoCatalog();
+
+/// Igual a [demoCatalogFor], mas os [ids] falham: simula um add-on com
+/// defeito para os testes de isolamento.
+List<AddonCatalogItem> Function(AddonInfo) catalogFailingFor(Set<String> ids) =>
+    (info) {
+      if (ids.contains(info.manifest.id)) {
+        throw StateError('defeito simulado');
+      }
+      return demoCatalog();
+    };

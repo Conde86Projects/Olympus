@@ -8,7 +8,7 @@ import 'package:player/models/addon_info.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/services/addon_fetcher.dart';
-import 'package:player/services/demo_addons.dart';
+import 'support/demo_addons.dart';
 import 'package:player/services/local_addon_service.dart';
 
 AddonCatalogItem demoItem() => demoCatalog().first;
@@ -34,6 +34,7 @@ LocalAddonService _service({
   AddonFetcher fetcher = const FakeAddonFetcher({}),
 }) =>
     LocalAddonService(InMemoryLocalStore(),
+        catalogWithoutFeed: demoCatalogFor,
         platform: platform, fetcher: fetcher);
 
 Future<void> _install(LocalAddonService service) async {
@@ -191,11 +192,24 @@ void main() {
       expect(media.sourceType, MediaSourceType.url);
     });
 
+    test('add-on sem feed nem pacote fica sem itens no app', () async {
+      final service = LocalAddonService(InMemoryLocalStore(), platform: 'windows');
+      await service.install(
+        AddonManifest.fromMap(demoManifestJson()),
+        originTrusted: true,
+      );
+      await service.enable('demo.catalogo');
+
+      expect(await service.getCatalog('demo.catalogo'), isEmpty);
+      expect(await service.search('demo.catalogo', 'filme'), isEmpty);
+      expect(service.getStatus('demo.catalogo'), AddonState.active);
+    });
+
     test('defeito isola um add-on sem afetar o outro', () async {
       final service = LocalAddonService(
         InMemoryLocalStore(),
         platform: 'windows',
-        faultyIds: const {'ruim.catalogo'},
+        catalogWithoutFeed: catalogFailingFor(const {'ruim.catalogo'}),
       );
       for (final id in ['demo.catalogo', 'ruim.catalogo']) {
         await service.install(

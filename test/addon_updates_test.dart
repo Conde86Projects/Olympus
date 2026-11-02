@@ -11,7 +11,7 @@ import 'package:player/models/addon_info.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/models/addon_repository.dart';
 import 'package:player/services/addon_fetcher.dart';
-import 'package:player/services/demo_addons.dart';
+import 'support/demo_addons.dart';
 import 'package:player/services/local_addon_service.dart';
 import 'package:player/services/startup_guard.dart';
 
@@ -58,7 +58,7 @@ class _Harness {
     addons = LocalAddonService(
       store,
       platform: platform,
-      faultyIds: faultyIds,
+      catalogWithoutFeed: catalogFailingFor(faultyIds),
       fetcher: _FakeFetcher(this.bodies, byteBodies: this.byteBodies),
       packageDir: packages,
     );

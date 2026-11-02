@@ -8,8 +8,7 @@ sem tocar no contrato geral.
 ```text
 lib/services/sources/
   source_adapter.dart       contrato + registro (NÃO muda por fonte)
-  source_credentials.dart   segredos: contrato + memória + keychain
-  demo_source_adapter.dart  fonte demo realista (só testes)
+  source_credentials.dart   segredos: contrato + memória
   owned_test_source.dart    fonte própria de teste (ver FONTE_PROPRIA_TESTE.md)
   <fonte>_source.dart       UMA fonte real (futuro, um arquivo cada)
 ```
@@ -65,11 +64,10 @@ contrato acima, e a regra de segurança vale igual. Formato e limites do zip est
 
 ## Credenciais
 
-`SourceCredentialStore`: uma chave opaca por fonte. Produção usa
-`SecureCredentialStore` (Keystore/Keychain/Credential Manager via
-`flutter_secure_storage`); testes usam memória. Segredos nunca vão
-para URL, log, manifesto ou JSON. A UI de cadastro da chave entra
-junto da primeira fonte com auth (5C-real).
+`SourceCredentialStore`: uma chave opaca por fonte. Hoje só existe a versão
+em memória, porque nenhuma fonte usa login. A primeira fonte com login traz
+junto o armazenamento seguro do sistema e a tela de cadastro da chave.
+Segredos nunca vão para URL, log, manifesto ou JSON.
 
 ## Capacidades opcionais (implementadas, dirigidas pela fonte)
 

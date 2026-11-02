@@ -8,7 +8,7 @@ import 'package:player/models/addon_info.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/services/addon_fetcher.dart';
 import 'package:player/services/addon_service.dart';
-import 'package:player/services/demo_addons.dart';
+import 'support/demo_addons.dart';
 import 'package:player/services/local_addon_service.dart';
 
 /// Fake programavel: URL conhecida devolve corpo, o resto falha.
@@ -227,9 +227,10 @@ void main() {
       expect(bad.getStatus('demo.catalogo'), AddonState.error);
     });
 
-    test('sem feed mantem o embutido', () async {
+    test('sem feed nem pacote fica sem itens, sem virar erro', () async {
       final service = await _installed();
-      expect(await service.getCatalog('demo.catalogo'), isNotEmpty);
+      expect(await service.getCatalog('demo.catalogo'), isEmpty);
+      expect(service.getStatus('demo.catalogo'), AddonState.active);
     });
   });
 

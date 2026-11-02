@@ -8,7 +8,7 @@ import 'package:player/core/errors/app_error.dart';
 import 'package:player/features/addons/addon_install_screen.dart';
 import 'package:player/models/addon_info.dart';
 import 'package:player/services/addon_fetcher.dart';
-import 'package:player/services/demo_addons.dart';
+import 'support/demo_addons.dart';
 import 'package:player/services/diagnostics_service.dart';
 import 'package:player/services/history_service.dart';
 import 'package:player/services/library_service.dart';

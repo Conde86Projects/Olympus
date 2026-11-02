@@ -63,6 +63,9 @@ class MediaCard extends StatelessWidget {
   @visibleForTesting
   static Widget defaultNetworkThumbnailImage(String url) => Image.network(
         url,
+        // Pôster de 4000 px decodificado inteiro pesa na memória da TV. Com
+        // 960, o maior cartão ainda fica nítido na tela 2x.
+        cacheWidth: 960,
         fit: BoxFit.cover,
         loadingBuilder: (context, child, progress) => progress == null
             ? child

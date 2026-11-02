@@ -17,6 +17,7 @@ import 'package:player/core/utils/language_names.dart';
 import 'package:player/core/utils/media_utils.dart';
 import 'package:player/core/utils/subtitle_style.dart';
 import 'package:player/features/open_media/open_media_screen.dart';
+import 'package:player/features/player/progress_save_policy.dart';
 import 'package:player/features/player/hls_observer.dart';
 import 'package:player/features/player/hls_resume_probe.dart';
 import 'package:player/features/player/hls_cold_warmer.dart';
@@ -2349,22 +2350,16 @@ class _PlayerScreenState extends State<PlayerScreen>
     final live = widget.dependencies.playerService.session;
     final position = live.position;
     final duration = live.duration;
-    // Sem informacao nova nao sobrescreve retomada anterior: sair com
-    // erro ou antes do primeiro frame apagaria o ponto salvo (TV).
-    final prior = _currentItem.lastPosition;
-    // Replay de concluido: a base do progresso e o zero, nao o fim salvo.
-    final base = _openedCompleted ? Duration.zero : prior;
-    final hadResume = prior != null && prior > Duration.zero;
-    // Falhou sem nunca ter tocado: não houve visita, e o vídeo não pode
-    // entrar em "Continuar assistindo" nem no histórico.
-    final neverPlayed = live.status == PlaybackStatus.error && !_sawPosition;
-    // Sair antes de o motor chegar ao ponto salvo lê zero aqui: sem ter
-    // visto posição nenhuma, isso não é progresso e o ponto fica.
-    final hasProgress = position > Duration.zero ||
-        (_sawPosition && duration != null && position != base);
-    if (widget.dependencies.preferencesService.current.rememberPosition &&
-        !neverPlayed &&
-        (hasProgress || !hadResume)) {
+    if (shouldSaveProgress(
+      rememberPosition:
+          widget.dependencies.preferencesService.current.rememberPosition,
+      status: live.status,
+      position: position,
+      duration: duration,
+      savedPosition: _currentItem.lastPosition,
+      sawPosition: _sawPosition,
+      openedCompleted: _openedCompleted,
+    )) {
       final history = widget.dependencies.historyService;
       final library = widget.dependencies.libraryService;
       final completed = AppConstants.isCompletedPosition(

@@ -9,7 +9,7 @@ import 'package:player/models/addon_manifest.dart';
 import 'package:player/models/history_entry.dart';
 import 'package:player/models/media_item.dart';
 import 'package:player/models/playback_state.dart';
-import 'package:player/services/demo_addons.dart';
+import 'support/demo_addons.dart';
 import 'package:player/services/diagnostics_service.dart';
 import 'package:player/services/history_service.dart';
 import 'package:player/services/library_service.dart';
@@ -46,7 +46,7 @@ class _Harness {
     addons = LocalAddonService(
       this.store,
       platform: 'windows',
-      faultyIds: faultyIds,
+      catalogWithoutFeed: catalogFailingFor(faultyIds),
     );
     guard = StartupGuard(this.store);
     diagnostics = DiagnosticsService(

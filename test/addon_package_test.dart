@@ -6,7 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/core/errors/app_error.dart';
 import 'package:player/services/addon_package.dart';
-import 'package:player/services/demo_addons.dart';
+import 'support/demo_addons.dart';
 
 /// T2: módulo de pacote `readAddonPackage`. Zips criados na hora, em
 /// memória; valores esperados literais, nunca recalculados como o código.

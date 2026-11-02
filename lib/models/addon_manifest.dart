@@ -68,7 +68,7 @@ class AddonManifest {
   final String? updateUrl;
 
   /// Feed de catalogo remoto (Fase 5): envelope `{"items": [...]}`.
-  /// Opcional; sem ele o add-on serve o catalogo embutido.
+  /// Opcional; sem ele o add-on serve o catalogo do pacote, ou nada.
   final String? catalogUrl;
 
   /// Pacote instalável do repositório (T4): zip com o conteúdo do

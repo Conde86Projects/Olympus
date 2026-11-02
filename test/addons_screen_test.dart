@@ -5,7 +5,7 @@ import 'package:player/app/app.dart';
 import 'package:player/app/theme.dart';
 import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/addon_manifest.dart';
-import 'package:player/services/demo_addons.dart';
+import 'support/demo_addons.dart';
 import 'package:player/services/diagnostics_service.dart';
 import 'package:player/services/history_service.dart';
 import 'package:player/services/library_service.dart';
@@ -26,7 +26,7 @@ class _Harness {
         guard = StartupGuard(InMemoryLocalStore()),
         addons = LocalAddonService(
           InMemoryLocalStore(),
-          faultyIds: const {'bad.addon'},
+          catalogWithoutFeed: catalogFailingFor(const {'bad.addon'}),
         ) {
     preferences.update(
         preferences.current.copyWith(showOnboarding: false));

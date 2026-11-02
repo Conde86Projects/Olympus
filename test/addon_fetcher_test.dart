@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/core/errors/app_error.dart';
+import 'package:player/core/utils/internal_address.dart';
 import 'package:player/services/addon_fetcher.dart';
 
 /// Serve respostas programadas em loopback para exercitar o

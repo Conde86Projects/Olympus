@@ -6,6 +6,17 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
+### Corrigido
+
+- Add-on sem catálogo não mostra mais filmes de demonstração como se fossem dele.
+- Pôster ou vídeo de um catálogo não pode mais apontar para a rede interna (roteador,
+  aparelhos de casa, VPN) por IP direto.
+- Pôsteres muito grandes pesam menos na memória, principalmente na TV.
+
+### Removido
+
+- O cofre de senhas, que nenhuma fonte usava. Volta junto com a primeira fonte com login.
+
 ## [0.4.1] - 2026-11-01
 
 ### Corrigido

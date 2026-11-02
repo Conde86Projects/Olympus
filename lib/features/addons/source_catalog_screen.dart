@@ -382,6 +382,8 @@ class _CatalogRow extends StatelessWidget {
     if (thumbnailBuilder != null) return thumbnailBuilder!(url);
     return Image.network(
       url,
+      // A linha tem 96 de largura: não decodifica o pôster inteiro.
+      cacheWidth: 192,
       fit: BoxFit.cover,
       errorBuilder: (context, error, stack) => _posterFallback(),
       loadingBuilder: (context, child, progress) =>

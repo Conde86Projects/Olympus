@@ -7,7 +7,7 @@ import 'package:player/models/addon_info.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/services/addon_fetcher.dart';
 import 'package:player/services/local_addon_service.dart';
-import 'package:player/services/sources/demo_source_adapter.dart';
+import 'support/demo_source_adapter.dart';
 import 'package:player/services/sources/source_adapter.dart';
 import 'package:player/services/sources/source_credentials.dart';
 
@@ -24,23 +24,6 @@ class FakeAddonFetcher extends AddonFetcher {
       throw const AddonError.fetchFailed('Não foi possível buscar.');
     }
     return body;
-  }
-}
-
-class FakeBackend implements SecureCredentialBackend {
-  final Map<String, String> keys = {};
-
-  @override
-  Future<void> write(String key, String value) async {
-    keys[key] = value;
-  }
-
-  @override
-  Future<String?> read(String key) async => keys[key];
-
-  @override
-  Future<void> delete(String key) async {
-    keys.remove(key);
   }
 }
 
@@ -340,17 +323,6 @@ void main() {
       await store.delete('demo.source');
       expect(await store.read('demo.source'), isNull);
       await store.delete('demo.source');
-    });
-
-    test('loja segura prefixa chaves no backend', () async {
-      final backend = FakeBackend();
-      final store = SecureCredentialStore(backend);
-      await store.save('demo.source', 's3cr3t');
-      expect(backend.keys, {'player.source.demo.source': 's3cr3t'});
-      expect(await store.read('demo.source'), 's3cr3t');
-      await store.delete('demo.source');
-      expect(backend.keys, isEmpty);
-      expect(await store.read('demo.source'), isNull);
     });
   });
 }

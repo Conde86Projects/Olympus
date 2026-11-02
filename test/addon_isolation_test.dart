@@ -8,7 +8,7 @@ import 'package:player/features/player/player_screen.dart';
 import 'package:player/models/addon_info.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/models/media_item.dart';
-import 'package:player/services/demo_addons.dart';
+import 'support/demo_addons.dart';
 import 'package:player/services/diagnostics_service.dart';
 import 'package:player/services/history_service.dart';
 import 'package:player/services/library_service.dart';
@@ -28,7 +28,7 @@ class _Harness {
         guard = StartupGuard(InMemoryLocalStore()),
         addons = LocalAddonService(
           InMemoryLocalStore(),
-          faultyIds: faultyIds,
+          catalogWithoutFeed: catalogFailingFor(faultyIds),
         ) {
     preferences.update(preferences.current.copyWith(showOnboarding: false));
   }
@@ -167,16 +167,8 @@ void main() {
             (error as AddonError).code, 'addon.unavailable');
       }
 
-      // Reproducao dispara o defeito e isola: controlado do mesmo jeito.
-      try {
-        await harness.addons
-            .resolvePlayback('bad.dois', demoCatalog().first);
-        fail('reprodução deveria falhar');
-      } catch (error) {
-        expect(error, isA<AddonError>());
-        expect(
-            (error as AddonError).code, 'addon.unavailable');
-      }
+      // O outro add-on com defeito só isola quando o catálogo é pedido.
+      expect(await harness.addons.getCatalog('bad.dois'), isEmpty);
       expect(harness.addons.getStatus('bad.dois'), AddonState.error);
     });
   });

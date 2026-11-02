@@ -15,7 +15,7 @@ import 'package:player/services/history_service.dart';
 import 'package:player/services/library_service.dart';
 import 'package:player/services/local_addon_service.dart';
 import 'package:player/services/media_player_service.dart';
-import 'package:player/services/demo_addons.dart';
+import 'support/demo_addons.dart';
 import 'package:player/services/mobile_chrome_service.dart';
 import 'package:player/services/preferences_service.dart';
 import 'package:player/services/startup_guard.dart';
@@ -44,7 +44,10 @@ class _Harness {
         library = InMemoryLibraryService(),
         history = InMemoryHistoryService(),
         guard = StartupGuard(InMemoryLocalStore()),
-        addons = LocalAddonService(InMemoryLocalStore()) {
+        addons = LocalAddonService(
+          InMemoryLocalStore(),
+          catalogWithoutFeed: demoCatalogFor,
+        ) {
     preferences.update(preferences.current
         .copyWith(showOnboarding: onboarding, tvMode: tvMode));
   }

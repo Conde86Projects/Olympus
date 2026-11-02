@@ -13,7 +13,6 @@ import 'package:player/models/media_item.dart';
 import 'package:player/services/addon_fetcher.dart';
 import 'package:player/services/addon_package.dart';
 import 'package:player/services/addon_service.dart';
-import 'package:player/services/demo_addons.dart';
 import 'package:player/services/sources/source_adapter.dart';
 import 'package:player/services/sources/source_credentials.dart';
 
@@ -24,14 +23,14 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
   LocalAddonService(
     this._store, {
     String? platform,
-    Set<String>? faultyIds,
+    List<AddonCatalogItem> Function(AddonInfo info)? catalogWithoutFeed,
     AddonFetcher fetcher = const HttpAddonFetcher(),
     List<SourceAdapter> adapters = const [],
     SourceCredentialStore? credentials,
     Directory? packageDir,
     bool Function()? allowUnknownSources,
   })  : _platform = platform ?? Platform.operatingSystem,
-        _faultyIds = faultyIds ?? const {},
+        _catalogWithoutFeed = catalogWithoutFeed,
         _fetcher = fetcher,
         _adapters = adapters,
         _credentials = credentials ?? InMemoryCredentialStore(),
@@ -58,9 +57,10 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
   @override
   String get platform => _platform;
 
-  /// Ids que simulam defeito (isolamento, §26.14). Costura de teste: na
-  /// Fase 6 o defeito vira de excecoes reais da integracao.
-  final Set<String> _faultyIds;
+  /// Catálogo de quem não tem feed nem pacote. No app não há nenhum: o
+  /// add-on fica sem itens, em vez de mostrar filmes que não são dele.
+  /// Os testes injetam aqui um catálogo, ou um que falha.
+  final List<AddonCatalogItem> Function(AddonInfo info)? _catalogWithoutFeed;
   final Map<String, AddonInfo> _items = {};
   final Map<String, AddonRepository> _repos = {};
 
@@ -778,12 +778,9 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     final info = _require(addonId);
     if (info.state != AddonState.active) return const [];
     try {
-      if (_faultyIds.contains(info.manifest.id)) {
-        throw StateError('defeito simulado no catalogo');
-      }
       // Fase 5: manifesto com feed serve o catalogo remoto (validado
       // na borda, via adaptador da fonte quando houver); sem feed, o
-      // catalogo embutido. Falha de rede ou corpo malformado isola o
+      // catalogo do pacote. Falha de rede ou corpo malformado isola o
       // add-on como qualquer defeito.
       final catalogUrl = info.manifest.catalogUrl;
       if (catalogUrl != null) {
@@ -804,7 +801,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
           'Falha ao carregar o catálogo embutido.',
         );
       }
-      return demoCatalog();
+      return _catalogWithoutFeed?.call(info) ?? const [];
     } catch (_) {
       await _fail(
           info, 'Não foi possível carregar o catálogo deste add-on.');
@@ -819,9 +816,6 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     if (query.trim().isEmpty) return const [];
     if (info.state != AddonState.active) return const [];
     try {
-      if (_faultyIds.contains(info.manifest.id)) {
-        throw StateError('defeito simulado na busca');
-      }
       final want = query.trim().toLowerCase();
       final catalogUrl = info.manifest.catalogUrl;
       // Busca no servidor quando o adaptador oferece; senao, filtro
@@ -839,7 +833,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
       }
       final catalog = catalogUrl != null
           ? await _loadRemoteCatalog(catalogUrl)
-          : demoCatalog();
+          : _catalogWithoutFeed?.call(info) ?? const [];
       return catalog
           .where((item) =>
               item.title.toLowerCase().contains(want) ||
@@ -862,34 +856,26 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     if (info.state != AddonState.active) {
       throw const AddonError.disabled();
     }
-    try {
-      if (_faultyIds.contains(info.manifest.id)) {
-        throw StateError('defeito simulado na resolucao');
-      }
-      return MediaItem(
-        id: '${info.manifest.id}:${item.id}',
-        title: item.title,
-        subtitle: item.subtitle,
-        sourceType: MediaSourceType.url,
-        source: item.sourceUrl,
-        duration: item.duration,
-        addedAt: DateTime.now(),
-        // Proveniencia para as informacoes do video (spec 26.12). O
-        // titulo/subtitulo passam integros, sem traducao. Poster e
-        // rendicoes passam como dados para a UI (cartao e menu de
-        // qualidades usam quando houver).
-        metadata: {
-          'addonId': info.manifest.id,
-          'addonName': info.manifest.name,
-          if (item.thumbnailUrl != null) 'posterUrl': item.thumbnailUrl!,
-          if (item.qualities.isNotEmpty)
-            'qualities': encodeSourceQualities(item.qualities),
-        },
-      );
-    } catch (_) {
-      await _fail(info, 'Este add-on apresentou uma falha e foi isolado.');
-      throw const AddonError.unavailable();
-    }
+    return MediaItem(
+      id: '${info.manifest.id}:${item.id}',
+      title: item.title,
+      subtitle: item.subtitle,
+      sourceType: MediaSourceType.url,
+      source: item.sourceUrl,
+      duration: item.duration,
+      addedAt: DateTime.now(),
+      // Proveniencia para as informacoes do video (spec 26.12). O
+      // titulo/subtitulo passam integros, sem traducao. Poster e
+      // rendicoes passam como dados para a UI (cartao e menu de
+      // qualidades usam quando houver).
+      metadata: {
+        'addonId': info.manifest.id,
+        'addonName': info.manifest.name,
+        if (item.thumbnailUrl != null) 'posterUrl': item.thumbnailUrl!,
+        if (item.qualities.isNotEmpty)
+          'qualities': encodeSourceQualities(item.qualities),
+      },
+    );
   }
 
   /// Diagnostico padrao de origem pendente de aprovacao. Publico

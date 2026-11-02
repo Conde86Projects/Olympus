@@ -169,7 +169,7 @@ Windows: ele empurrava os botões de pausar/play/voltar.
 ### Fontes e add-ons
 
 - feed remoto em formato compatível;
-- catálogo embutido como fallback;
+- catálogo dentro do pacote do add-on;
 - fontes adicionadas pelo usuário;
 - fonte desconhecida marcada como não verificada;
 - aprovação explícita;
