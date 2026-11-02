@@ -35,6 +35,7 @@ Versão publicada em 01/11/2026, `0.4.0+1012`. Spec #16 e #30.
 - [x] ativar e ver a fileira no Início, com pôster 2:3
 - [x] tocar o pôster abre e reproduz o vídeo
 - [x] zip por link público real: baixa, segue redirecionamento e recusa o que não é pacote
+- [x] `olympus-teste.zip` pelo link público da release: revisa e instala desativado
 - [ ] instalar zip pelo seletor de arquivos
 - [ ] celular físico
 
