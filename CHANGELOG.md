@@ -10,6 +10,14 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 - O bloqueio da rede interna agora vale também para as qualidades de vídeo e para
   catálogos de fontes com adaptador, que não passavam pela checagem na 0.4.2.
+- Dois add-ons com ids que só diferem em maiúsculas (`News.Cat` e `news.cat`) não
+  pisam mais na pasta um do outro no Windows. O segundo é recusado como já instalado, e
+  id com ponto no fim não é mais aceito.
+- Downloads de endereço `http` conectam no IP que passou na checagem, em vez de
+  resolver o nome de novo (DNS que muda de resposta não leva mais à rede interna).
+- Baixar um pacote de 10 MB gasta bem menos memória.
+- O build de release agora falha se faltar `android/key.properties`, em vez de sair
+  assinado com a chave de teste.
 - IP escrito de outro jeito (`2130706433`, `127.1`, `0x7f.0.0.1`) e `localhost.` com
   ponto no fim também são recusados.
 

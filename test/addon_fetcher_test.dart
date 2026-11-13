@@ -34,6 +34,7 @@ Future<AddonError> expectFetchFails(
 }
 
 void main() {
+  rebindingTests();
   group('HttpAddonFetcher', () {
     test('baixa o corpo de um 200 com JSON', () async {
       final server = await serve((request) async {
@@ -398,6 +399,42 @@ void main() {
         expect(error.message, 'Download cancelado.');
       }
       expect(calls, greaterThan(0));
+    });
+  });
+}
+
+void rebindingTests() {
+  group('resolvePublicAddress', () {
+    Future<List<InternetAddress>> answer(List<String> ips) async =>
+        [for (final ip in ips) InternetAddress(ip)];
+
+    test('devolve o endereço público que vai ser usado na conexão',
+        () async {
+      final address = await resolvePublicAddress('exemplo.org',
+          timeout: const Duration(seconds: 1),
+          lookup: (_) => answer(['93.184.216.34']));
+      expect(address.address, '93.184.216.34');
+    });
+
+    test('resposta mista com um interno falha fechado', () async {
+      await expectLater(
+        resolvePublicAddress('exemplo.org',
+            timeout: const Duration(seconds: 1),
+            lookup: (_) => answer(['93.184.216.34', '192.168.0.1'])),
+        throwsA(isA<AddonError>()),
+      );
+    });
+
+    test('só interno e resposta vazia falham', () async {
+      for (final ips in [<String>['10.0.0.5'], <String>[]]) {
+        await expectLater(
+          resolvePublicAddress('exemplo.org',
+              timeout: const Duration(seconds: 1),
+              lookup: (_) => answer(ips)),
+          throwsA(isA<AddonError>()),
+          reason: '$ips',
+        );
+      }
     });
   });
 }

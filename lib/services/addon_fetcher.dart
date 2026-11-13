@@ -117,7 +117,7 @@ class HttpAddonFetcher extends AddonFetcher {
         onProgress: onProgress,
         cancel: cancel,
       );
-      return Uint8List.fromList(bytes);
+      return bytes;
     } on AddonError {
       rethrow;
     } on TimeoutException {
@@ -134,7 +134,7 @@ class HttpAddonFetcher extends AddonFetcher {
   /// Núcleo compartilhado (T3, sem duplicar o fetchText): SSRF por
   /// salto, auth só na origem, teto no cabeçalho e no stream,
   /// progresso e cancelamento. Devolve os bytes brutos.
-  Future<List<int>> _download(
+  Future<Uint8List> _download(
     Uri start,
     Map<String, String> headers,
     int limitBytes,
@@ -145,6 +145,7 @@ class HttpAddonFetcher extends AddonFetcher {
     var current = start;
     final origin = '${current.scheme}://${current.host}:${current.port}';
     final client = HttpClient()..connectionTimeout = timeout;
+    if (!allowPrivate) client.connectionFactory = _connectPinned;
     var cancelled = false;
     HttpClientRequest? active;
     if (cancel != null) {
@@ -190,18 +191,18 @@ class HttpAddonFetcher extends AddonFetcher {
         if (response.contentLength > limitBytes) {
           throw AddonError.fetchFailed(limitMessage);
         }
-        final buffer = <int>[];
+        final buffer = BytesBuilder(copy: false);
         final total =
             response.contentLength >= 0 ? response.contentLength : null;
         await for (final chunk in response.timeout(timeout)) {
           if (cancelled) _throwCancelled();
-          buffer.addAll(chunk);
+          buffer.add(chunk);
           if (buffer.length > limitBytes) {
             throw AddonError.fetchFailed(limitMessage);
           }
           onProgress?.call(buffer.length, total);
         }
-        return buffer;
+        return buffer.takeBytes();
       }
       throw const AddonError.fetchFailed('Redirecionamentos demais.');
     } on AddonError {
@@ -232,33 +233,57 @@ class HttpAddonFetcher extends AddonFetcher {
   /// bloqueia se QUALQUER endereco for interno (falha fechado em
   /// resposta mista). Falha de DNS vira erro de conexao.
   Future<void> _ensurePublic(Uri uri) async {
-    final literal = InternetAddress.tryParse(uri.host);
-    if (literal != null) {
-      if (isBlockedInternetAddress(literal)) _throwBlocked();
-      return;
-    }
-    List<InternetAddress> found;
-    try {
-      found = await InternetAddress.lookup(uri.host).timeout(timeout);
-    } on TimeoutException {
-      rethrow;
-    } catch (_) {
-      throw const AddonError.fetchFailed(
-        'Não foi possível buscar o endereço. Verifique a conexão.',
-      );
-    }
-    if (found.isEmpty ||
-        found.any(isBlockedInternetAddress)) {
-      _throwBlocked();
-    }
+    await resolvePublicAddress(uri.host, timeout: timeout);
   }
 
-  Never _throwBlocked() => throw const AddonError.fetchFailed(
-        'Endereço interno ou reservado. Use um endereço público.',
-      );
+  /// Conecta no endereço que acabou de passar na barreira, em vez de
+  /// deixar o HttpClient resolver o nome outra vez: um DNS que muda de
+  /// resposta entre a checagem e a conexão (rebinding) não leva à rede
+  /// interna. Só vale para http: em https o certificado é conferido contra
+  /// o nome da URL, e um aparelho interno não tem certificado do domínio
+  /// do atacante; fixar o IP ali quebraria o SNI (o servidor responde 400).
+  Future<ConnectionTask<Socket>> _connectPinned(
+      Uri uri, String? proxyHost, int? proxyPort) async {
+    if (proxyHost != null) return Socket.startConnect(proxyHost, proxyPort!);
+    if (uri.scheme == 'https') return SecureSocket.startConnect(uri.host, uri.port);
+    final address = await resolvePublicAddress(uri.host, timeout: timeout);
+    return Socket.startConnect(address, uri.port);
+  }
 
   Never _throwCancelled() =>
       throw const AddonError.fetchFailed(fetchCancelledMessage);
+}
+
+/// Devolve um endereço público para [host], ou lança se algum dos que o
+/// nome resolve for interno (falha fechado em resposta mista). Literal
+/// interno bloqueia sem DNS; falha de DNS vira erro de conexão. [lookup]
+/// existe para o teste controlar a resposta.
+Future<InternetAddress> resolvePublicAddress(
+  String host, {
+  required Duration timeout,
+  Future<List<InternetAddress>> Function(String host) lookup =
+      InternetAddress.lookup,
+}) async {
+  const blocked = AddonError.fetchFailed(
+    'Endereço interno ou reservado. Use um endereço público.',
+  );
+  final literal = InternetAddress.tryParse(host);
+  if (literal != null) {
+    if (isBlockedInternetAddress(literal)) throw blocked;
+    return literal;
+  }
+  List<InternetAddress> found;
+  try {
+    found = await lookup(host).timeout(timeout);
+  } on TimeoutException {
+    rethrow;
+  } catch (_) {
+    throw const AddonError.fetchFailed(
+      'Não foi possível buscar o endereço. Verifique a conexão.',
+    );
+  }
+  if (found.isEmpty || found.any(isBlockedInternetAddress)) throw blocked;
+  return found.first;
 }
 
 /// Resolve o Location de um redirect contra a URL atual. Ausente,

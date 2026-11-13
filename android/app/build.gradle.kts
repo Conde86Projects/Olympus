@@ -51,13 +51,25 @@ android {
     buildTypes {
         release {
             // android/key.properties (gitignored, nunca commitar). Sem o
-            // arquivo, cai para a chave debug para nao quebrar checkout limpo.
+            // arquivo, so o build de release falha (ver taskGraph abaixo); o
+            // debug de checkout limpo segue funcionando com a chave debug.
             signingConfig = if (keyPropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
             }
         }
+    }
+}
+
+// Release sem chave de assinatura sairia com a chave debug: o app instalado
+// nao atualizaria. Falha em vez de gerar esse APK.
+gradle.taskGraph.whenReady {
+    val releaseBuild = allTasks.any {
+        it.project == project && Regex("^(assemble|bundle|package)Release").containsMatchIn(it.name)
+    }
+    if (releaseBuild && !rootDir.resolve("key.properties").exists()) {
+        throw GradleException("android/key.properties ausente: release sem chave de assinatura.")
     }
 }
 

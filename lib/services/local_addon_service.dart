@@ -159,6 +159,13 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
   @override
   AddonState getStatus(String addonId) => _require(addonId).state;
 
+  /// O id vira nome de pasta, e no Windows `News.Cat` e `news.cat` são a
+  /// mesma pasta: ids que só diferem em maiúsculas contam como o mesmo.
+  bool _isInstalled(String id) {
+    final lower = id.toLowerCase();
+    return _items.keys.any((k) => k.toLowerCase() == lower);
+  }
+
   AddonInfo _require(String addonId) {
     final info = _items[addonId];
     if (info == null) throw const AddonError.notFound();
@@ -181,7 +188,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     if (!_allowUnknownSources() && !originTrusted) {
       throw const AddonError.unknownSourcesDisabled();
     }
-    if (_items.containsKey(manifest.id)) {
+    if (_isInstalled(manifest.id)) {
       throw const AddonError.alreadyInstalled();
     }
     final info = AddonInfo(
@@ -350,7 +357,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
       throw const AddonError.unknownSourcesDisabled();
     }
     final manifest = package.manifest;
-    if (_items.containsKey(manifest.id)) {
+    if (_isInstalled(manifest.id)) {
       throw const AddonError.alreadyInstalled();
     }
     final versionDir = await _writePackageDir(

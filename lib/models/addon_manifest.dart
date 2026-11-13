@@ -98,7 +98,9 @@ class AddonManifest {
 
   static const knownPlatforms = ['windows', 'linux', 'macos', 'android'];
 
-  static final _idPattern = RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]*$');
+  // Sem ponto no fim: no Windows `foo.` e `foo` são a mesma pasta.
+  static final _idPattern =
+      RegExp(r'^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?$');
   static final _versionPattern =
       RegExp(r'^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$');
   static final _sha256Pattern = RegExp(r'^[0-9a-fA-F]{64}$');
