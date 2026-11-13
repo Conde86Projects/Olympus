@@ -14,6 +14,9 @@ Versão `0.4.2+1014`. Acabamento da auditoria sobre a 0.4.1, sem função nova.
 - O bloqueio de rede interna em pôster e vídeo vale para IP escrito na URL. Nome que
   resolve para IP interno só é bloqueado nos downloads do próprio app.
 - Quem abre um link à mão continua podendo usar a rede interna: é escolha da pessoa.
+- O bloqueio não vê redirecionamento: um endereço público que responde 302 para a rede
+  interna é seguido pelo player. Resolver a URL final antes de tocar pode quebrar link
+  assinado de uso único e ainda deixa uma janela entre a checagem e a reprodução.
 - Os testes à mão da v0.4.0 seguem pendentes.
 
 ## SHA-256

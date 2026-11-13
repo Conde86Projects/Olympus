@@ -70,6 +70,11 @@ class _PlayerScreenState extends State<PlayerScreen>
   StreamSubscription<PlaybackSession>? _subscription;
   StreamSubscription<void>? _minimizedSub;
 
+  /// Grava o ponto de retomada de tempos em tempos enquanto toca: uma
+  /// queda do motor nativo ou da energia no meio do filme não o perde.
+  Timer? _progressTimer;
+  static const _progressSaveEvery = Duration(seconds: 30);
+
   /// Sistema zerado/mudo (Android): o ícone de mudo reflete também o
   /// aparelho, não só o estado interno. Desktop ignora (sem canal).
   bool _systemSilent = false;
@@ -372,6 +377,11 @@ class _PlayerScreenState extends State<PlayerScreen>
     WidgetsBinding.instance.addObserver(this);
     _minimizedSub = widget.dependencies.windowService.minimized
         .listen((_) => unawaited(_saveSession(pause: false)));
+    _progressTimer = Timer.periodic(_progressSaveEvery, (_) {
+      if (_session.status == PlaybackStatus.playing) {
+        unawaited(_saveSession(pause: false));
+      }
+    });
     widget.dependencies.windowService.addBeforeClose(_saveOnWindowClose);
     // Volume do sistema (Android): zerou no aparelho → mostra mudo;
     // aumentou → despluga o mudo do app (a tecla física também faz
@@ -1253,6 +1263,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleHiddenKeys);
     WidgetsBinding.instance.removeObserver(this);
+    _progressTimer?.cancel();
     _minimizedSub?.cancel();
     _chrome.resetSeekFlash();
     _repositionTimer?.cancel();

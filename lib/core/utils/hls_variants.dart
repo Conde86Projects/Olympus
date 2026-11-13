@@ -437,7 +437,7 @@ abstract final class HlsVariants {
         throw HttpException('HTTP ${response.statusCode}', uri: uri);
       }
       final bytes = <int>[];
-      await for (final chunk in response) {
+      await for (final chunk in response.timeout(const Duration(seconds: 4))) {
         bytes.addAll(chunk);
         if (bytes.length > 65536) break;
       }
