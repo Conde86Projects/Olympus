@@ -1,3 +1,6 @@
+import 'dart:ui' as ui;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/app/app.dart';
@@ -447,5 +450,61 @@ void posterShapeTests() {
       expect(posterFitFor(1000, 1500), BoxFit.cover);
       expect(posterFitFor(1000, 1000), BoxFit.cover);
     });
+
+    testWidgets("segue a imagem: horizontal inteiro, e recomeça ao trocar o pôster",
+        (tester) async {
+      late ui.Image wide;
+      late ui.Image tall;
+      await tester.runAsync(() async {
+        wide = await createTestImage(width: 1920, height: 1080);
+        tall = await createTestImage(width: 1000, height: 1500);
+      });
+      final images = {"wide": wide, "tall": tall};
+      Widget host(String url) => MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 200,
+                height: 300,
+                child: PosterFitByShape(
+                  url: url,
+                  providerFor: (u) => _FakeImage(images[u]!, u),
+                ),
+              ),
+            ),
+          );
+      BoxFit fit() => tester.widget<Image>(find.byType(Image)).fit!;
+
+      await tester.pumpWidget(host("wide"));
+      await tester.pump();
+      expect(fit(), BoxFit.contain);
+
+      // O mesmo cartão recebe outro pôster: o encaixe do anterior não fica.
+      await tester.pumpWidget(host("tall"));
+      await tester.pump();
+      expect(fit(), BoxFit.cover);
+    });
   });
+}
+
+/// Imagem pronta em memória, com a identidade dada pelo id (cache do Flutter).
+class _FakeImage extends ImageProvider<_FakeImage> {
+  _FakeImage(this.image, this.id);
+
+  final ui.Image image;
+  final String id;
+
+  @override
+  Future<_FakeImage> obtainKey(ImageConfiguration configuration) =>
+      SynchronousFuture(this);
+
+  @override
+  ImageStreamCompleter loadImage(_FakeImage key, ImageDecoderCallback decode) =>
+      OneFrameImageStreamCompleter(
+          SynchronousFuture(ImageInfo(image: image.clone())));
+
+  @override
+  bool operator ==(Object other) => other is _FakeImage && other.id == id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

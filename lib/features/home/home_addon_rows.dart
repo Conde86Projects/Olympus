@@ -144,15 +144,38 @@ class HomeAddonRows extends ChangeNotifier {
   /// ter ganhado itens desde a resposta. Chamado ao voltar ao app.
   void refreshEmpty() {
     if (_disposed) return;
-    var changed = false;
     for (final info in infos) {
       final id = info.manifest.id;
-      if (info.state != AddonState.error && _isEmptyAnswer(stateOf(id))) {
-        _start(info, _signatureOf(info));
-        changed = true;
+      if (info.state == AddonState.error ||
+          !_isEmptyAnswer(stateOf(id)) ||
+          _inFlight.containsKey(id)) {
+        continue;
       }
+      _inFlight[id] = _recheckEmpty(id);
     }
-    if (changed) notifyListeners();
+  }
+
+  /// Busca sem mostrar a fileira: ela só aparece se vier com itens. Mostrar
+  /// "carregando" a cada retomada faria a tela piscar e empurrar as outras.
+  Future<void> _recheckEmpty(String id) async {
+    List<AddonCatalogItem> items;
+    try {
+      items = await _addons.getCatalog(id);
+    } catch (_) {
+      items = const [];
+    }
+    _inFlight.remove(id);
+    if (_disposed || items.isEmpty) return;
+    // Só vale se nada mudou no meio: a fileira segue vazia e o add-on ativo.
+    if (!_isEmptyAnswer(stateOf(id)) ||
+        _addons.findById(id)?.state != AddonState.active) {
+      return;
+    }
+    _states[id] = HomeAddonRowState(
+      loaded: true,
+      items: items.take(maxItems).toList(growable: false),
+    );
+    notifyListeners();
   }
 
   /// "Atualizar": busca de novo, mantendo os itens até a resposta.

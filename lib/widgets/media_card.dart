@@ -466,7 +466,7 @@ Widget? _mediaImage(
   if (poster != null && poster.isNotEmpty) {
     if (networkBuilder != null) return networkBuilder(poster);
     return portraitCard
-        ? _PosterFitByShape(url: poster)
+        ? PosterFitByShape(url: poster)
         : MediaCard.defaultNetworkThumbnailImage(poster);
   }
   return null;
@@ -633,16 +633,19 @@ class _MenuItemLabel extends StatelessWidget {
 /// Pôster remoto no cartão em pé (2:3): imagem horizontal aparece inteira,
 /// com o fundo do cartão nas sobras, em vez de ter as pontas cortadas. A
 /// forma vem do decode, que o cache de imagens compartilha com o desenho.
-class _PosterFitByShape extends StatefulWidget {
-  const _PosterFitByShape({required this.url});
+/// [providerFor] troca a imagem nos testes.
+@visibleForTesting
+class PosterFitByShape extends StatefulWidget {
+  const PosterFitByShape({super.key, required this.url, this.providerFor});
 
   final String url;
+  final ImageProvider Function(String url)? providerFor;
 
   @override
-  State<_PosterFitByShape> createState() => _PosterFitByShapeState();
+  State<PosterFitByShape> createState() => _PosterFitByShapeState();
 }
 
-class _PosterFitByShapeState extends State<_PosterFitByShape> {
+class _PosterFitByShapeState extends State<PosterFitByShape> {
   BoxFit _fit = BoxFit.cover;
   ImageStream? _stream;
   late final ImageStreamListener _listener = ImageStreamListener(
@@ -653,12 +656,30 @@ class _PosterFitByShapeState extends State<_PosterFitByShape> {
     onError: (_, __) {},
   );
 
+  ImageProvider get _provider =>
+      widget.providerFor?.call(widget.url) ??
+      ResizeImage(NetworkImage(widget.url), width: 960);
+
+  void _subscribe() {
+    _stream = _provider.resolve(const ImageConfiguration())
+      ..addListener(_listener);
+  }
+
   @override
   void initState() {
     super.initState();
-    _stream = ResizeImage(NetworkImage(widget.url), width: 960)
-        .resolve(const ImageConfiguration())
-      ..addListener(_listener);
+    _subscribe();
+  }
+
+  @override
+  void didUpdateWidget(PosterFitByShape old) {
+    super.didUpdateWidget(old);
+    // Cartão reaproveitado com outro pôster: encaixe e inscrição recomeçam.
+    if (old.url != widget.url) {
+      _stream?.removeListener(_listener);
+      _fit = BoxFit.cover;
+      _subscribe();
+    }
   }
 
   @override
@@ -668,8 +689,9 @@ class _PosterFitByShapeState extends State<_PosterFitByShape> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      MediaCard.defaultNetworkThumbnailImage(widget.url, fit: _fit);
+  Widget build(BuildContext context) => widget.providerFor == null
+      ? MediaCard.defaultNetworkThumbnailImage(widget.url, fit: _fit)
+      : Image(image: _provider, fit: _fit);
 }
 
 /// Encaixe do pôster no cartão em pé: horizontal inteiro, vertical cobrindo.

@@ -205,8 +205,16 @@ void main() {
       await settle();
       expect(rows.visibleInfos, isEmpty);
 
-      fetcher.bodies[_url('a')] = _feed('a', 3);
+      fetcher
+        ..gate = Completer<void>()
+        ..bodies[_url('a')] = _feed('a', 3);
       rows.refreshEmpty();
+      await settle();
+      // Durante a busca a fileira segue escondida: sem piscar "carregando".
+      expect(rows.visibleInfos, isEmpty);
+      expect(rows.stateOf('a').loading, isFalse);
+
+      fetcher.gate!.complete();
       await settle();
 
       expect(rows.visibleInfos.map((i) => i.manifest.id), ['a']);
