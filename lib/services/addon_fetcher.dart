@@ -19,6 +19,11 @@ const fetchCancelledMessage = 'Download cancelado.';
 abstract class AddonFetcher {
   const AddonFetcher();
 
+  /// Mesmo buscador, sem a barreira contra rede interna. Só para o que a
+  /// pessoa marcou como confiável (repositório): os fakes de teste não têm
+  /// barreira e devolvem a si mesmos.
+  AddonFetcher get allowingLocalNetwork => this;
+
   /// Baixa e devolve o corpo como texto. Falhas (URL invalida,
   /// timeout, HTTP != 200, corpo grande demais, rede) viram
   /// [AddonError] com motivo em pt-BR. [headers] carrega
@@ -57,6 +62,10 @@ class HttpAddonFetcher extends AddonFetcher {
   final bool allowPrivate;
 
   static const maxRedirects = 3;
+
+  @override
+  AddonFetcher get allowingLocalNetwork =>
+      HttpAddonFetcher(timeout: timeout, maxBytes: maxBytes, allowPrivate: true);
 
   @override
   Future<String> fetchText(String url,

@@ -8,7 +8,7 @@ import 'package:player/features/addons/addon_install_screen.dart';
 import 'package:player/models/addon_manifest.dart';
 import 'package:player/models/addon_repository.dart';
 import 'package:player/widgets/app_shell.dart';
-import 'package:player/widgets/dpad_field_exit.dart';
+import 'package:player/widgets/tv_text_field_frame.dart';
 import 'package:player/widgets/empty_state.dart';
 import 'package:player/widgets/focusable_button.dart';
 import 'package:player/widgets/confirm_dialog.dart';
@@ -29,6 +29,8 @@ class AddonReposScreen extends StatefulWidget {
 class _AddonReposScreenState extends State<AddonReposScreen> {
   final _nameController = TextEditingController();
   final _originController = TextEditingController();
+  final _nameFocus = FocusNode();
+  final _originFocus = FocusNode();
   bool _trusted = false;
   String? _selectedId;
   List<AddonManifest>? _listing;
@@ -40,6 +42,8 @@ class _AddonReposScreenState extends State<AddonReposScreen> {
   void dispose() {
     _nameController.dispose();
     _originController.dispose();
+    _nameFocus.dispose();
+    _originFocus.dispose();
     super.dispose();
   }
 
@@ -138,10 +142,12 @@ class _AddonReposScreenState extends State<AddonReposScreen> {
           children: [
             Text('Adicionar repositório', style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
-            DpadFieldExit(
+            TvTextFieldFrame(
               controller: _nameController,
+              fieldFocus: _nameFocus,
               child: TextField(
                 controller: _nameController,
+                focusNode: _nameFocus,
                 enabled: !_busy,
                 decoration: const InputDecoration(
                   labelText: 'Nome',
@@ -151,10 +157,12 @@ class _AddonReposScreenState extends State<AddonReposScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            DpadFieldExit(
+            TvTextFieldFrame(
               controller: _originController,
+              fieldFocus: _originFocus,
               child: TextField(
                 controller: _originController,
+                focusNode: _originFocus,
                 enabled: !_busy,
                 decoration: const InputDecoration(
                   labelText: 'Endereço da listagem',
@@ -169,7 +177,8 @@ class _AddonReposScreenState extends State<AddonReposScreen> {
               child: SwitchListTile(
                 title: const Text('Confiável'),
                 subtitle:
-                    const Text('Marque somente origens que você reconhece.'),
+                    const Text('Marque somente origens que você reconhece. '
+                        'Só repositório confiável pode estar na sua rede local.'),
                 value: _trusted,
                 onChanged:
                     _busy ? null : (value) => setState(() => _trusted = value),
@@ -355,9 +364,13 @@ class _AddonReposScreenState extends State<AddonReposScreen> {
       if (!mounted) return;
       // Fora do ar vira "fonte indisponivel" (spec 17); listagem
       // malformada mostra o motivo da validacao.
-      setState(() => _browseError = error.code == 'addon.fetch-failed'
-          ? const AddonError.unavailable().message
-          : error.message);
+      final local = error.message.contains('interno') && !repo.trusted;
+      setState(() => _browseError = local
+          ? 'Este endereço é da rede local. Remova o repositório e '
+              'cadastre de novo marcando "Confiável".'
+          : error.code == 'addon.fetch-failed'
+              ? const AddonError.unavailable().message
+              : error.message);
     } catch (_) {
       if (mounted) {
         setState(() => _browseError = const AddonError.unavailable().message);

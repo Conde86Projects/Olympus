@@ -416,6 +416,20 @@ void rebindingTests() {
       expect(address.address, '93.184.216.34');
     });
 
+    test('allowingLocalNetwork abre o endereço da casa que o padrão recusa',
+        () async {
+      final server = await serve((request) async {
+        request.response.write('ola');
+        await request.response.close();
+      });
+      addTearDown(() => server.close(force: true));
+      const strict = HttpAddonFetcher();
+
+      await expectLater(strict.fetchText(urlOf(server)),
+          throwsA(isA<AddonError>()));
+      expect(await strict.allowingLocalNetwork.fetchText(urlOf(server)), 'ola');
+    });
+
     test('prefere IPv4 quando o nome tem IPv6 e IPv4 públicos', () async {
       final address = await resolvePublicAddress('exemplo.org',
           timeout: const Duration(seconds: 1),

@@ -391,6 +391,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     AddonManifest manifest, {
     void Function(int received, int? total)? onProgress,
     Future<void>? cancel,
+    bool trustedSource = false,
   }) async {
     final packageUrl = manifest.packageUrl;
     final packageSha256 = manifest.packageSha256;
@@ -399,7 +400,9 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
         'Este item não tem pacote publicado para instalar.',
       );
     }
-    final bytes = await _fetcher.fetchBytes(
+    // Pacote de repositório confiável pode estar na rede local, como a listagem.
+    final fetcher = trustedSource ? _fetcher.allowingLocalNetwork : _fetcher;
+    final bytes = await fetcher.fetchBytes(
       packageUrl,
       onProgress: onProgress,
       cancel: cancel,
@@ -444,6 +447,7 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
       manifest,
       onProgress: onProgress,
       cancel: cancel,
+      trustedSource: originTrusted,
     );
     return installPackage(
       package,
@@ -667,7 +671,11 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
   /// pasta nova e removida).
   Future<AddonInfo> _updateToPackage(
       AddonInfo info, AddonManifest manifest) async {
-    final package = await _downloadVerifiedPackage(manifest);
+    final package = await _downloadVerifiedPackage(
+      manifest,
+      trustedSource: info.originTrusted &&
+          info.packageOrigin == AddonPackageOrigin.repository,
+    );
     final versionDir = await _writePackageDir(
       info.manifest.id,
       manifest.version,
@@ -1097,8 +1105,10 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
     if (!repo.trusted && !_allowUnknownSources()) {
       throw const AddonError.unknownSourcesDisabled();
     }
+    // Repositório confiável pode estar na rede local (um PC ou servidor de casa).
+    final fetcher = repo.trusted ? _fetcher.allowingLocalNetwork : _fetcher;
     return AddonRepository.parseListing(
-      await _fetcher.fetchText(repo.originUrl),
+      await fetcher.fetchText(repo.originUrl),
     );
   }
 }
