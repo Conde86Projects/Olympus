@@ -6,8 +6,18 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
+## [0.4.3] - 2026-11-13
+
+### Novo
+
+- Repositório marcado como "Confiável" pode estar na rede local (um PC ou servidor de
+  casa, como `http://192.168.1.2`): a listagem e os pacotes dele são baixados mesmo assim.
+  Repositório não confiável segue recusando endereço interno, e a tela explica como liberar.
+
 ### Corrigido
 
+- Na TV, a seta para baixo agora para nos campos "Nome" e "Endereço" do formulário de
+  repositório (antes pulava os dois), e o teclado só abre quando você aperta OK no campo.
 - O bloqueio da rede interna agora vale também para as qualidades de vídeo e para
   catálogos de fontes com adaptador, que não passavam pela checagem na 0.4.2.
 - Dois add-ons com ids que só diferem em maiúsculas (`News.Cat` e `news.cat`) não
