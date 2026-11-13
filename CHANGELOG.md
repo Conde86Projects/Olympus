@@ -6,6 +6,13 @@ se importa). Detalhes de implementação ficam nos documentos em
 
 ## [Não lançado]
 
+### Corrigido
+
+- O bloqueio da rede interna agora vale também para as qualidades de vídeo e para
+  catálogos de fontes com adaptador, que não passavam pela checagem na 0.4.2.
+- IP escrito de outro jeito (`2130706433`, `127.1`, `0x7f.0.0.1`) e `localhost.` com
+  ponto no fim também são recusados.
+
 ## [0.4.2] - 2026-11-01
 
 ### Corrigido

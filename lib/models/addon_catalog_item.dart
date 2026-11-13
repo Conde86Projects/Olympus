@@ -26,7 +26,8 @@ class SourceQuality {
         label is! String ||
         label.isEmpty ||
         sourceUrl is! String ||
-        !isSupportedUrl(sourceUrl)) {
+        !isSupportedUrl(sourceUrl) ||
+        pointsToInternalAddress(sourceUrl)) {
       throw const AddonError.invalidManifest(
         'Qualidade do item de catálogo inválida.',
       );
@@ -56,6 +57,13 @@ class AddonCatalogItem {
   final Duration? duration;
   final String? thumbnailUrl;
   final List<SourceQuality> qualities;
+
+  /// Algum endereço do item (vídeo, pôster, qualidades) aponta para a rede
+  /// interna. Adaptadores montam o item sem passar por [fromJson].
+  bool get pointsToInternalNetwork =>
+      pointsToInternalAddress(sourceUrl) ||
+      (thumbnailUrl != null && pointsToInternalAddress(thumbnailUrl!)) ||
+      qualities.any((q) => pointsToInternalAddress(q.sourceUrl));
 
   /// Valida um item vindo de fora (Fase 5: catalogo remoto e dado nao
   /// confiavel). Tipos errados, campos vazios ou URL invalida viram

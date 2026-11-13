@@ -828,7 +828,11 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
           final headers = await adapter.headersFor(target, _credentials);
           final body = await _fetcher.fetchText(target.toString(),
               headers: headers);
-          return adapter.parseCatalog(body).items;
+          return adapter
+              .parseCatalog(body)
+              .items
+              .where((item) => !item.pointsToInternalNetwork)
+              .toList();
         }
       }
       final catalog = catalogUrl != null
@@ -1012,7 +1016,11 @@ class LocalAddonService extends ChangeNotifier implements AddonService {
       final uri = Uri.parse(url);
       final headers = await adapter.headersFor(uri, _credentials);
       final body = await _fetcher.fetchText(url, headers: headers);
-      return adapter.parseCatalog(body).items;
+      return adapter
+          .parseCatalog(body)
+          .items
+          .where((item) => !item.pointsToInternalNetwork)
+          .toList();
     } on AddonError {
       rethrow;
     } catch (_) {

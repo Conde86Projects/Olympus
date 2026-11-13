@@ -3,7 +3,11 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:player/core/errors/app_error.dart';
 import 'package:player/core/utils/internal_address.dart';
+import 'package:player/core/storage/local_store.dart';
 import 'package:player/models/addon_catalog_item.dart';
+import 'package:player/services/local_addon_service.dart';
+import 'source_adapter_test.dart' show FakeAddonFetcher, demoBody, demoEntry, demoUrl;
+import 'support/demo_source_adapter.dart';
 
 Map<String, Object?> item({String? source, String? poster}) => {
       'id': 'v1',
@@ -39,6 +43,18 @@ void main() {
       }
     });
 
+    test('reconhece IP escrito de outro jeito e localhost com ponto', () {
+      for (final url in [
+        'http://2130706433/x',
+        'http://127.1/x',
+        'http://0x7f.0.0.1/x',
+        'http://0177.0.0.1/x',
+        'http://localhost./x',
+      ]) {
+        expect(pointsToInternalAddress(url), isTrue, reason: url);
+      }
+    });
+
     test('deixa passar endereço público e nome comum', () {
       for (final url in [
         'https://cdn.exemplo.org/x.jpg',
@@ -65,10 +81,47 @@ void main() {
       );
     });
 
+    test('recusa qualidade na rede interna', () {
+      final json = item()
+        ..['qualities'] = [
+          {'id': '720', 'label': '720p', 'sourceUrl': 'http://192.168.0.1/v.mp4'},
+        ];
+      expect(() => AddonCatalogItem.fromJson(json), throwsA(isA<AddonError>()));
+    });
+
     test('aceita endereços públicos', () {
       final parsed = AddonCatalogItem.fromJson(
           item(poster: 'https://cdn.exemplo.org/a.png'));
       expect(parsed.thumbnailUrl, 'https://cdn.exemplo.org/a.png');
+    });
+  });
+
+  group('item montado por adaptador', () {
+    Future<LocalAddonService> service(List<Object?> results) async {
+      final s = LocalAddonService(
+        InMemoryLocalStore(),
+        platform: 'windows',
+        fetcher: FakeAddonFetcher({demoUrl: demoBody(results: results)}),
+        adapters: const [DemoSourceAdapter()],
+      );
+      final preview = await s.previewSource(demoUrl);
+      await s.install(preview.manifest, originTrusted: false);
+      await s.enable('demo.source');
+      return s;
+    }
+
+    test('descarta vídeo, pôster e qualidade na rede interna', () async {
+      final s = await service([
+        demoEntry(id: 'ok'),
+        demoEntry(id: 'poster', poster: 'http://192.168.0.1/p.jpg'),
+        demoEntry(id: 'qualidade', renditions: [
+          {'label': '720p', 'file': 'http://10.0.0.5/v.mp4'},
+        ]),
+        {...demoEntry(id: 'video'), 'file': 'http://127.0.0.1/v.mp4'},
+      ]);
+
+      final catalog = await s.getCatalog('demo.source');
+      expect(catalog.map((i) => i.id), ['ok']);
     });
   });
 }

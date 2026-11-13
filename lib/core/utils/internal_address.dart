@@ -36,9 +36,15 @@ bool isBlockedInternetAddress(InternetAddress address) {
 /// ou `localhost`. Serve para o que um feed manda o aparelho abrir sozinho
 /// (pôster, vídeo). Nome comum precisaria de DNS: fica para quem baixa.
 bool pointsToInternalAddress(String url) {
-  final host = Uri.tryParse(url.trim())?.host.toLowerCase();
+  var host = Uri.tryParse(url.trim())?.host.toLowerCase();
   if (host == null || host.isEmpty) return false;
+  if (host.endsWith('.')) host = host.substring(0, host.length - 1);
   if (host == 'localhost' || host.endsWith('.localhost')) return true;
   final literal = InternetAddress.tryParse(host);
-  return literal != null && isBlockedInternetAddress(literal);
+  if (literal != null) return isBlockedInternetAddress(literal);
+  // `2130706433`, `127.1` e `0x7f.0.0.1` não são IP para o Dart, mas o
+  // sistema os resolve como tal: host só de números é bloqueado.
+  return host
+      .split('.')
+      .every((part) => RegExp(r'^(0x[0-9a-f]+|[0-9]+)$').hasMatch(part));
 }
