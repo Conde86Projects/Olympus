@@ -130,33 +130,63 @@ class MainActivity : FlutterActivity() {
             result.success(null)
             return
         }
+        // Fora da thread principal: decodificar um quadro 4K leva de
+        // centenas de ms a segundos, e isso roda quando o player abre.
+        Thread {
+            val bytes = frameJpeg(path, positionMs, maxWidth)
+            runOnUiThread { result.success(bytes) }
+        }.start()
+    }
+
+    /// JPEG do quadro em [positionMs], reduzido a [maxWidth], ou null.
+    /// Falha vira ausência: o card mostra o placeholder.
+    private fun frameJpeg(path: String, positionMs: Long, maxWidth: Int): ByteArray? {
         var retriever: MediaMetadataRetriever? = null
         try {
             retriever = MediaMetadataRetriever()
             retriever.setDataSource(path)
-            val frame = retriever.getFrameAtTime(
-                positionMs * 1000,
-                MediaMetadataRetriever.OPTION_CLOSEST_SYNC
-            ) ?: retriever.getFrameAtTime(0)
-            if (frame == null) {
-                result.success(null)
-                return
-            }
-            val scaled = if (frame.width > maxWidth) {
-                val h = (frame.height * maxWidth / frame.width.toFloat())
-                    .toInt().coerceAtLeast(1)
-                Bitmap.createScaledBitmap(frame, maxWidth, h, true)
+            // API 27+ já decodifica reduzido: um quadro 4K inteiro são
+            // ~33 MB, e o estouro de memória seria Error, não Exception.
+            val scaled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                // Mantém a proporção do vídeo (e a rotação gravada nele).
+                fun meta(key: Int) =
+                    retriever.extractMetadata(key)?.toIntOrNull() ?: 0
+                var w = meta(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                var h = meta(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                val rotation = meta(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                if (rotation == 90 || rotation == 270) w = h.also { h = w }
+                val height =
+                    if (w > 0 && h > 0) (maxWidth * h / w).coerceAtLeast(1)
+                    else maxWidth * 9 / 16
+                retriever.getScaledFrameAtTime(
+                    positionMs * 1000,
+                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
+                    maxWidth,
+                    height
+                ) ?: retriever.getScaledFrameAtTime(
+                    0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, maxWidth, height
+                )
             } else {
-                frame
+                val frame = retriever.getFrameAtTime(
+                    positionMs * 1000,
+                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                ) ?: retriever.getFrameAtTime(0)
+                if (frame != null && frame.width > maxWidth) {
+                    val h = (frame.height * maxWidth / frame.width.toFloat())
+                        .toInt().coerceAtLeast(1)
+                    Bitmap.createScaledBitmap(frame, maxWidth, h, true)
+                        .also { frame.recycle() }
+                } else {
+                    frame
+                }
             }
+            if (scaled == null) return null
             val out = ByteArrayOutputStream()
             scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
-            if (scaled !== frame) frame.recycle()
             scaled.recycle()
-            result.success(out.toByteArray())
-        } catch (_: Exception) {
-            // Falha vira ausência: o card mostra o placeholder.
-            result.success(null)
+            return out.toByteArray()
+        } catch (_: Throwable) {
+            return null
         } finally {
             try {
                 retriever?.release()

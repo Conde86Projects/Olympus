@@ -75,7 +75,10 @@ class ThumbnailService {
   ) async {
     final path = await service.generateFor(stored);
     if (path == null) return;
-    await library.upsert(stored.copyWith(thumbnailPath: () => path));
+    // Relê: gerar leva segundos, e o upsert copia a posição do item que
+    // chega. Com a cópia velha, sair do player antes apagaria o ponto salvo.
+    final fresh = library.findById(stored.id) ?? stored;
+    await library.upsert(fresh.copyWith(thumbnailPath: () => path));
   }
 
   /// Gera e grava a miniatura de [item]; devolve o caminho ou null.

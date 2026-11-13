@@ -56,3 +56,6 @@ app.*.map.json
 *.keystore
 android/key.properties
 /android/build/
+
+# Local Claude Code settings and worktrees
+.claude/

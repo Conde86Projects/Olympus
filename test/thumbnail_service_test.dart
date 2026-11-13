@@ -227,6 +227,30 @@ void main() {
       expect(File(stored.thumbnailPath!).existsSync(), isTrue);
     });
 
+    test('posição salva enquanto a miniatura é gerada não se perde', () async {
+      final tmp = await Directory.systemTemp.createTemp('thumb_bf_pos');
+      addTearDown(() => tmp.delete(recursive: true));
+      final source = File('${tmp.path}/in.mp4')..writeAsBytesSync([1]);
+      messenger.setMockMethodCallHandler(channel, null);
+      final library = InMemoryLibraryService();
+      final saved = await library.upsert(localItem(source.path));
+      final service = ThumbnailService(
+        directoryProvider: () async => tmp,
+        fallbackFrame: (_, __) async {
+          // A pessoa assiste e sai enquanto o quadro ainda é extraído.
+          await library.upsert(saved.copyWith(
+              lastPosition: () => const Duration(seconds: 42)));
+          return Uint8List.fromList([3, 3]);
+        },
+      );
+
+      await ThumbnailService.backfill(library, saved, service: service);
+
+      final stored = library.findById(saved.id)!;
+      expect(stored.thumbnailPath, isNotNull);
+      expect(stored.lastPosition, const Duration(seconds: 42));
+    });
+
     test('dois pedidos juntos para o mesmo item geram uma vez so', () async {
       final tmp = await Directory.systemTemp.createTemp('thumb_bf_dup');
       addTearDown(() => tmp.delete(recursive: true));
