@@ -283,7 +283,9 @@ Future<InternetAddress> resolvePublicAddress(
     );
   }
   if (found.isEmpty || found.any(isBlockedInternetAddress)) throw blocked;
-  return found.first;
+  // IPv4 primeiro: com IPv6 ligado mas sem rota, o primeiro da lista travaria.
+  return found.firstWhere((a) => a.type == InternetAddressType.IPv4,
+      orElse: () => found.first);
 }
 
 /// Resolve o Location de um redirect contra a URL atual. Ausente,

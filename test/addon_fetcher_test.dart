@@ -416,6 +416,20 @@ void rebindingTests() {
       expect(address.address, '93.184.216.34');
     });
 
+    test('prefere IPv4 quando o nome tem IPv6 e IPv4 públicos', () async {
+      final address = await resolvePublicAddress('exemplo.org',
+          timeout: const Duration(seconds: 1),
+          lookup: (_) => answer(['2606:4700::1111', '93.184.216.34']));
+      expect(address.address, '93.184.216.34');
+    });
+
+    test('só IPv6 público segue funcionando', () async {
+      final address = await resolvePublicAddress('exemplo.org',
+          timeout: const Duration(seconds: 1),
+          lookup: (_) => answer(['2606:4700::1111']));
+      expect(address.type, InternetAddressType.IPv6);
+    });
+
     test('resposta mista com um interno falha fechado', () async {
       await expectLater(
         resolvePublicAddress('exemplo.org',

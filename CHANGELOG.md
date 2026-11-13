@@ -21,6 +21,8 @@ se importa). Detalhes de implementação ficam nos documentos em
 - O ponto onde você parou agora é gravado a cada 30 segundos durante o filme, e não
   só ao sair. Uma queda do app ou da TV não perde mais o lugar.
 - Busca do mestre HLS tem prazo também para o corpo da resposta.
+- Downloads em `http` preferem o endereço IPv4 já verificado, para não travar em rede com
+  IPv6 ligado e sem rota.
 - IP escrito de outro jeito (`2130706433`, `127.1`, `0x7f.0.0.1`) e `localhost.` com
   ponto no fim também são recusados.
 
