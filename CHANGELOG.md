@@ -23,6 +23,10 @@ se importa). Detalhes de implementação ficam nos documentos em
 - Busca do mestre HLS tem prazo também para o corpo da resposta.
 - Downloads em `http` preferem o endereço IPv4 já verificado, para não travar em rede com
   IPv6 ligado e sem rota.
+- A fileira de add-on que sumiu por catálogo vazio volta quando o app é retomado e o
+  feed já tem itens, sem precisar fechar o app por completo.
+- Pôster horizontal de catálogo aparece inteiro no cartão em pé, em vez de ter as pontas
+  cortadas.
 - IP escrito de outro jeito (`2130706433`, `127.1`, `0x7f.0.0.1`) e `localhost.` com
   ponto no fim também são recusados.
 

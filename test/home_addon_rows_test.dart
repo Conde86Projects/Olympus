@@ -193,6 +193,26 @@ void main() {
       expect(rows.stateOf('a').items, hasLength(20));
     });
 
+    test('fileira vazia que sumiu volta quando o feed ganha itens', () async {
+      fetcher.bodies[_url('a')] = jsonEncode({'items': <Object?>[]});
+      await _install(addons, 'a', 'A');
+      rows.reconcile();
+      await settle();
+      expect(rows.visibleInfos, isEmpty);
+
+      // Sem novidade, voltar ao app não faz a fileira reaparecer.
+      rows.refreshEmpty();
+      await settle();
+      expect(rows.visibleInfos, isEmpty);
+
+      fetcher.bodies[_url('a')] = _feed('a', 3);
+      rows.refreshEmpty();
+      await settle();
+
+      expect(rows.visibleInfos.map((i) => i.manifest.id), ['a']);
+      expect(rows.stateOf('a').items, hasLength(3));
+    });
+
     test('guarda em memória; só Atualizar busca de novo', () async {
       fetcher.bodies[_url('a')] = _feed('a', 2);
       await _install(addons, 'a', 'A');

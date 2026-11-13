@@ -140,6 +140,21 @@ class HomeAddonRows extends ChangeNotifier {
     if (changed) notifyListeners();
   }
 
+  /// Busca de novo as fileiras que sumiram por catálogo vazio: o feed pode
+  /// ter ganhado itens desde a resposta. Chamado ao voltar ao app.
+  void refreshEmpty() {
+    if (_disposed) return;
+    var changed = false;
+    for (final info in infos) {
+      final id = info.manifest.id;
+      if (info.state != AddonState.error && _isEmptyAnswer(stateOf(id))) {
+        _start(info, _signatureOf(info));
+        changed = true;
+      }
+    }
+    if (changed) notifyListeners();
+  }
+
   /// "Atualizar": busca de novo, mantendo os itens até a resposta.
   Future<void> refresh(String addonId) async {
     final info = _addons.findById(addonId);

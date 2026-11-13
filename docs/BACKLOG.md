@@ -1,9 +1,8 @@
 # Backlog técnico
 
 Itens aceitos como pendentes, sem bloquear a entrega da fase atual.
-Decisão registrada em 10/10/2026. Revisado em 01/11/2026 (ticket #28 da spec
-#16): versão publicada `0.3.5`; o ciclo de acabamento está no PR #29, não
-publicado. Estado resumido em `docs/SITUACAO_ATUAL.md`.
+Decisão registrada em 10/10/2026. Revisado em 13/11/2026: versão publicada `0.4.2`; o ciclo da spec #16 e a spec #30
+saíram na 0.4.0. O que há de novo desde então está no `CHANGELOG.md`. Estado resumido em `docs/SITUACAO_ATUAL.md`.
 
 ## Pendente hoje (resumo)
 

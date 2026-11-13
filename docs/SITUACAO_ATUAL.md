@@ -4,12 +4,12 @@ Retrato datado de 01/11/2026 a partir de `docs/` + `lib/` (anterior: 31/10/2026)
 Só muda sob comando direto; nunca a cada commit. Atualizado agora por
 comando direto do dono, no ticket #28 da spec #16.
 
-Versão publicada: `0.3.5+1011` (tag e release `v0.3.5`, 01/11/2026).
-O ciclo de acabamento da spec #16 (tickets #17 a #27) está na branch
-`integracao/acabamento-16`, no PR #29, **não publicado**. Itens marcados
-"(PR #29)" abaixo só existem nessa branch. Suíte: 942 testes aprovados e
-`flutter analyze` limpo nessa branch. Decisões do ciclo:
-`docs/adr/0003-acabamento-spec-16.md`.
+Versão publicada: `0.4.2+1014` (tag e release `v0.4.2`). O ciclo da spec #16 saiu na
+0.4.0 e a spec #30 (zip, repositório, fileiras) também; correções da auditoria na
+0.4.1 e 0.4.2. Há commits na branch `integracao/addons-zip` ainda não publicados
+(ver `CHANGELOG.md`, seção "Não lançado"). Tudo abaixo que diz "(PR #29)" ou "não
+publicado" é do ciclo da 0.4.0 e já está publicado. Decisões do ciclo:
+`docs/adr/0003-acabamento-spec-16.md`; pacote zip só de dados: ADR-0004.
 Foco: functions, buttons, pages, pendências gerais.
 Glossário canônico em `GLOSSARY.md` (Mudo do app, Mudo do sistema,
 Desplugar o mudo, Mutar com o sistema, Trilho, Setas ocultas, Volume inicial, Chrome mobile,

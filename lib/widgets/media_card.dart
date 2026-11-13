@@ -61,12 +61,14 @@ class MediaCard extends StatelessWidget {
   /// Pôster remoto padrão: carrega com o placeholder visível e cai
   /// nele em qualquer erro. Chamado sem pump nos testes.
   @visibleForTesting
-  static Widget defaultNetworkThumbnailImage(String url) => Image.network(
+  static Widget defaultNetworkThumbnailImage(String url,
+          {BoxFit fit = BoxFit.cover}) =>
+      Image.network(
         url,
         // Pôster de 4000 px decodificado inteiro pesa na memória da TV. Com
         // 960, o maior cartão ainda fica nítido na tela 2x.
         cacheWidth: 960,
-        fit: BoxFit.cover,
+        fit: fit,
         loadingBuilder: (context, child, progress) => progress == null
             ? child
             : Icon(Icons.play_arrow,
@@ -295,6 +297,7 @@ class _MediaPosterCardState extends State<MediaPosterCard> {
       item,
       widget.thumbnailBuilder,
       widget.networkThumbnailBuilder,
+      portraitCard: widget.aspectRatio < 1,
     );
     final borderColor = _focused
         ? PlayerTheme.accent
@@ -452,16 +455,19 @@ class _MediaPosterCardState extends State<MediaPosterCard> {
 Widget? _mediaImage(
   MediaItem item,
   Widget Function(String path)? builder,
-  Widget Function(String url)? networkBuilder,
-) {
+  Widget Function(String url)? networkBuilder, {
+  bool portraitCard = false,
+}) {
   final thumb = item.thumbnailPath;
   final poster = item.metadata['posterUrl'];
   if (thumb != null) {
     return builder?.call(thumb) ?? MediaCard.defaultThumbnailImage(thumb);
   }
   if (poster != null && poster.isNotEmpty) {
-    return networkBuilder?.call(poster) ??
-        MediaCard.defaultNetworkThumbnailImage(poster);
+    if (networkBuilder != null) return networkBuilder(poster);
+    return portraitCard
+        ? _PosterFitByShape(url: poster)
+        : MediaCard.defaultNetworkThumbnailImage(poster);
   }
   return null;
 }
@@ -623,3 +629,50 @@ class _MenuItemLabel extends StatelessWidget {
     );
   }
 }
+
+/// Pôster remoto no cartão em pé (2:3): imagem horizontal aparece inteira,
+/// com o fundo do cartão nas sobras, em vez de ter as pontas cortadas. A
+/// forma vem do decode, que o cache de imagens compartilha com o desenho.
+class _PosterFitByShape extends StatefulWidget {
+  const _PosterFitByShape({required this.url});
+
+  final String url;
+
+  @override
+  State<_PosterFitByShape> createState() => _PosterFitByShapeState();
+}
+
+class _PosterFitByShapeState extends State<_PosterFitByShape> {
+  BoxFit _fit = BoxFit.cover;
+  ImageStream? _stream;
+  late final ImageStreamListener _listener = ImageStreamListener(
+    (info, _) {
+      final fit = posterFitFor(info.image.width, info.image.height);
+      if (mounted && fit != _fit) setState(() => _fit = fit);
+    },
+    onError: (_, __) {},
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _stream = ResizeImage(NetworkImage(widget.url), width: 960)
+        .resolve(const ImageConfiguration())
+      ..addListener(_listener);
+  }
+
+  @override
+  void dispose() {
+    _stream?.removeListener(_listener);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      MediaCard.defaultNetworkThumbnailImage(widget.url, fit: _fit);
+}
+
+/// Encaixe do pôster no cartão em pé: horizontal inteiro, vertical cobrindo.
+@visibleForTesting
+BoxFit posterFitFor(int width, int height) =>
+    width > height ? BoxFit.contain : BoxFit.cover;

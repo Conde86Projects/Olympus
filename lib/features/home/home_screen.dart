@@ -182,7 +182,7 @@ class _RowsHome extends StatefulWidget {
   State<_RowsHome> createState() => _RowsHomeState();
 }
 
-class _RowsHomeState extends State<_RowsHome> {
+class _RowsHomeState extends State<_RowsHome> with WidgetsBindingObserver {
   late final HomeAddonRows _rows;
 
   /// Primeira acao acima das fileiras: destino do voltar da TV.
@@ -203,13 +203,21 @@ class _RowsHomeState extends State<_RowsHome> {
     );
     _deps.preferencesService.addListener(_rows.reconcile);
     _deps.startupGuard.addListener(_rows.reconcile);
+    WidgetsBinding.instance.addObserver(this);
     // Depois da primeira pintura: a tela nunca espera a rede.
     WidgetsBinding.instance.addPostFrameCallback((_) => _rows.reconcile());
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Catálogo vazio some da tela; ao voltar ao app ele ganha outra chance.
+    if (state == AppLifecycleState.resumed) _rows.refreshEmpty();
+  }
+
+  @override
   void dispose() {
     _deps.preferencesService.removeListener(_rows.reconcile);
+    WidgetsBinding.instance.removeObserver(this);
     _deps.startupGuard.removeListener(_rows.reconcile);
     _rows.dispose();
     _actionsFirst.dispose();

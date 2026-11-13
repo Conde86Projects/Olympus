@@ -143,6 +143,7 @@ Future<void> _pumpPanel(
 }
 
 void main() {
+  posterShapeTests();
   group('codec de qualidades', () {
     test('round-trip preserva tudo', () {
       final decoded = decodeSourceQualities(encodeSourceQualities(qualities));
@@ -435,6 +436,16 @@ void main() {
       expect(harness.player.opened.last.source,
           'https://cdn.demo.invalid/v.mp4');
       expect(harness.player.opened.last.id, 'fonte1');
+    });
+  });
+}
+
+void posterShapeTests() {
+  group('encaixe do pôster no cartão em pé', () {
+    test('horizontal aparece inteiro; vertical e quadrado cobrem', () {
+      expect(posterFitFor(1920, 1080), BoxFit.contain);
+      expect(posterFitFor(1000, 1500), BoxFit.cover);
+      expect(posterFitFor(1000, 1000), BoxFit.cover);
     });
   });
 }
